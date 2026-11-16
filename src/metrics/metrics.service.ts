@@ -18,6 +18,8 @@ export class MetricsService {
   readonly eventsTotal: Counter<'tenant_id'>;
   readonly deliveryLatencySeconds: Histogram<'provider' | 'channel'>;
   readonly providerErrorsTotal: Counter<'provider' | 'channel'>;
+  readonly templateRenderErrorsTotal: Counter<'code' | 'channel'>;
+  readonly templateVariableMissingTotal: Counter<'channel'>;
   readonly sseConnectionsActive: Gauge;
   readonly queueDepth: Gauge<'queue'>;
 
@@ -52,6 +54,18 @@ export class MetricsService {
       name: 'notifhub_provider_errors_total',
       help: 'Provider call failures per provider and channel',
       labelNames: ['provider', 'channel'],
+    });
+
+    this.templateRenderErrorsTotal = new Counter({
+      name: 'notifhub_template_render_errors_total',
+      help: 'Non-retryable template render failures per code and channel',
+      labelNames: ['code', 'channel'],
+    });
+
+    this.templateVariableMissingTotal = new Counter({
+      name: 'notifhub_template_variable_missing_total',
+      help: 'Rendered templates with missing/invalid variables per channel',
+      labelNames: ['channel'],
     });
 
     this.sseConnectionsActive = new Gauge({

@@ -1,0 +1,9 @@
+import type { TemplateStatus } from '../lib/templateTypes';
+
+export function TemplateStatusBadge({ status }: { status: TemplateStatus }): JSX.Element {
+  return (
+    <span className={`status ${status === 'published' ? 'status--sent' : 'status--pending'}`}>
+      {status}
+    </span>
+  );
+}

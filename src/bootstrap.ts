@@ -120,6 +120,7 @@ export async function createApp(): Promise<NestExpressApplication> {
   const config = app.get(ConfigService);
   const mode = config.getOrThrow<'development' | 'staging' | 'production'>('NOTIFHUB_MODE');
   const maxPayloadBytes = config.getOrThrow<number>('INGEST_MAX_PAYLOAD_BYTES');
+  const templateMaxPayloadBytes = config.getOrThrow<number>('TEMPLATE_MAX_PAYLOAD_BYTES');
 
   // Registered before the body parser and before routes so even malformed/oversized
   // bodies are logged with the same requestId.
@@ -128,6 +129,9 @@ export async function createApp(): Promise<NestExpressApplication> {
 
   // Body parser is disabled above so the ingest payload limit is env-driven (413 above the limit).
   // The raw body is kept for HMAC verification of provider webhooks.
+  // Admin template/asset endpoints need a higher limit for rich HTML; mount that parser first so
+  // it wins for /api/v1/admin while every other route keeps INGEST_MAX_PAYLOAD_BYTES.
+  app.use('/api/v1/admin', json({ limit: templateMaxPayloadBytes }));
   app.use(
     json({
       limit: maxPayloadBytes,

@@ -70,6 +70,7 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
 - Feature designs:
   [in-app](docs/in-app.md) ·
   [email and preferences](docs/email-and-preferences.md) ·
+  [template system](docs/template-system-design.md) ·
   [webhooks](docs/webhooks.md) ·
   [admin API](docs/admin-api.md) ·
   [React and console](docs/react-and-console.md) ·

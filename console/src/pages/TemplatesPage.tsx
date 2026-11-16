@@ -1,90 +1,146 @@
-import type { Channel, Template } from '@notifhub/js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChannelBadge } from '../components/ChannelBadge';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../components/DataTable';
-import { Pagination } from '../components/Pagination';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { QueryState } from '../components/QueryState';
 import { RefreshControl } from '../components/RefreshControl';
-import { adminClient } from '../lib/adminClient';
+import { TemplateStatusBadge } from '../components/TemplateStatusBadge';
+import {
+  activateTemplate,
+  cloneTemplate,
+  deactivateTemplate,
+  listTemplates,
+} from '../lib/adminTemplates';
 import { describeError, formatDateTime } from '../lib/format';
+import type { Channel, TemplateStatus, TemplateSummary } from '../lib/templateTypes';
 
 const LIMIT = 20;
 const CHANNEL_OPTIONS: Array<Channel | ''> = ['', 'inapp', 'email', 'whatsapp', 'sms'];
+const STATUS_OPTIONS: Array<TemplateStatus | ''> = ['', 'draft', 'published'];
 
 export function TemplatesPage(): JSX.Element {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [channel, setChannel] = useState<Channel | ''>('');
+  const [status, setStatus] = useState<TemplateStatus | ''>('');
   const [offset, setOffset] = useState(0);
-  const [selected, setSelected] = useState<Template | null>(null);
+  const [selected, setSelected] = useState<TemplateSummary | null>(null);
 
   const query = useQuery({
-    queryKey: ['templates', { search, channel, offset }],
+    queryKey: ['templates', { search, channel, status, offset }],
     queryFn: () =>
-      adminClient.listTemplates({
+      listTemplates({
         limit: LIMIT,
         offset,
         ...(search === '' ? {} : { search }),
         ...(channel === '' ? {} : { channel }),
+        ...(status === '' ? {} : { status }),
       }),
   });
 
   const deactivate = useMutation({
-    mutationFn: (id: string) => adminClient.deactivateTemplate(id),
+    mutationFn: (id: string) => deactivateTemplate(id),
     onSuccess: () => {
       setSelected(null);
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
     },
   });
 
-  const columns = useMemo<DataTableColumn<Template>[]>(
+  const activate = useMutation({
+    mutationFn: (id: string) => activateTemplate(id),
+    onSuccess: () => {
+      setSelected(null);
+      void queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+  });
+
+  const clone = useMutation({
+    mutationFn: (id: string) => cloneTemplate(id, {}),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['templates'] });
+      navigate(`/templates/${result.id}/edit`);
+    },
+  });
+
+  const columns = useMemo<DataTableColumn<TemplateSummary>[]>(
     () => [
-      { id: 'key', header: 'Key', cell: (row) => row.key },
+      { id: 'key', header: 'Key', cell: (row) => <code>{row.key}</code> },
       { id: 'channel', header: 'Channel', cell: (row) => <ChannelBadge channel={row.channel} /> },
       { id: 'locale', header: 'Locale', cell: (row) => row.locale },
       { id: 'version', header: 'Versi', cell: (row) => row.version },
       {
+        id: 'status',
+        header: 'Status',
+        cell: (row) => <TemplateStatusBadge status={row.status} />,
+      },
+      { id: 'format', header: 'Format', cell: (row) => row.format },
+      {
         id: 'active',
         header: 'Aktif',
-        cell: (row) => (row.active ? <span className="status status--sent">active</span> : <span className="status status--skipped">inactive</span>),
-      },
-      {
-        id: 'fallback',
-        header: 'Fallback',
-        cell: (row) => row.fallbackChannel ?? '—',
+        cell: (row) =>
+          row.active ? (
+            <span className="status status--sent">active</span>
+          ) : (
+            <span className="status status--skipped">inactive</span>
+          ),
       },
       { id: 'updatedAt', header: 'Diperbarui', cell: (row) => formatDateTime(row.updatedAt) },
       {
         id: 'actions',
         header: '',
         cell: (row) => (
-          <div className="d-flex gap-2 justify-content-end">
+          <div className="d-flex gap-2 justify-content-end flex-wrap">
             <Link to={`/templates/${row.id}/edit`} className="btn btn-sm btn-outline-primary">
-              Edit
+              {row.status === 'draft' ? 'Edit' : 'Lihat'}
             </Link>
-            {row.active ? (
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => clone.mutate(row.id)}
+              disabled={clone.isPending}
+            >
+              Clone
+            </Button>
+            {row.status === 'draft' ? (
+              <Link to={`/templates/${row.id}/edit`} className="btn btn-sm btn-dark">
+                Publish…
+              </Link>
+            ) : row.active ? (
               <Button size="sm" variant="outline-danger" onClick={() => setSelected(row)}>
                 Nonaktifkan
               </Button>
-            ) : null}
+            ) : (
+              <Button
+                size="sm"
+                variant="outline-success"
+                onClick={() => activate.mutate(row.id)}
+                disabled={activate.isPending}
+              >
+                Aktifkan
+              </Button>
+            )}
+            <Link to={`/templates/${row.id}/history`} className="btn btn-sm btn-outline-secondary">
+              Riwayat
+            </Link>
           </div>
         ),
       },
     ],
-    [],
+    [activate.isPending, clone],
   );
 
   return (
     <>
       <PageHeader
         title="Templates"
-        subtitle="Template per channel, locale, dan versi."
+        subtitle="Draft, publish, aset email, variabel, preview, dan test send."
         actions={
           <>
             <RefreshControl
@@ -94,6 +150,9 @@ export function TemplatesPage(): JSX.Element {
                 void query.refetch();
               }}
             />
+            <Link to="/templates/assets" className="btn btn-outline-secondary btn-sm">
+              Aset template
+            </Link>
             <Link to="/templates/new" className="btn btn-primary btn-sm">
               Template baru
             </Link>
@@ -111,15 +170,15 @@ export function TemplatesPage(): JSX.Element {
             }}
           >
             <Row className="g-2 align-items-end">
-              <Col xs={12} md={5}>
+              <Col xs={12} md={4}>
                 <Form.Label className="small text-muted mb-1">Cari key</Form.Label>
                 <Form.Control
                   value={searchInput}
-                  placeholder="mis. test.notification"
+                  placeholder="mis. order.shipped"
                   onChange={(event) => setSearchInput(event.target.value)}
                 />
               </Col>
-              <Col xs={12} md={3}>
+              <Col xs={12} md={2}>
                 <Form.Label className="small text-muted mb-1">Channel</Form.Label>
                 <Form.Select
                   value={channel}
@@ -129,6 +188,22 @@ export function TemplatesPage(): JSX.Element {
                   }}
                 >
                   {CHANNEL_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option === '' ? 'Semua' : option}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+              <Col xs={12} md={2}>
+                <Form.Label className="small text-muted mb-1">Status</Form.Label>
+                <Form.Select
+                  value={status}
+                  onChange={(event) => {
+                    setStatus(event.target.value as TemplateStatus | '');
+                    setOffset(0);
+                  }}
+                >
+                  {STATUS_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option === '' ? 'Semua' : option}
                     </option>
@@ -148,6 +223,7 @@ export function TemplatesPage(): JSX.Element {
                     setSearchInput('');
                     setSearch('');
                     setChannel('');
+                    setStatus('');
                     setOffset(0);
                   }}
                 >
@@ -158,6 +234,13 @@ export function TemplatesPage(): JSX.Element {
           </Form>
         </Card.Body>
       </Card>
+
+      {clone.error !== null ? (
+        <div className="alert alert-danger">{describeError(clone.error)}</div>
+      ) : null}
+      {activate.error !== null ? (
+        <div className="alert alert-danger">{describeError(activate.error)}</div>
+      ) : null}
 
       <Card>
         <Card.Body>
@@ -191,7 +274,7 @@ export function TemplatesPage(): JSX.Element {
       <ConfirmDialog
         show={selected !== null}
         title="Nonaktifkan template"
-        body={`Template "${selected?.key ?? ''}" akan ditandai inactive dan tidak dipakai untuk pengiriman baru.`}
+        body={`Template "${selected?.key ?? ''}" versi ${selected?.version ?? ''} akan ditandai inactive dan tidak dipakai untuk pengiriman baru.`}
         confirmLabel="Nonaktifkan"
         busy={deactivate.isPending}
         onCancel={() => setSelected(null)}

@@ -424,3 +424,24 @@ Untuk re-send: `prisma/schema.prisma`, migrasi
    `(recipientId, channel)` failed, `requestKey` idempotent, deterministik job id untuk replay,
    dan tanpa BillingEvent baru. E2E E11 mencakup pasangan channel campuran (hanya inapp yang
    di-resend) serta replay request key.
+
+---
+
+## 12. Template system v2 (2026-11-16)
+
+Desain lengkap dan keputusan D1–D12 ada di `docs/template-system-design.md`.
+
+- Model: `NotificationTemplate` memiliki `status` (`draft`/`published`), `format`, `direction`,
+  `strictVariables`, `variables`, `sampleData`, `preheader`, `revision`, `publishedAt`, dan
+  referensi `layoutId`/`themeId`/partial. Aset layout/theme/partial disimpan versioned dan
+  immutable per baris.
+- Worker hanya memilih `active=true` + `status=published` versi tertinggi; draft tidak pernah
+  dipakai. Publikasi menonaktifkan versi published lain untuk `(key, channel, locale)` yang sama.
+- Endpoint baru: `publish`, `activate`, `clone`, `rollback`, `versions`, `audit`, `test-sends`,
+  `preview` (inline/saved), `test-send`, dan `/admin/template-assets/{layouts,themes,partials}`.
+  Endpoint lama tetap ada; `PUT` pada published membuat versi published baru (legacy, deprecated)
+  tanpa memutasi baris lama.
+- Payload admin memakai parser 1 MB (`TEMPLATE_MAX_PAYLOAD_BYTES`); ingest tetap
+  `INGEST_MAX_PAYLOAD_BYTES` 64 KB.
+- Test send hanya email/WhatsApp, memakai template tersimpan, melewati preferensi, dibatasi
+  10/jam/admin + 30/hari/tenant, dan diaudit. Preview memakai iframe sandbox.

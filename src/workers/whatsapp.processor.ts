@@ -12,6 +12,7 @@ import { ProviderRegistry } from '../providers/provider-registry.service';
 import { normalizeWhatsAppNumber } from '../providers/whatsapp/whatsapp.types';
 import { QUEUE_NAME_WHATSAPP } from '../queues/queues.module';
 import { TemplateService } from '../templates/template.service';
+import { TemplateRenderError } from '../templates/template.types';
 import {
   DeliveryAttemptsService,
   DeliveryContextService,
@@ -138,6 +139,19 @@ export class WhatsAppProcessor extends WorkerHost {
 
       const rendered = this.templates.render(template, data.data);
 
+      if (rendered.warnings.length > 0) {
+        this.logger.warn(
+          {
+            event: 'template.render.warning',
+            notification_id: data.notificationId,
+            template_id: template.id,
+            template_version: template.version,
+            warnings: rendered.warnings,
+          },
+          'template rendered with warnings',
+        );
+      }
+
       const result = await this.executor.execute(provider, {
         notificationId: data.notificationId,
         recipientId: data.recipientId,
@@ -188,6 +202,17 @@ export class WhatsAppProcessor extends WorkerHost {
       const durationMs = Date.now() - startedAt;
       const failure = toDeliveryFailure(error);
 
+      if (error instanceof TemplateRenderError) {
+        this.metrics.templateRenderErrorsTotal.inc({
+          code: error.code,
+          channel: Channel.whatsapp,
+        });
+
+        if (error.code === 'template_variable_missing') {
+          this.metrics.templateVariableMissingTotal.inc({ channel: Channel.whatsapp });
+        }
+      }
+
       await this.attempts.recordFailure({
         recipientRowId: context.recipient.id,
         notificationId: data.notificationId,
@@ -223,7 +248,9 @@ export class WhatsAppProcessor extends WorkerHost {
         throw new UnrecoverableError(error.message);
       }
 
-      throw error;
+      throw error instanceof TemplateRenderError
+        ? new UnrecoverableError(error.message)
+        : error;
     }
   }
 

@@ -34,6 +34,7 @@ export const envSchema = z
     IDEMPOTENCY_TTL_DAYS: positiveInt(7),
     RETENTION_DAYS: positiveInt(90),
     INGEST_MAX_PAYLOAD_BYTES: positiveInt(65536),
+    TEMPLATE_MAX_PAYLOAD_BYTES: positiveInt(1048576),
     INGEST_RATE_LIMIT_PER_KEY: positiveInt(100),
     INGEST_RATE_LIMIT_WINDOW_SECONDS: positiveInt(60),
     PROVIDER_RATE_LIMIT_EMAIL_PER_SEC: positiveInt(10),

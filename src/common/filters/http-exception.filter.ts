@@ -9,6 +9,7 @@ interface NormalizedError {
   statusCode: number;
   message: string | string[];
   error: string;
+  details?: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -83,6 +84,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: normalized.statusCode,
       message: normalized.message,
       error: normalized.error,
+      ...(normalized.details === undefined ? {} : { details: normalized.details }),
       timestamp: new Date().toISOString(),
       path,
       requestId,
@@ -91,11 +93,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   private normalize(exception: unknown): NormalizedError {
     if (isPayloadTooLarge(exception)) {
+      const limit =
+        isRecord(exception) && typeof exception.limit === 'number'
+          ? exception.limit
+          : this.config.getOrThrow<number>('INGEST_MAX_PAYLOAD_BYTES');
+
       return {
         statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
-        message: `Payload too large. The maximum accepted body size is ${this.config.getOrThrow<number>(
-          'INGEST_MAX_PAYLOAD_BYTES',
-        )} bytes.`,
+        message: `Payload too large. The maximum accepted body size is ${limit} bytes.`,
         error: 'Payload Too Large',
       };
     }
@@ -115,8 +120,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? (rawMessage as string | string[])
             : exception.message;
         const error = typeof payload.error === 'string' ? payload.error : this.reasonPhrase(statusCode);
+        const details = payload.details;
 
-        return { statusCode, message, error };
+        return {
+          statusCode,
+          message,
+          error,
+          ...(details === undefined ? {} : { details }),
+        };
       }
 
       return { statusCode, message: exception.message, error: this.reasonPhrase(statusCode) };

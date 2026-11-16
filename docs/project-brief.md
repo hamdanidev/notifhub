@@ -68,6 +68,7 @@ Aturan kerja:
 | ApiKey table, admin auth, topics + membership, Admin API tenant-scoped | selesai & terverifikasi |
 | `@notifhub/react` (headless) + `NotifHubAdminClient` + `notifhub-console` | selesai & terverifikasi |
 | Console refresh/auto-refresh + resend failed (notification baru, audit link) | selesai & terverifikasi (tanpa browser automation) |
+| Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) | selesai & terverifikasi (E12–E19, UI manual tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
@@ -75,8 +76,8 @@ Aturan kerja:
 | Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
 
-Versi saat ini: root `0.10.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
-`notifhub-console` `0.1.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
+Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
+`notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
 
 ---
 
@@ -162,9 +163,13 @@ npx prisma migrate status
   ingest. Ia bukan pola produksi, tidak punya test runner sendiri, dan interaksi visualnya belum
   diotomasi; verifikasi memakai HTTP/SSE/DB serta `typecheck`/`build`.
 - Console baru mendukung re-send **failed-only**. Re-send `all`, search notification, compose/send,
-  template preview/test, dan export belum ada. Re-send memakai template aktif/data Subscriber saat
-  ini; inline override dari ingest awal tidak tersimpan. Endpoint console memakai wrapper
-  `HttpTransport` sementara sampai rilis `@notifhub/js` berikutnya.
+  export belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override dari
+  ingest awal tidak tersimpan. Endpoint console memakai wrapper `HttpTransport` sementara sampai
+  rilis `@notifhub/js` berikutnya.
+- Template system v2: block builder/MJML/juice, markdown in-app, Meta approved WhatsApp template,
+  plain-text alternative email, diff visual versi, approval maker-checker, dan retensi aset/audit
+  belum ada. Preview/test send memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis
+  pola, bukan parser penuh. Lihat `docs/template-system-design.md` §18.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.

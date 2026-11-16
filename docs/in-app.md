@@ -439,3 +439,12 @@ serta `test/*.test.ts` bila unit test disetujui.
 4. **Swagger** mendapat skema keamanan tambahan `subscriber-jwt` (Bearer) di `main.ts`.
 5. **Versi root** dinaikkan menjadi `0.2.0` dan root `package.json` memakai npm workspaces
    untuk `packages/*`.
+
+---
+
+## 14. Template in-app v2 (2026-11-16)
+
+- Format in-app adalah `text`; HTML/markdown belum didukung karena SDK terbit menampilkan body
+  sebagai teks. Template baru dengan HTML ditolak; baris lama tetap dikirim.
+- Variabel memakai escaping `noEscape` (teks polos), schema variabel opsional, dan
+  `strictVariables` dapat diaktifkan per template. Detail di `docs/template-system-design.md`.

@@ -10,6 +10,7 @@ import { ProviderExecutor } from '../providers/provider-executor.service';
 import { ProviderRegistry } from '../providers/provider-registry.service';
 import { QUEUE_NAME_EMAIL } from '../queues/queues.module';
 import { TemplateService } from '../templates/template.service';
+import { TemplateRenderError } from '../templates/template.types';
 import {
   DeliveryAttemptsService,
   DeliveryContextService,
@@ -134,6 +135,19 @@ export class EmailProcessor extends WorkerHost {
 
       const rendered = this.templates.render(template, data.data);
 
+      if (rendered.warnings.length > 0) {
+        this.logger.warn(
+          {
+            event: 'template.render.warning',
+            notification_id: data.notificationId,
+            template_id: template.id,
+            template_version: template.version,
+            warnings: rendered.warnings,
+          },
+          'template rendered with warnings',
+        );
+      }
+
       const result = await this.executor.execute(provider, {
         notificationId: data.notificationId,
         recipientId: data.recipientId,
@@ -184,6 +198,17 @@ export class EmailProcessor extends WorkerHost {
       const durationMs = Date.now() - startedAt;
       const failure = toDeliveryFailure(error);
 
+      if (error instanceof TemplateRenderError) {
+        this.metrics.templateRenderErrorsTotal.inc({
+          code: error.code,
+          channel: Channel.email,
+        });
+
+        if (error.code === 'template_variable_missing') {
+          this.metrics.templateVariableMissingTotal.inc({ channel: Channel.email });
+        }
+      }
+
       await this.attempts.recordFailure({
         recipientRowId: context.recipient.id,
         notificationId: data.notificationId,
@@ -214,7 +239,9 @@ export class EmailProcessor extends WorkerHost {
         'email delivery failed',
       );
 
-      throw error;
+      throw error instanceof TemplateRenderError
+        ? new UnrecoverableError(error.message)
+        : error;
     }
   }
 

@@ -388,3 +388,17 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
    fallback channel ke in-app, quiet hours + bypass critical, staging catch-all, production ke
    alamat asli, dan circuit breaker buka/tutup dengan SMTP sink lokal.
 8. **Tidak ada perubahan `schema.prisma`** dan tidak ada dependency baru.
+
+---
+
+## 12. Template email kaya (2026-11-16)
+
+Desain ada di `docs/template-system-design.md`.
+
+- Body email adalah fragmen HTML Handlebars; layout opsional membungkus dengan `{{{body}}}`.
+  Theme token JSON dan partial versioned direferensikan eksplisit oleh template.
+- Subject email dirender sebagai teks header (tanpa HTML escaping, CR/LF dibuang); body/preheader
+  memakai escaping HTML. Channel teks memakai `noEscape` agar `&`/`'` tidak menjadi entity.
+- Publish memvalidasi sintaks Handlebars, variabel/sample, ukuran, dan HTML/CSS/URL berbahaya.
+  Sanitizer output runtime menangani data dinamis dari `{{{ }}}`.
+- Baris lama tetap terkirim lewat jalur body-only; tidak ada perubahan pada `EmailProvider`.

@@ -1,6 +1,6 @@
 {
   "name": "notifhub-service",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "NotifHub — general-purpose multi-channel notification service with SDK-first integration",
   "private": true,
   "license": "UNLICENSED",

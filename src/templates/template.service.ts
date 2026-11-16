@@ -1,32 +1,38 @@
 import { Injectable } from '@nestjs/common';
-import { Channel, type NotificationTemplate } from '@prisma/client';
-import Handlebars from 'handlebars';
+import {
+  Channel,
+  TemplateStatus,
+  type NotificationTemplate,
+} from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { TemplateRenderer, localeCandidates } from './template.render';
+import { TemplateRenderError, type RenderableTemplate, type RenderedTemplate, type TemplateWithAssets } from './template.types';
 
-export interface RenderedTemplate {
-  subject: string | null;
-  body: string;
-}
+const TEMPLATE_INCLUDE = {
+  layout: true,
+  theme: true,
+  partials: { include: { partial: true } },
+} as const;
 
-const MAX_COMPILED_TEMPLATES = 500;
-
-type CompiledTemplate = ReturnType<typeof Handlebars.compile>;
+const TEXT_LIMITS: Partial<Record<Channel, number>> = {
+  inapp: 10_000,
+  whatsapp: 4_096,
+  sms: 1_600,
+};
 
 /**
  * Template resolution and rendering for every channel.
  *
- * - locale fallback: requested locale -> DEFAULT_LOCALE -> template not found
- * - version selection: highest active version
- * - rendering: Handlebars (default escaping; use {{{value}}} for raw HTML)
- *
- * Compiled templates are cached by template id + updatedAt so a change to a template row
- * invalidates the cached delegate automatically.
+ * - locale fallback: requested locale -> language part -> DEFAULT_LOCALE
+ * - version selection: highest published + active version
+ * - escaping: HTML for email, plain text for in-app/WhatsApp/SMS
+ * - layout/theme/partial are immutable assets referenced by the template version
  */
 @Injectable()
 export class TemplateService {
-  private readonly compiled = new Map<string, CompiledTemplate>();
+  private readonly renderer = new TemplateRenderer();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -41,7 +47,7 @@ export class TemplateService {
     templateKey: string,
     channel: Channel,
     locale: string | undefined,
-  ): Promise<NotificationTemplate | null> {
+  ): Promise<TemplateWithAssets | null> {
     const locales = this.localeCandidates(locale);
 
     for (const candidate of locales) {
@@ -52,7 +58,9 @@ export class TemplateService {
           channel,
           locale: candidate,
           active: true,
+          status: TemplateStatus.published,
         },
+        include: TEMPLATE_INCLUDE,
         orderBy: { version: 'desc' },
       });
 
@@ -69,7 +77,7 @@ export class TemplateService {
         channel,
         locales,
       },
-      'no active template found for the requested key, channel and locale chain',
+      'no published active template found for the requested key, channel and locale chain',
     );
 
     return null;
@@ -81,7 +89,7 @@ export class TemplateService {
     templateKeys: string[],
     channel: Channel,
     locale: string | undefined,
-  ): Promise<Map<string, NotificationTemplate>> {
+  ): Promise<Map<string, TemplateWithAssets>> {
     const keys = [...new Set(templateKeys)];
 
     if (keys.length === 0) {
@@ -96,10 +104,15 @@ export class TemplateService {
         channel,
         locale: { in: candidates },
         active: true,
+        status: TemplateStatus.published,
       },
+      include: TEMPLATE_INCLUDE,
     });
 
-    const selected = new Map<string, { localeRank: number; template: NotificationTemplate }>();
+    const selected = new Map<
+      string,
+      { localeRank: number; template: TemplateWithAssets }
+    >();
 
     for (const row of rows) {
       const localeRank = candidates.indexOf(row.locale);
@@ -118,62 +131,25 @@ export class TemplateService {
   }
 
   render(
-    template: Pick<NotificationTemplate, 'id' | 'subject' | 'body' | 'updatedAt'>,
+    template: RenderableTemplate,
     data: Record<string, unknown>,
   ): RenderedTemplate {
-    return {
-      subject:
-        template.subject === null
-          ? null
-          : this.renderField(template, 'subject', template.subject, data),
-      body: this.renderField(template, 'body', template.body, data),
-    };
-  }
+    const rendered = this.renderer.render(template, data);
+    const limit = TEXT_LIMITS[template.channel];
 
-  private renderField(
-    template: Pick<NotificationTemplate, 'id' | 'updatedAt'>,
-    field: 'subject' | 'body',
-    source: string,
-    data: Record<string, unknown>,
-  ): string {
-    const cacheKey = `${template.id}:${template.updatedAt.getTime()}:${field}`;
-    const delegate = this.compile(source, cacheKey);
-    const output = delegate(data);
-
-    return typeof output === 'string' ? output : '';
-  }
-
-  private compile(source: string, cacheKey: string): CompiledTemplate {
-    const cached = this.compiled.get(cacheKey);
-
-    if (cached !== undefined) {
-      return cached;
+    if (limit !== undefined && [...rendered.body].length > limit) {
+      throw new TemplateRenderError(
+        'template_too_large',
+        `rendered ${template.channel} body melebihi ${limit} karakter`,
+      );
     }
 
-    const delegate = Handlebars.compile(source);
-
-    if (this.compiled.size >= MAX_COMPILED_TEMPLATES) {
-      this.compiled.clear();
-    }
-
-    this.compiled.set(cacheKey, delegate);
-
-    return delegate;
+    return rendered;
   }
 
   private localeCandidates(locale: string | undefined): string[] {
     const defaultLocale = this.config.getOrThrow<string>('DEFAULT_LOCALE');
-    const values: string[] = [];
-    const requested = locale?.trim();
 
-    if (requested !== undefined && requested.length > 0) {
-      values.push(requested);
-    }
-
-    if (!values.includes(defaultLocale)) {
-      values.push(defaultLocale);
-    }
-
-    return values;
+    return localeCandidates(locale, defaultLocale);
   }
 }

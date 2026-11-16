@@ -32,6 +32,35 @@ enum OverallStatus {
   failed
 }
 
+enum TemplateStatus {
+  draft
+  published
+}
+
+enum TemplateFormat {
+  text
+  html
+  markdown
+}
+
+enum TemplateDirection {
+  auto
+  ltr
+  rtl
+}
+
+enum TemplateAuditAction {
+  created
+  draft_updated
+  updated
+  published
+  deactivated
+  activated
+  cloned
+  rolled_back
+  test_sent
+}
+
 model Notification {
   id                     String        @id @default(uuid())
   idempotencyKey         String        @unique
@@ -87,22 +116,144 @@ model NotificationRecipient {
 }
 
 model NotificationTemplate {
+  id                 String            @id @default(uuid())
+  tenantId           String            @default("default")
+  key                String
+  channel            Channel
+  locale             String            @default("id")
+  subject            String?
+  preheader          String?
+  body               String
+  format             TemplateFormat    @default(text)
+  direction          TemplateDirection @default(auto)
+  version            Int               @default(1)
+  revision           Int               @default(0)
+  status             TemplateStatus    @default(published)
+  active             Boolean           @default(true)
+  strictVariables    Boolean           @default(false)
+  variables          Json?
+  sampleData         Json?
+  layoutId           String?
+  layout             TemplateLayout?   @relation(fields: [layoutId], references: [id])
+  themeId            String?
+  theme              TemplateTheme?    @relation(fields: [themeId], references: [id])
+  fallbackProvider   String?
+  fallbackChannel    Channel?
+  publishedAt        DateTime?         @db.Timestamptz
+  publishedByAdminId String?
+  createdAt          DateTime          @default(now()) @db.Timestamptz
+  updatedAt          DateTime          @updatedAt @db.Timestamptz
+
+  partials    TemplatePartialLink[]
+  auditEvents TemplateAuditEvent[]
+  testSends   TemplateTestSend[]
+
+  @@unique([tenantId, key, channel, locale, version])
+  @@index([tenantId, key, channel, locale, active, status])
+  @@index([tenantId, status, updatedAt])
+  @@index([layoutId])
+  @@index([themeId])
+}
+
+model TemplateLayout {
   id               String   @id @default(uuid())
   tenantId         String   @default("default")
   key              String
-  channel          Channel
-  locale           String   @default("id")
-  subject          String?
-  body             String
-  version          Int      @default(1)
-  active           Boolean  @default(true)
-  fallbackProvider String?
-  fallbackChannel  Channel?
+  version          Int
+  name             String
+  content          String
+  createdByAdminId String?
   createdAt        DateTime @default(now()) @db.Timestamptz
-  updatedAt        DateTime @updatedAt @db.Timestamptz
 
-  @@unique([tenantId, key, channel, locale, version])
-  @@index([tenantId, key, channel, locale, active])
+  templates NotificationTemplate[]
+
+  @@unique([tenantId, key, version])
+  @@index([tenantId, key, version])
+}
+
+model TemplateTheme {
+  id               String   @id @default(uuid())
+  tenantId         String   @default("default")
+  key              String
+  version          Int
+  name             String
+  tokens           Json
+  createdByAdminId String?
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  templates NotificationTemplate[]
+
+  @@unique([tenantId, key, version])
+  @@index([tenantId, key, version])
+}
+
+model TemplatePartial {
+  id               String   @id @default(uuid())
+  tenantId         String   @default("default")
+  key              String
+  version          Int
+  name             String
+  content          String
+  createdByAdminId String?
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  links TemplatePartialLink[]
+
+  @@unique([tenantId, key, version])
+  @@index([tenantId, key, version])
+}
+
+model TemplatePartialLink {
+  templateId String
+  partialId  String
+  template   NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  partial    TemplatePartial      @relation(fields: [partialId], references: [id])
+
+  @@id([templateId, partialId])
+  @@index([partialId])
+}
+
+model TemplateAuditEvent {
+  id              BigInt              @id @default(autoincrement())
+  tenantId        String              @default("default")
+  templateId      String
+  templateVersion Int
+  action          TemplateAuditAction
+  actorAdminId    String?
+  actorEmail      String?
+  note            String?
+  metadata        Json?
+  createdAt       DateTime            @default(now()) @db.Timestamptz
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, templateId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model TemplateTestSend {
+  id                 String   @id @default(uuid())
+  tenantId           String   @default("default")
+  templateId         String
+  templateVersion    Int
+  channel            Channel
+  recipientMasked    String
+  recipientHash      String
+  requestKey         String?
+  status             String
+  providerName       String?
+  providerMessageId  String?
+  errorCode          String?
+  errorMessage       String?
+  requestedByAdminId String?
+  createdAt          DateTime @default(now()) @db.Timestamptz
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, requestKey])
+  @@index([tenantId, createdAt])
+  @@index([templateId, createdAt])
+  @@index([requestedByAdminId, createdAt])
 }
 
 model NotificationPreference {

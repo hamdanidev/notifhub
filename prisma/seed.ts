@@ -1,4 +1,4 @@
-import { Channel, PrismaClient } from '@prisma/client';
+import { Channel, PrismaClient, TemplateFormat, TemplateStatus } from '@prisma/client';
 
 /**
  * Idempotent development seed.
@@ -31,6 +31,8 @@ async function main(): Promise<void> {
       body: IN_APP_BODY,
       subject: null,
       active: true,
+      format: TemplateFormat.text,
+      status: TemplateStatus.published,
     },
     create: {
       tenantId: TENANT_ID,
@@ -41,6 +43,9 @@ async function main(): Promise<void> {
       subject: null,
       body: IN_APP_BODY,
       active: true,
+      format: TemplateFormat.text,
+      status: TemplateStatus.published,
+      publishedAt: new Date(),
     },
     select: { id: true, key: true, channel: true, locale: true, version: true },
   });
@@ -59,6 +64,8 @@ async function main(): Promise<void> {
       subject: EMAIL_SUBJECT,
       body: EMAIL_BODY,
       active: true,
+      format: TemplateFormat.html,
+      status: TemplateStatus.published,
     },
     create: {
       tenantId: TENANT_ID,
@@ -69,6 +76,9 @@ async function main(): Promise<void> {
       subject: EMAIL_SUBJECT,
       body: EMAIL_BODY,
       active: true,
+      format: TemplateFormat.html,
+      status: TemplateStatus.published,
+      publishedAt: new Date(),
     },
     select: { id: true, key: true, channel: true, locale: true, version: true },
   });

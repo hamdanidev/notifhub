@@ -270,3 +270,12 @@ API/console yang sudah ada; template channel `whatsapp` bisa dibuat dari console
    inbound message handling ditunda.
 8. **Versi root** `0.7.0`; tidak ada perubahan schema, `@notifhub/js`, `@notifhub/react`, atau
    dependency baru.
+
+---
+
+## 11. Template WhatsApp v2 (2026-11-16)
+
+- Template WhatsApp hanya `format=text`, tanpa subject/preheader/layout/theme/partial; batas
+  4.096 karakter setelah render. Provider tetap mengirim `type: "text"`.
+- Schema variabel, draft/publish, preview, dan audit mengikuti `docs/template-system-design.md`.
+  Pemetaan Meta approved-template tetap ditunda.

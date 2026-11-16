@@ -16,6 +16,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
       { to: '/', label: 'Dashboard', end: true },
       { to: '/notifications', label: 'Notifications' },
       { to: '/templates', label: 'Templates' },
+      { to: '/templates/assets', label: 'Aset template' },
     ],
   },
   {
@@ -99,7 +100,7 @@ export function AppLayout(): JSX.Element {
           <a href="http://localhost:3000/api/docs" target="_blank" rel="noreferrer">
             API documentation
           </a>
-          <span>NotifHub v0.7.0</span>
+          <span>NotifHub v0.11.0</span>
         </div>
       </aside>
 

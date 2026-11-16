@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { Channel, type PrismaClient } from '@prisma/client';
+import { Channel, TemplateFormat, TemplateStatus, type PrismaClient } from '@prisma/client';
 
 export const TEMPLATE_KEY = 'test.notification';
 export const RECIPIENT = 'user-test-1';
@@ -27,6 +27,9 @@ export async function seedFixtures(prismaClient: PrismaClient, tenantB: string):
         subject: null,
         body: 'Halo {{nama}}, ini notifikasi tes.',
         active: true,
+        format: TemplateFormat.text,
+        status: TemplateStatus.published,
+        publishedAt: new Date(),
       },
       {
         tenantId: 'default',
@@ -37,6 +40,9 @@ export async function seedFixtures(prismaClient: PrismaClient, tenantB: string):
         subject: 'NotifHub test',
         body: '<p>Halo {{nama}}, ini email tes.</p>',
         active: true,
+        format: TemplateFormat.html,
+        status: TemplateStatus.published,
+        publishedAt: new Date(),
       },
     ],
   });

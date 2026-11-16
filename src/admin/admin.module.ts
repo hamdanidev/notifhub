@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from '../auth/auth.module';
+import { ProvidersModule } from '../providers/providers.module';
 import { QueuesModule } from '../queues/queues.module';
+import { TemplatesModule } from '../templates/templates.module';
 import { TopicsModule } from '../topics/topics.module';
 import { AdminApiKeysController } from './controllers/admin-api-keys.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
 import { AdminNotificationsController } from './controllers/admin-notifications.controller';
 import { AdminSubscribersController } from './controllers/admin-subscribers.controller';
+import { AdminTemplateAssetsController } from './controllers/admin-template-assets.controller';
 import { AdminTemplatesController } from './controllers/admin-templates.controller';
 import { AdminTopicsController } from './controllers/admin-topics.controller';
 import { AdminApiKeysService } from './services/admin-api-keys.service';
@@ -14,6 +17,10 @@ import { AdminAuthService } from './services/admin-auth.service';
 import { AdminNotificationResendService } from './services/admin-notification-resend.service';
 import { AdminNotificationsService } from './services/admin-notifications.service';
 import { AdminSubscribersService } from './services/admin-subscribers.service';
+import { AdminTemplateAssetsService } from './services/admin-template-assets.service';
+import { AdminTemplatePreviewService } from './services/admin-template-preview.service';
+import { AdminTemplateTestSendService } from './services/admin-template-test-send.service';
+import { AdminTemplateValidationService } from './services/admin-template-validation.service';
 import { AdminTemplatesService } from './services/admin-templates.service';
 import { AdminTopicsService } from './services/admin-topics.service';
 
@@ -26,12 +33,15 @@ import { AdminTopicsService } from './services/admin-topics.service';
     AuthModule,
     TopicsModule,
     QueuesModule,
+    TemplatesModule,
+    ProvidersModule,
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 5 }]),
   ],
   controllers: [
     AdminAuthController,
     AdminApiKeysController,
     AdminTemplatesController,
+    AdminTemplateAssetsController,
     AdminSubscribersController,
     AdminTopicsController,
     AdminNotificationsController,
@@ -40,6 +50,10 @@ import { AdminTopicsService } from './services/admin-topics.service';
     AdminAuthService,
     AdminApiKeysService,
     AdminTemplatesService,
+    AdminTemplateAssetsService,
+    AdminTemplateValidationService,
+    AdminTemplatePreviewService,
+    AdminTemplateTestSendService,
     AdminSubscribersService,
     AdminTopicsService,
     AdminNotificationsService,

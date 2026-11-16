@@ -354,3 +354,20 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16.
 - Re-send memakai template aktif dan data Subscriber saat ini; inline override lama tidak tersimpan.
 - Wrapper `HttpTransport` lokal harus dipindahkan ke `NotifHubAdminClient` pada rilis SDK berikutnya.
 - Tidak ada RBAC granular; semua tenant admin dapat melakukan re-send.
+
+---
+
+## 11. Editor template v2 (2026-11-16)
+
+Desain dan batasan ada di `docs/template-system-design.md`.
+
+- `/templates`: filter status/channel/locale, aksi edit/clone/activate/deactivate, status dan versi.
+- `/templates/new` dan `/templates/:id/edit`: editor dua panel (konten, variabel, aset,
+  pengaturan) + preview iframe `sandbox=""` desktop/mobile. Draft bisa disimpan walau belum valid;
+  publish memvalidasi ulang di server.
+- `/templates/assets`: membuat versi baru layout/theme/partial; tidak ada edit in-place.
+- `/templates/:id/history`: versi, audit, test send, dan rollback (membuat draft baru).
+- Console memakai wrapper `HttpTransport` di `console/src/lib/adminTemplates.ts`; paket
+  `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 tidak diubah.
+- Router console memakai `createBrowserRouter` agar editor bisa memakai `useBlocker` untuk
+  perubahan belum disimpan.

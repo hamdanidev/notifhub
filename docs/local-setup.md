@@ -330,7 +330,8 @@ Login with the bootstrapped admin (`ADMIN_EMAIL` and the password whose bcrypt h
 
 - Dashboard: status counts and a 14-day chart (aggregated client-side from the Admin API).
 - Notifications: filter by status/template/date; detail with recipients, attempts, and events.
-- Templates: list, create, edit, deactivate (tenant scoped).
+- Templates: list/filter status/channel/locale; editor draft/publish dengan preview, variabel,
+  layout/theme/partial, test send, dan riwayat/audit. Aset dikelola di Templates → Aset template.
 - Subscribers: list, detail, per-channel preference editor.
 - Topics: list, detail, membership replace/add with optional expiry.
 - API Keys: list, create (raw key shown once), revoke.
@@ -343,6 +344,9 @@ session and redirects to `/login`.
 Notes:
 
 - `VITE_NOTIFHUB_API_URL` in `console/.env` defaults to `http://localhost:3000`.
+- Admin template/asset payloads use `TEMPLATE_MAX_PAYLOAD_BYTES` (default 1 MB); ingest remains
+  limited by `INGEST_MAX_PAYLOAD_BYTES` (default 64 KB). Lihat
+  `docs/template-system-design.md` untuk alur draft → preview → publish → test send.
 - Production build: `npm run console:build` (output `console/dist`), preview with
   `npm --prefix console run preview`.
 - Register the console origin in `CORS_ORIGINS` outside development.
