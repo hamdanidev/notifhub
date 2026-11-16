@@ -30,12 +30,5 @@
     "noUnusedParameters": false
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "prisma", "packages", "sdk"],
-  "ts-node": {
-    "compilerOptions": {
-      "rootDir": ".",
-      "module": "CommonJS",
-      "moduleResolution": "Node"
-    }
-  }
+  "exclude": ["node_modules", "dist", "prisma", "packages", "sdk"]
 }
