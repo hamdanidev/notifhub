@@ -1005,7 +1005,7 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 | API publik | `GET /api/v1/template-images/:id` tanpa auth; UUID, `Content-Type` dari metadata, `nosniff`, cache immutable |
 | Validasi | Magic bytes PNG/JPEG/WebP/GIF, dimensi maksimum 4000×4000, maksimum 5 MiB (env), SVG/teks ditolak |
 | Storage | `TEMPLATE_IMAGE_DIR` (default `var/template-images`), nama file UUID, checksum SHA-256; volume Docker `notifhub_prod_uploads` |
-| Console | Tombol unggah pada block `image`; URL hasil langsung mengisi `image.url`; tetap bisa memakai URL manual |
+| Console | Komponen unggah bersama dipakai di block `image`, logo layout, dan logo partial; URL hasil langsung mengisi field terkait; URL manual tetap didukung |
 | Konfigurasi | `TEMPLATE_IMAGE_DIR`, `TEMPLATE_IMAGE_MAX_BYTES`, `TEMPLATE_IMAGE_BASE_URL` |
 | Bugfix | `HttpExceptionFilter` mempertahankan `details` untuk 413 dari `PayloadTooLargeException` |
 
@@ -1015,7 +1015,7 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 - `npm run test:e2e -- --runInBand`: **29/29** lulus; E29 menguji upload PNG, serving publik,
   penolakan file menyamar, 413 oversize, dan file hilang.
 - `npm run ci`: **6/6 langkah** lulus.
-- `npm run console:typecheck`, `npm run console:build`: lulus; bundle 989,46 KB / 288,12 KB gzip.
+- `npm run console:typecheck`, `npm run console:build`: lulus; bundle 989,69 KB / 288,22 KB gzip.
 - Migrasi database fresh: **9/9** apply berurutan.
 - `npx prisma migrate status`: 9 migrasi, dev dan test up to date.
 
@@ -1030,6 +1030,8 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 - `TEMPLATE_IMAGE_BASE_URL` perlu diisi di belakang reverse proxy agar URL absolut di email
   benar; tanpa itu dipakai origin request.
 - URL-only tetap didukung; template yang sudah ada tidak berubah.
+- Upload logo pada layout/partial memakai komponen yang sama dengan block image; nilai yang
+  dihasilkan adalah URL publik yang disimpan di field `logoUrl` aset.
 
 ### 14.4 Berikutnya
 

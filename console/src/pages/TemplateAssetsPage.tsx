@@ -13,6 +13,7 @@ import {
 } from 'react-bootstrap';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { TemplateImageUpload } from '../components/TemplateImageUpload';
 import {
   createLayout,
   createPartial,
@@ -743,6 +744,10 @@ function LayoutFormFields({
                 placeholder="https://..."
                 onChange={(event) => setOptions({ ...options, logoUrl: event.target.value })}
               />
+              <TemplateImageUpload
+                onUploaded={(url) => setOptions({ ...options, logoUrl: url })}
+                helpText="Atau unggah logo (PNG/JPEG/WebP/GIF, maks 5 MB)."
+              />
             </Form.Group>
           </Col>
           <Col xs={12}>
@@ -822,6 +827,10 @@ function PartialFormFields({
                 <Form.Group controlId="partial-logo">
                   <Form.Label className="small">Logo URL</Form.Label>
                   <Form.Control value={options.logoUrl} placeholder="https://..." onChange={(event) => setOptions({ ...options, logoUrl: event.target.value })} />
+                  <TemplateImageUpload
+                    onUploaded={(url) => setOptions({ ...options, logoUrl: url })}
+                    helpText="Atau unggah logo (PNG/JPEG/WebP/GIF, maks 5 MB)."
+                  />
                 </Form.Group>
               </Col>
               <Col xs={12}>
