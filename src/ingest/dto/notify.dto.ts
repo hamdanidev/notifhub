@@ -127,7 +127,7 @@ export class NotifyDto {
 
   @ApiPropertyOptional({
     description:
-      'ISO 8601 timestamp. Accepted and stored in the payload, but NOT scheduled or processed in Phase 1.',
+      'ISO 8601 timestamp. Accepted and stored in the notification payload for forward compatibility, but delivery is not scheduled: the notification is queued immediately.',
     format: 'date-time',
     example: '2026-01-01T10:00:00.000Z',
   })

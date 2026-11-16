@@ -36,4 +36,5 @@ npm run preview             # serves console/dist on http://localhost:4173
   14-day chart) because the Admin API has no analytics endpoint.
 - CORS: development works with `CORS_ORIGINS=*`; outside development register the console origin
   explicitly.
-- The console is not containerized (no Dockerfile) per the current phase scope.
+- The console ships as a static nginx image (`console/Dockerfile`) and is part of
+  `docker-compose.prod.yml`; it is served on port 8080 by that stack.

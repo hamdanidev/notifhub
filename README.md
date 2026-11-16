@@ -53,6 +53,8 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
 
 ## Documentation
 
+- [Usage guide](docs/usage/README.md) — concepts and quickstart, consumer integration, end-user
+  (in-app/SSE/preference center), admin and operations
 - [Local setup and verification](docs/local-setup.md)
 - [Project brief: architecture, rules, and known limitations](docs/project-brief.md)
 - [Production readiness: tests, images, and CI](docs/production-readiness.md)

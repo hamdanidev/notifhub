@@ -7,8 +7,9 @@ HTTP retries, SSE reconnect and typed errors live here.
 ## Requirements
 
 - Browser with `fetch` + `AbortSignal` (or Node.js 20+)
-- A subscriber JWT issued by the consumer with claims `sub`, `tenant`, `exp`
-  (signed with `SUBSCRIBER_JWT_SECRET`)
+- A subscriber JWT issued by the consumer with claims `sub`, `tenant`, `exp`, signed with the
+  tenant's subscriber secret (the API key `subscriberJwtSecret`, falling back to
+  `SUBSCRIBER_JWT_SECRET` only for tenants that never configured one)
 
 ## Install
 

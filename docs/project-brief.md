@@ -99,7 +99,8 @@ Versi saat ini: root `0.10.0`, `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`
 - `openapi/notifhub.json` — spec publik konsumen (3 path, 9 schema).
 - `scripts/` — `export-openapi.mjs`, `dev-whatsapp-stub.mjs`, `dev-smtp-sink.mjs`,
   `dev-subscriber-token.mjs`, `verify-preferences.mjs`, `test-db-setup.mjs`, `ci.mjs`.
-- `docs/` — dokumen desain per fitur (lihat `README.md`), `docs/local-setup.md` berisi semua
+- `docs/` — `docs/usage/` berisi panduan pemakaian (konsep, consumer, end-user, admin/operasi);
+  sisanya dokumen desain per fitur (lihat `README.md`), `docs/local-setup.md` berisi semua
   perintah verifikasi, `docs/project-brief.md` (dokumen ini).
 
 ---

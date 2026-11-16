@@ -14,8 +14,20 @@ Admin, webhook, and in-app endpoints are intentionally excluded.
 
 ## Install
 
+The module is published from the `github.com/hamdanidev/notifhub-go` repository (a release mirror
+of this directory). Once a release tag exists:
+
 ```bash
 go get github.com/hamdanidev/notifhub-go
+```
+
+Until then, consume the SDK from a checkout of the main repository with a `replace` directive:
+
+```go
+// go.mod of the consuming project
+require github.com/hamdanidev/notifhub-go v0.0.0
+
+replace github.com/hamdanidev/notifhub-go => ../NotifHub/sdk/go
 ```
 
 ## Usage

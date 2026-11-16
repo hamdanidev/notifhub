@@ -2,8 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 
 /**
- * Inline recipient object. Overrides the Subscriber record for this request only.
- * Phase 3 adds Subscriber CRUD; Phase 1 accepts the object inline.
+ * Inline recipient object. Overrides the stored Subscriber record for this request only.
+ * The Subscriber push-sync API is the durable way to store email/phone/locale/timezone.
  */
 export class RecipientInput {
   @ApiProperty({

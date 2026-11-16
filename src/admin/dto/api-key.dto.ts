@@ -25,7 +25,8 @@ export class CreateApiKeyDto {
 
   @ApiPropertyOptional({
     minLength: 32,
-    description: 'Reserved for per-key subscriber JWT verification (Phase 8+)',
+    description:
+      'Secret used to verify this API key tenant subscriber JWTs (HS256). When omitted, the tenant falls back to SUBSCRIBER_JWT_SECRET until a secret is set.',
     writeOnly: true,
   })
   @IsOptional()
