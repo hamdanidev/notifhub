@@ -196,27 +196,27 @@ export function AppLayout(): JSX.Element {
       <div className="app-main">
         <header className="app-topbar">
           <div className="d-flex align-items-center gap-2">
-            <button
-              type="button"
-              className="app-menu-toggle"
-              aria-label={sidebarToggleLabel}
-              title={sidebarToggleLabel}
-              aria-expanded={isMobile ? menuOpen : !collapsed}
-              onClick={handleSidebarToggle}
-            >
-              <Icon
-                name={
-                  isMobile
-                    ? menuOpen
-                      ? 'x'
-                      : 'menu'
-                    : collapsed
-                      ? 'chevron-right'
-                      : 'menu'
-                }
-                size={16}
-              />
-            </button>
+            {isMobile || collapsed ? (
+              <button
+                type="button"
+                className="app-menu-toggle"
+                aria-label={sidebarToggleLabel}
+                title={sidebarToggleLabel}
+                aria-expanded={isMobile ? menuOpen : !collapsed}
+                onClick={handleSidebarToggle}
+              >
+                <Icon
+                  name={
+                    isMobile
+                      ? menuOpen
+                        ? 'x'
+                        : 'menu'
+                      : 'chevron-right'
+                  }
+                  size={16}
+                />
+              </button>
+            ) : null}
             <span className="app-crumb">Tenant / {pageTitle(location.pathname)}</span>
           </div>
 
