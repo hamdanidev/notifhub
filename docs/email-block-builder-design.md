@@ -62,10 +62,12 @@ Body HTML dihasilkan dari block dan disimpan seperti biasa. `builderData` tidak 
 
 ## 6. Batasan
 
-- Belum ada drag-and-drop, undo/redo, atau layer panel.
+- Drag-and-drop/undo-redo tersedia (P1), tetapi belum ada layer panel.
 - Loop/conditional Handlebars tidak direpresentasikan secara visual.
-- Two-column memakai tabel 50/50; stacking mobile bergantung pada `<style>` layout/theme.
+- Two-column memakai tabel 50/50; stacking mobile bergantung pada `<style>` layout/theme dan
+  divalidasi sebagai warning bila layout tidak mendukung `.nh-col`.
 - Belum ada upload gambar; memakai URL.
+- Belum ada impor HTML ke Visual; ekspor HTML tersedia.
 - Builder tidak menggantikan mode HTML advanced.
 
 ## 7. Implementasi dan verifikasi
@@ -81,6 +83,12 @@ Body HTML dihasilkan dari block dan disimpan seperti biasa. `builderData` tidak 
   HTML mempertahankan body hasil builder dan menghapus `builderData` saat disimpan.
 - Semua text/label block di-escape; URL hanya http/https atau token Handlebars; preview iframe
   `sandbox=""`; validasi publish server tetap berlaku.
+- Roadmap P0 (2026-11-16) menambahkan validasi `builderData` di backend (schema v1, maksimum 200
+  block/64 KiB) dan warning dua kolom bila layout tidak mendukung `.nh-col`; lihat
+  `docs/template-limitations-roadmap.md`. Plain-text email kini digenerate otomatis oleh backend.
+- Roadmap P1 (2026-11-16) menambahkan drag-and-drop native (handle `⋮⋮`), undo/redo 50 langkah
+  dengan coalesce 500 ms, tombol Undo/Redo + shortcut, serta ekspor/salin HTML body. Tidak ada
+  dependency baru; tombol naik/turun tetap menjadi jalur aksesibel.
 - Tidak ada dependency baru.
 
 Verifikasi:

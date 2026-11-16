@@ -168,6 +168,7 @@ preferensi), Topics (+detail & membership), API Keys.
 | Metrik Prometheus | `GET /metrics` + header `X-API-Key` |
 | Rollup status | Berjalan tiap menit (`overallStatus`) |
 | Retensi | Job harian 02:00 UTC; notifikasi lebih tua dari `RETENTION_DAYS` (default 90) di-soft-delete |
+| Retensi template | Job harian 03:00 UTC; test send > `TEMPLATE_TEST_SEND_RETENTION_DAYS` (180) dan audit > `TEMPLATE_AUDIT_RETENTION_DAYS` (730) dihapus permanen; `0` menonaktifkan |
 | Idempotency | Job harian 02:30 UTC; key kedaluwarsa dirotasi menjadi `expired:<uuid>` |
 | Log | JSON terstruktur (pino) dengan `requestId`; header sensitif diredaksi |
 
@@ -213,6 +214,7 @@ Build manual: `docker build --target runner .`, `docker build -f console/Dockerf
 | `INGEST_MAX_PAYLOAD_BYTES` | `65536` |
 | `INGEST_RATE_LIMIT_PER_KEY`, `INGEST_RATE_LIMIT_WINDOW_SECONDS` | `100` per `60` detik (per IP) |
 | `IDEMPOTENCY_TTL_DAYS`, `RETENTION_DAYS` | `7`, `90` |
+| `TEMPLATE_TEST_SEND_RETENTION_DAYS`, `TEMPLATE_AUDIT_RETENTION_DAYS` | `180`, `730`; `0` menonaktifkan |
 | `SSE_HEARTBEAT_INTERVAL_SECONDS`, `SSE_REPLAY_BUFFER_SECONDS` | `25`, `300` |
 | `CORS_ORIGINS` | `*` di development; daftar origin di produksi |
 | `NOTIFHUB_MODE` | `development` / `staging` / `production` |

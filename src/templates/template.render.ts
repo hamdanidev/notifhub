@@ -10,6 +10,7 @@ import {
 } from './template.types';
 import { prepareTemplateData, parseVariableSchema } from './template.variables';
 import { sanitizeEmailHtml, sanitizeHeaderValue } from './template.safety';
+import { htmlToPlainText } from './template.text';
 
 const MAX_CACHE_ENTRIES = 200;
 const MAX_EMAIL_BYTES = 262_144;
@@ -89,6 +90,17 @@ export class TemplateRenderer {
       }
     }
 
+    let text: string | null = null;
+
+    if (template.channel === 'email' && template.format === 'html') {
+      try {
+        text = htmlToPlainText(body);
+      } catch {
+        text = null;
+        warnings.push('plain text tidak dapat digenerate; email dikirim HTML-only');
+      }
+    }
+
     return {
       subject:
         template.subject === null
@@ -97,6 +109,7 @@ export class TemplateRenderer {
       preheader:
         template.preheader === null ? null : sanitizeHeaderValue(preheaderRaw, 200),
       body,
+      text,
       format: template.format,
       warnings: [...new Set(warnings)],
       missingVariables: prepared.missing,

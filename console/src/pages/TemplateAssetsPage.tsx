@@ -17,6 +17,9 @@ import {
   createLayout,
   createPartial,
   createTheme,
+  deleteLayout,
+  deletePartial,
+  deleteTheme,
   getLayout,
   getPartial,
   getTheme,
@@ -51,6 +54,7 @@ interface AssetRow {
   key: string;
   name: string;
   version: number;
+  usageCount: number;
   createdAt: string;
 }
 
@@ -196,8 +200,30 @@ export function TemplateAssetsPage(): JSX.Element {
     },
   });
 
-  const loadAsset = async (row: AssetRow): Promise<void> => {
-    setLoadingAssetId(row.id);
+  const remove = useMutation({
+    mutationFn: async (input: { type: AssetType; row: AssetRow }) => {
+      if (input.type === 'themes') {
+        return deleteTheme(input.row.id);
+      }
+
+      if (input.type === 'layouts') {
+        return deleteLayout(input.row.id);
+      }
+
+      return deletePartial(input.row.id);
+    },
+    onSuccess: (_result, input) => {
+      setFormError(null);
+      setNotice(`Dihapus: ${input.row.key} v${input.row.version}.`);
+      void queryClient.invalidateQueries({ queryKey: ['template-assets'] });
+    },
+    onError: (error) => {
+      setFormError(describeError(error));
+      setNotice(null);
+    },
+  });
+
+  const loadAsset = async (row: AssetRow): Promise<void> => {    setLoadingAssetId(row.id);
     setFormError(null);
     setNotice(null);
 
@@ -240,6 +266,7 @@ export function TemplateAssetsPage(): JSX.Element {
       key: asset.key,
       name: asset.name,
       version: asset.version,
+      usageCount: asset.usageCount,
       createdAt: asset.createdAt,
     }));
   }, [activeType, layouts.data, partials.data, themes.data]);
@@ -471,6 +498,7 @@ export function TemplateAssetsPage(): JSX.Element {
                     <th>Key</th>
                     <th>Nama</th>
                     <th>Versi</th>
+                    <th>Dipakai</th>
                     <th>Dibuat</th>
                     <th />
                   </tr>
@@ -478,7 +506,7 @@ export function TemplateAssetsPage(): JSX.Element {
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center text-muted py-4">
+                      <td colSpan={6} className="text-center text-muted py-4">
                         Belum ada aset.
                       </td>
                     </tr>
@@ -488,16 +516,53 @@ export function TemplateAssetsPage(): JSX.Element {
                         <td><code>{row.key}</code></td>
                         <td>{row.name}</td>
                         <td>v{row.version}</td>
+                        <td>
+                          {row.usageCount > 0 ? (
+                            <Badge bg="secondary" className="fw-normal">
+                              {row.usageCount} template
+                            </Badge>
+                          ) : (
+                            <span className="text-muted small">0</span>
+                          )}
+                        </td>
                         <td>{formatDateTime(row.createdAt)}</td>
                         <td className="text-end">
-                          <Button
-                            size="sm"
-                            variant="outline-secondary"
-                            onClick={() => void loadAsset(row)}
-                            disabled={loadingAssetId !== null}
-                          >
-                            {loadingAssetId === row.id ? <Spinner animation="border" size="sm" /> : 'Muat'}
-                          </Button>
+                          <div className="d-flex justify-content-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              onClick={() => void loadAsset(row)}
+                              disabled={loadingAssetId !== null}
+                            >
+                              {loadingAssetId === row.id ? (
+                                <Spinner animation="border" size="sm" />
+                              ) : (
+                                'Muat'
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-danger"
+                              disabled={row.usageCount > 0 || remove.isPending}
+                              title={
+                                row.usageCount > 0
+                                  ? 'Aset masih dipakai template dan tidak dapat dihapus'
+                                  : 'Hapus versi aset ini'
+                              }
+                              aria-label={`Hapus ${row.key} v${row.version}`}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Hapus ${row.key} v${row.version}? Tindakan ini permanen.`,
+                                  )
+                                ) {
+                                  remove.mutate({ type: activeType, row });
+                                }
+                              }}
+                            >
+                              Hapus
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))

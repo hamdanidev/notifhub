@@ -18,6 +18,7 @@
     "test:db:setup": "node scripts/test-db-setup.mjs",
     "pretest:e2e": "npm run test:db:setup",
     "test:e2e": "jest --config test/jest-e2e.json",
+    "test:unit": "jest --config test/jest-unit.json",
     "ci": "node scripts/ci.mjs",
     "sdk:build": "npm run build --workspace @notifhub/js",
     "sdk:typecheck": "npm run typecheck --workspace @notifhub/js",

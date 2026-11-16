@@ -73,6 +73,7 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
   [template system](docs/template-system-design.md) ·
   [email authoring UI](docs/email-authoring-ui-design.md) ·
   [email block builder](docs/email-block-builder-design.md) ·
+  [template limits roadmap](docs/template-limitations-roadmap.md) ·
   [webhooks](docs/webhooks.md) ·
   [admin API](docs/admin-api.md) ·
   [React and console](docs/react-and-console.md) ·
@@ -85,7 +86,8 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
 ## Testing
 
 ```bash
-npm run ci                              # typecheck + build + e2e + migrate status (CI parity)
+npm run ci                              # typecheck + build + unit + e2e + migrate status (CI parity)
+npm run test:unit                       # Jest unit tests (no database required)
 npm run test:e2e                        # Jest e2e against notifhub_test + Redis db 15
 npm run sdk:typecheck && npm run sdk:test
 npm run react:typecheck && npm run react:test
@@ -109,8 +111,8 @@ The stack runs Postgres, Redis, a one-shot `migrate` job, the backend (`:3000`),
 
 ## Versions
 
-Root service `0.10.0`; npm: `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`; `notifhub-console`
-`0.1.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
+Root service `0.11.0`; npm: `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`; `notifhub-console`
+`0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
 
 ## License
 

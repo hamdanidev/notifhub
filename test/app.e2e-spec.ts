@@ -6,6 +6,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/bootstrap';
+import { CleanupService } from '../src/cleanup/cleanup.service';
 import {
   TEST_ADMIN_EMAIL,
   TEST_ADMIN_PASSWORD,
@@ -979,5 +980,494 @@ describe('Template system e2e', () => {
       .send({ locale: 'en' });
     expect(clone.status).toBe(201);
     expect(clone.body.builderData).toEqual(updated.body.builderData);
+  });
+
+  it('E21 menolak builderData invalid tanpa membuat baris', async () => {
+    const base = {
+      channel: 'email',
+      locale: 'id',
+      format: 'html',
+      status: 'draft',
+      subject: 'Builder invalid',
+      body: '<p>Halo</p>',
+      variables: { version: 1, variables: [] },
+      sampleData: {},
+    };
+    const tooMany = Array.from({ length: 201 }, (_, index) => ({
+      id: `b${index}`,
+      type: 'text',
+      text: 'x',
+    }));
+    const tooLarge = Array.from({ length: 7 }, (_, index) => ({
+      id: `big${index}`,
+      type: 'text',
+      text: 'x'.repeat(10_000),
+    }));
+    const cases: Array<{ name: string; builderData: unknown; code: string }> = [
+      { name: 'version', builderData: { version: 2, blocks: [] }, code: 'builder_unsupported_version' },
+      {
+        name: 'type',
+        builderData: { version: 1, blocks: [{ id: 'b1', type: 'video', text: 'x' }] },
+        code: 'builder_unknown_block_type',
+      },
+      {
+        name: 'field',
+        builderData: { version: 1, blocks: [{ id: 'b1', type: 'text', text: 'x', extra: true }] },
+        code: 'builder_unknown_field',
+      },
+      {
+        name: 'url',
+        builderData: {
+          version: 1,
+          blocks: [{ id: 'i1', type: 'image', url: 'javascript:alert(1)' }],
+        },
+        code: 'builder_url_unsafe',
+      },
+      {
+        name: 'duplicate',
+        builderData: {
+          version: 1,
+          blocks: [
+            { id: 'dup', type: 'text', text: 'a' },
+            { id: 'dup', type: 'text', text: 'b' },
+          ],
+        },
+        code: 'builder_duplicate_id',
+      },
+      { name: 'too-many', builderData: { version: 1, blocks: tooMany }, code: 'builder_too_many_blocks' },
+      { name: 'too-large', builderData: { version: 1, blocks: tooLarge }, code: 'builder_too_large' },
+    ];
+
+    for (const item of cases) {
+      const response = await request(server)
+        .post('/api/v1/admin/templates')
+        .set('Authorization', bearer(adminToken))
+        .send({ ...base, key: `builder.invalid.${item.name}.e2e`, builderData: item.builderData });
+
+      expect(response.status).toBe(422);
+      expect(response.body.details.code).toBe('template_validation_failed');
+      expect(
+        (response.body.details.errors as Array<{ code: string }>).map((issue) => issue.code),
+      ).toContain(item.code);
+    }
+
+    const nonEmail = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'builder.invalid.channel.e2e',
+        channel: 'inapp',
+        locale: 'id',
+        format: 'text',
+        status: 'draft',
+        body: 'Halo',
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+        builderData: { version: 1, blocks: [{ id: 'b1', type: 'text', text: 'Halo' }] },
+      });
+
+    expect(nonEmail.status).toBe(422);
+    expect(nonEmail.body.details.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'builder_channel_mismatch' }),
+      ]),
+    );
+  });
+
+  it('E22 menormalkan builderData valid dan menolak update invalid', async () => {
+    const created = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'builder.normalize.e2e',
+        channel: 'email',
+        locale: 'id',
+        format: 'html',
+        status: 'draft',
+        subject: 'Builder normalisasi',
+        body: '<p>Halo {{nama}}</p>',
+        variables: {
+          version: 1,
+          variables: [{ key: 'nama', type: 'string', required: true, example: 'Budi' }],
+        },
+        sampleData: { nama: 'Budi' },
+        builderData: {
+          version: 1,
+          blocks: [
+            { id: 'h1', type: 'heading', text: 'Halo {{nama}}' },
+            { id: 'i1', type: 'image', url: 'https://example.com/a.png' },
+          ],
+        },
+      });
+
+    expect(created.status).toBe(201);
+    expect(created.body.builderData).toEqual({
+      version: 1,
+      blocks: [
+        { id: 'h1', type: 'heading', text: 'Halo {{nama}}', level: 1 },
+        { id: 'i1', type: 'image', url: 'https://example.com/a.png', alt: '', width: '552' },
+      ],
+    });
+
+    const invalidUpdate = await request(server)
+      .put(`/api/v1/admin/templates/${created.body.id as string}`)
+      .set('Authorization', bearer(adminToken))
+      .send({
+        builderData: { version: 2, blocks: [] },
+        expectedRevision: created.body.revision as number,
+      });
+
+    expect(invalidUpdate.status).toBe(422);
+    expect(invalidUpdate.body.details.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'builder_unsupported_version' }),
+      ]),
+    );
+
+    const stored = await prisma.notificationTemplate.findUnique({
+      where: { id: created.body.id as string },
+      select: { builderData: true },
+    });
+    expect(stored?.builderData).toEqual(created.body.builderData);
+  });
+
+  it('E23 preview email menghasilkan plain-text dari HTML final', async () => {
+    const preview = await request(server)
+      .post('/api/v1/admin/templates/preview')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        channel: 'email',
+        format: 'html',
+        subject: 'Halo {{nama}}',
+        body:
+          '<div data-nh-text-skip>Preheader internal</div>' +
+          '<p>Halo {{nama}} &amp; rekan,</p>' +
+          '<p><a href="{{cta.url}}">Lacak pesanan</a></p>' +
+          '<img src="https://example.com/p.png" alt="Paket">',
+        variables: {
+          version: 1,
+          variables: [
+            { key: 'nama', type: 'string', required: true, example: 'Budi' },
+            { key: 'cta.url', type: 'url', required: true, example: 'https://example.com/orders/1' },
+          ],
+        },
+        sampleData: {
+          nama: 'Budi & Co',
+          cta: { url: 'https://example.com/orders/1' },
+        },
+      });
+
+    expect(preview.status).toBe(200);
+    expect(preview.body.html).not.toBeNull();
+    expect(preview.body.text).toContain('Halo Budi & Co & rekan,');
+    expect(preview.body.text).toContain('Lacak pesanan (https://example.com/orders/1)');
+    expect(preview.body.text).toContain('Paket');
+    expect(preview.body.text).not.toContain('Preheader internal');
+    expect(preview.body.text).not.toContain('<p>');
+  });
+
+  it('E24 cleanup menghapus audit/test send lewat batas retensi', async () => {
+    const day = 86_400_000;
+    const oldAudit = await prisma.templateAuditEvent.create({
+      data: {
+        tenantId: 'default',
+        templateId: publishedId,
+        templateVersion: 1,
+        action: 'test_sent',
+        note: 'retention-old',
+        metadata: { seed: 'old' },
+        createdAt: new Date(Date.now() - 800 * day),
+      },
+      select: { id: true },
+    });
+    const recentAudit = await prisma.templateAuditEvent.create({
+      data: {
+        tenantId: 'default',
+        templateId: publishedId,
+        templateVersion: 1,
+        action: 'test_sent',
+        note: 'retention-recent',
+        metadata: { seed: 'recent' },
+        createdAt: new Date(),
+      },
+      select: { id: true },
+    });
+    const oldTestSend = await prisma.templateTestSend.create({
+      data: {
+        tenantId: 'default',
+        templateId: publishedId,
+        templateVersion: 1,
+        channel: Channel.email,
+        recipientMasked: 'r***@example.com',
+        recipientHash: `retention-old-${randomUUID()}`,
+        status: 'simulated',
+        createdAt: new Date(Date.now() - 200 * day),
+      },
+      select: { id: true },
+    });
+    const recentTestSend = await prisma.templateTestSend.create({
+      data: {
+        tenantId: 'default',
+        templateId: publishedId,
+        templateVersion: 1,
+        channel: Channel.email,
+        recipientMasked: 'r***@example.com',
+        recipientHash: `retention-recent-${randomUUID()}`,
+        status: 'simulated',
+        createdAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    const cleanup = app.get(CleanupService);
+    const result = await cleanup.runTemplateTelemetryCleanup();
+
+    expect(result.auditDeleted).toBeGreaterThanOrEqual(1);
+    expect(result.testSendDeleted).toBeGreaterThanOrEqual(1);
+    expect(
+      await prisma.templateAuditEvent.findUnique({ where: { id: oldAudit.id } }),
+    ).toBeNull();
+    expect(
+      await prisma.templateTestSend.findUnique({ where: { id: oldTestSend.id } }),
+    ).toBeNull();
+    expect(
+      await prisma.templateAuditEvent.findUnique({ where: { id: recentAudit.id } }),
+    ).not.toBeNull();
+    expect(
+      await prisma.templateTestSend.findUnique({ where: { id: recentTestSend.id } }),
+    ).not.toBeNull();
+
+    await prisma.templateAuditEvent.deleteMany({
+      where: { id: { in: [recentAudit.id] } },
+    });
+    await prisma.templateTestSend.deleteMany({
+      where: { id: { in: [recentTestSend.id] } },
+    });
+  });
+
+  it('E25 memberi warning dua kolom bila layout tidak mendukung stacking', async () => {
+    const noStackLayout = await request(server)
+      .post('/api/v1/admin/template-assets/layouts')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'no-stack-e2e',
+        name: 'No stack E2E',
+        content: '<!doctype html><html><body>{{{body}}}</body></html>',
+      });
+    expect(noStackLayout.status).toBe(201);
+
+    const withCssLayout = await request(server)
+      .post('/api/v1/admin/template-assets/layouts')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'stack-e2e',
+        name: 'Stack E2E',
+        content:
+          '<!doctype html><html><head><style>' +
+          '@media only screen and (max-width:480px){.nh-col{display:block;width:100%}}' +
+          '</style></head><body>{{{body}}}</body></html>',
+      });
+    expect(withCssLayout.status).toBe(201);
+
+    const builderData = {
+      version: 1,
+      blocks: [{ id: 'c1', type: 'columns', left: 'Kiri', right: 'Kanan' }],
+    };
+    const base = {
+      channel: 'email',
+      locale: 'id',
+      format: 'html',
+      status: 'draft',
+      subject: 'Dua kolom',
+      body: '<p>Dua kolom</p>',
+      variables: { version: 1, variables: [] },
+      sampleData: {},
+      builderData,
+    };
+
+    const missing = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        ...base,
+        key: 'two-column.missing.e2e',
+        layoutId: noStackLayout.body.id as string,
+      });
+    expect(missing.status).toBe(201);
+    expect(
+      (missing.body.validation as Array<{ code: string }>).some(
+        (issue) => issue.code === 'two_column_css_missing',
+      ),
+    ).toBe(true);
+
+    const supported = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        ...base,
+        key: 'two-column.supported.e2e',
+        layoutId: withCssLayout.body.id as string,
+      });
+    expect(supported.status).toBe(201);
+    expect(
+      (supported.body.validation as Array<{ code: string }>).some(
+        (issue) => issue.code === 'two_column_css_missing',
+      ),
+    ).toBe(false);
+  });
+
+  it('E26 builderData legacy invalid tetap bisa dipublish dengan warning dan tidak disalin saat clone', async () => {
+    const legacy = await prisma.notificationTemplate.create({
+      data: {
+        tenantId: 'default',
+        key: 'builder.legacy.invalid.e2e',
+        channel: Channel.email,
+        locale: 'id',
+        subject: 'Legacy builder',
+        body: '<p>Halo</p>',
+        format: 'html',
+        status: 'draft',
+        active: false,
+        version: 1,
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+        builderData: { version: 2, blocks: [] },
+      },
+      select: { id: true },
+    });
+
+    const publish = await request(server)
+      .post(`/api/v1/admin/templates/${legacy.id}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: 0 });
+
+    expect(publish.status).toBe(200);
+    expect(publish.body.status).toBe('published');
+    expect(
+      (publish.body.validation as Array<{ code: string }>).some(
+        (issue) => issue.code === 'builder_legacy_invalid',
+      ),
+    ).toBe(true);
+
+    const clone = await request(server)
+      .post(`/api/v1/admin/templates/${legacy.id}/clone`)
+      .set('Authorization', bearer(adminToken))
+      .send({ locale: 'en' });
+
+    expect(clone.status).toBe(201);
+    expect(clone.body.builderData).toBeNull();
+    expect(
+      (clone.body.validation as Array<{ code: string }>).some(
+        (issue) => issue.code === 'builder_legacy_invalid',
+      ),
+    ).toBe(true);
+  });
+
+  it('E27 usage count dan proteksi hapus aset', async () => {
+    const usedLayout = await request(server)
+      .get(`/api/v1/admin/template-assets/layouts/${layoutId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(usedLayout.status).toBe(200);
+    expect(usedLayout.body.usageCount).toBeGreaterThan(0);
+
+    const blockedLayout = await request(server)
+      .delete(`/api/v1/admin/template-assets/layouts/${layoutId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(blockedLayout.status).toBe(409);
+    expect(blockedLayout.body.details).toMatchObject({
+      code: 'asset_in_use',
+      assetType: 'layout',
+    });
+
+    const usedTheme = await request(server)
+      .get(`/api/v1/admin/template-assets/themes/${themeId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(usedTheme.status).toBe(200);
+    expect(usedTheme.body.usageCount).toBeGreaterThan(0);
+
+    const blockedTheme = await request(server)
+      .delete(`/api/v1/admin/template-assets/themes/${themeId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(blockedTheme.status).toBe(409);
+    expect(blockedTheme.body.details.code).toBe('asset_in_use');
+
+    const blockedPartial = await request(server)
+      .delete(`/api/v1/admin/template-assets/partials/${headerPartialId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(blockedPartial.status).toBe(409);
+    expect(blockedPartial.body.details.code).toBe('asset_in_use');
+
+    const unusedLayout = await request(server)
+      .post('/api/v1/admin/template-assets/layouts')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'delete-unused-e2e',
+        name: 'Delete unused E2E',
+        content: '<!doctype html><html><body>{{{body}}}</body></html>',
+      });
+    expect(unusedLayout.status).toBe(201);
+    expect(unusedLayout.body.usageCount).toBe(0);
+
+    const deletedLayout = await request(server)
+      .delete(`/api/v1/admin/template-assets/layouts/${unusedLayout.body.id as string}`)
+      .set('Authorization', bearer(adminToken));
+    expect(deletedLayout.status).toBe(204);
+
+    const missingLayout = await request(server)
+      .get(`/api/v1/admin/template-assets/layouts/${unusedLayout.body.id as string}`)
+      .set('Authorization', bearer(adminToken));
+    expect(missingLayout.status).toBe(404);
+
+    const unusedTheme = await request(server)
+      .post('/api/v1/admin/template-assets/themes')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'delete-unused-theme-e2e',
+        name: 'Delete unused theme E2E',
+        tokens: { brand: { primary: '#0d6efd' } },
+      });
+    expect(unusedTheme.status).toBe(201);
+
+    const deletedTheme = await request(server)
+      .delete(`/api/v1/admin/template-assets/themes/${unusedTheme.body.id as string}`)
+      .set('Authorization', bearer(adminToken));
+    expect(deletedTheme.status).toBe(204);
+
+    const unusedPartial = await request(server)
+      .post('/api/v1/admin/template-assets/partials')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'delete-unused-partial-e2e',
+        name: 'Delete unused partial E2E',
+        content: '<p>Unused</p>',
+      });
+    expect(unusedPartial.status).toBe(201);
+
+    const deletedPartial = await request(server)
+      .delete(`/api/v1/admin/template-assets/partials/${unusedPartial.body.id as string}`)
+      .set('Authorization', bearer(adminToken));
+    expect(deletedPartial.status).toBe(204);
+
+    const tenantBAsset = await prisma.templateLayout.create({
+      data: {
+        tenantId: TEST_TENANT_B,
+        key: 'tenant-b-layout',
+        version: 1,
+        name: 'Tenant B layout',
+        content: '<!doctype html><html><body>{{{body}}}</body></html>',
+      },
+      select: { id: true },
+    });
+
+    const crossTenantDelete = await request(server)
+      .delete(`/api/v1/admin/template-assets/layouts/${tenantBAsset.id}`)
+      .set('Authorization', bearer(adminToken));
+    expect(crossTenantDelete.status).toBe(404);
+
+    const tenantBAssetStillThere = await prisma.templateLayout.findUnique({
+      where: { id: tenantBAsset.id },
+      select: { id: true },
+    });
+    expect(tenantBAssetStillThere).not.toBeNull();
   });
 });

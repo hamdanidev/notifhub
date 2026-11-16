@@ -1,55 +1,187 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Card, Col, Form, Row } from 'react-bootstrap';
 import {
   BLOCK_TYPES,
   blockLabel,
   createBlock,
+  moveBlock,
   type EmailBlock,
   type EmailBlockDocument,
   type EmailBlockType,
 } from '../lib/emailBlocks';
 
+const MAX_HISTORY = 50;
+const COALESCE_WINDOW_MS = 500;
+
+interface BuilderHistory {
+  past: EmailBlockDocument[];
+  future: EmailBlockDocument[];
+}
+
 export interface EmailBlockBuilderProps {
   document: EmailBlockDocument;
   onChange: (document: EmailBlockDocument) => void;
   variableKeys: string[];
+  readOnly?: boolean;
+  /** Changes when the parent loads/saves a template; resets local undo history. */
+  historyKey?: string;
 }
 
 export function EmailBlockBuilder({
   document,
   onChange,
   variableKeys,
+  readOnly = false,
+  historyKey,
 }: EmailBlockBuilderProps): JSX.Element {
   const blocks = document.blocks;
+  const [history, setHistory] = useState<BuilderHistory>({ past: [], future: [] });
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const lastPushRef = useRef<{ key: string; at: number } | null>(null);
+  const lastHistoryKeyRef = useRef<string | undefined>(historyKey);
 
-  const replace = (next: EmailBlock[]): void => {
-    onChange({ ...document, blocks: next });
-  };
+  useEffect(() => {
+    if (historyKey === lastHistoryKeyRef.current) {
+      return;
+    }
+
+    lastHistoryKeyRef.current = historyKey;
+    lastPushRef.current = null;
+    setHistory({ past: [], future: [] });
+  }, [historyKey]);
+
+  const commit = useCallback(
+    (next: EmailBlockDocument, coalesceKey?: string): void => {
+      const now = Date.now();
+      const last = lastPushRef.current;
+      const coalesce =
+        coalesceKey !== undefined &&
+        last !== null &&
+        last.key === coalesceKey &&
+        now - last.at < COALESCE_WINDOW_MS;
+
+      if (!coalesce) {
+        setHistory((current) => ({
+          past: [...current.past.slice(-(MAX_HISTORY - 1)), document],
+          future: [],
+        }));
+      }
+
+      lastPushRef.current =
+        coalesceKey === undefined ? null : { key: coalesceKey, at: now };
+      onChange(next);
+    },
+    [document, onChange],
+  );
+
+  const replace = useCallback(
+    (next: EmailBlock[], coalesceKey?: string): void => {
+      commit({ ...document, blocks: next }, coalesceKey);
+    },
+    [commit, document],
+  );
+
+  const undo = useCallback((): void => {
+    const previous = history.past[history.past.length - 1];
+
+    if (previous === undefined) {
+      return;
+    }
+
+    setHistory({
+      past: history.past.slice(0, -1),
+      future: [document, ...history.future].slice(0, MAX_HISTORY),
+    });
+    lastPushRef.current = null;
+    setAnnouncement('Perubahan terakhir dibatalkan.');
+    onChange(previous);
+  }, [document, history, onChange]);
+
+  const redo = useCallback((): void => {
+    const next = history.future[0];
+
+    if (next === undefined) {
+      return;
+    }
+
+    setHistory({
+      past: [...history.past.slice(-(MAX_HISTORY - 1)), document],
+      future: history.future.slice(1),
+    });
+    lastPushRef.current = null;
+    setAnnouncement('Perubahan diterapkan kembali.');
+    onChange(next);
+  }, [document, history, onChange]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent): void => {
+      if (readOnly || !(event.ctrlKey || event.metaKey)) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+
+      if (
+        target !== null &&
+        target.closest('input, textarea, select, [contenteditable="true"]') !== null
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+        event.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+
+    return () => window.removeEventListener('keydown', handler);
+  }, [readOnly, redo, undo]);
 
   const update = (id: string, patch: Record<string, unknown>): void => {
+    const coalesceKey = `update:${id}:${Object.keys(patch).join(',')}`;
+
     replace(
       blocks.map((block) =>
         block.id === id ? ({ ...block, ...patch } as EmailBlock) : block,
       ),
+      coalesceKey,
+    );
+  };
+
+  const moveTo = (from: number, to: number): void => {
+    if (from === to) {
+      return;
+    }
+
+    const moved = blocks[from];
+
+    if (moved === undefined) {
+      return;
+    }
+
+    const next = moveBlock(blocks, from, to);
+
+    if (next === blocks) {
+      return;
+    }
+
+    replace(next);
+    setAnnouncement(
+      `${blockLabel(moved.type)} dipindah ke posisi ${to + 1} dari ${blocks.length}.`,
     );
   };
 
   const move = (index: number, delta: number): void => {
-    const target = index + delta;
-
-    if (target < 0 || target >= blocks.length) {
-      return;
-    }
-
-    const next = [...blocks];
-    const [current] = next.splice(index, 1);
-
-    if (current === undefined) {
-      return;
-    }
-
-    next.splice(target, 0, current);
-    replace(next);
+    moveTo(index, index + delta);
   };
 
   const duplicate = (block: EmailBlock): void => {
@@ -58,28 +190,61 @@ export function EmailBlockBuilder({
     const next = [...blocks];
     next.splice(index + 1, 0, copy);
     replace(next);
+    setAnnouncement(`${blockLabel(block.type)} diduplikasi.`);
   };
 
-  const remove = (id: string): void => {
-    replace(blocks.filter((block) => block.id !== id));
+  const remove = (block: EmailBlock): void => {
+    replace(blocks.filter((item) => item.id !== block.id));
+    setAnnouncement(`${blockLabel(block.type)} dihapus.`);
   };
 
   const add = (type: EmailBlockType): void => {
     replace([...blocks, createBlock(type)]);
+    setAnnouncement(`${blockLabel(type)} ditambahkan.`);
   };
+
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
 
   return (
     <div>
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
         <div>
           <div className="small fw-semibold">Block builder</div>
           <div className="small text-muted">
-            Susun body dari blok. Gunakan mode HTML untuk loop/conditional lanjutan.
+            Susun body dari blok. Tarik handle atau pakai tombol naik/turun. Gunakan mode HTML
+            untuk loop/conditional lanjutan.
           </div>
         </div>
-        <Badge bg="light" text="dark" className="fw-normal">
-          {blocks.length} blok
-        </Badge>
+        <div className="d-flex align-items-center gap-1">
+          <Button
+            size="sm"
+            variant="outline-secondary"
+            onClick={undo}
+            disabled={!canUndo || readOnly}
+            title="Undo (Ctrl/Cmd+Z)"
+            aria-label="Undo perubahan block"
+          >
+            Undo
+          </Button>
+          <Button
+            size="sm"
+            variant="outline-secondary"
+            onClick={redo}
+            disabled={!canRedo || readOnly}
+            title="Redo (Ctrl/Cmd+Shift+Z)"
+            aria-label="Redo perubahan block"
+          >
+            Redo
+          </Button>
+          <Badge bg="light" text="dark" className="fw-normal">
+            {blocks.length} blok
+          </Badge>
+        </div>
+      </div>
+
+      <div className="visually-hidden" aria-live="polite">
+        {announcement}
       </div>
 
       <div className="d-flex flex-wrap gap-1 mb-3">
@@ -89,6 +254,7 @@ export function EmailBlockBuilder({
             size="sm"
             variant="outline-secondary"
             onClick={() => add(item.type)}
+            disabled={readOnly}
           >
             + {item.label}
           </Button>
@@ -102,10 +268,69 @@ export function EmailBlockBuilder({
       ) : (
         <div className="d-flex flex-column gap-2">
           {blocks.map((block, index) => (
-            <Card key={block.id} className="block-card">
+            <Card
+              key={block.id}
+              className={[
+                'block-card',
+                dragIndex === index ? 'block-card--dragging' : '',
+                dragIndex !== null && dropIndex === index && dragIndex !== index
+                  ? 'block-card--drop-target'
+                  : '',
+              ]
+                .filter((value) => value.length > 0)
+                .join(' ')}
+              onDragOver={(event) => {
+                if (readOnly || dragIndex === null) {
+                  return;
+                }
+
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+                setDropIndex(index);
+              }}
+              onDragLeave={() => {
+                setDropIndex((current) => (current === index ? null : current));
+              }}
+              onDrop={(event) => {
+                if (readOnly) {
+                  return;
+                }
+
+                event.preventDefault();
+                const raw = event.dataTransfer.getData('text/plain');
+                const parsed = raw.length > 0 ? Number(raw) : NaN;
+                const from = Number.isInteger(parsed) ? parsed : dragIndex;
+
+                if (from !== null && from >= 0 && from < blocks.length) {
+                  moveTo(from, index);
+                }
+
+                setDragIndex(null);
+                setDropIndex(null);
+              }}
+            >
               <Card.Header className="d-flex align-items-center justify-content-between gap-2 py-2">
-                <span className="small fw-semibold">
-                  {index + 1}. {blockLabel(block.type)}
+                <span className="d-flex align-items-center gap-2">
+                  <span
+                    className="block-drag-handle"
+                    draggable={!readOnly}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', String(index));
+                      setDragIndex(index);
+                    }}
+                    onDragEnd={() => {
+                      setDragIndex(null);
+                      setDropIndex(null);
+                    }}
+                    title="Tarik untuk memindahkan block"
+                    aria-hidden="true"
+                  >
+                    ⋮⋮
+                  </span>
+                  <span className="small fw-semibold">
+                    {index + 1}. {blockLabel(block.type)}
+                  </span>
                 </span>
                 <div className="d-flex gap-1">
                   <Button
@@ -133,7 +358,11 @@ export function EmailBlockBuilder({
                   >
                     Duplikat
                   </Button>
-                  <Button size="sm" variant="outline-danger" onClick={() => remove(block.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    onClick={() => remove(block)}
+                  >
                     Hapus
                   </Button>
                 </div>

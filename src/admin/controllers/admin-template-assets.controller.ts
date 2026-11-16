@@ -1,5 +1,23 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
@@ -53,6 +71,17 @@ export class AdminTemplateAssetsController {
     return this.assets.getLayout(admin.tenantId, id);
   }
 
+  @Delete('layouts/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an unused layout version' })
+  @ApiNoContentResponse({ description: 'Layout deleted' })
+  async deleteLayout(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.assets.deleteLayout(admin.tenantId, id);
+  }
+
   @Get('themes')
   @ApiOperation({ summary: 'List theme versions for the tenant' })
   @ApiOkResponse({ description: 'Theme list' })
@@ -82,6 +111,17 @@ export class AdminTemplateAssetsController {
     return this.assets.getTheme(admin.tenantId, id);
   }
 
+  @Delete('themes/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an unused theme version' })
+  @ApiNoContentResponse({ description: 'Theme deleted' })
+  async deleteTheme(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.assets.deleteTheme(admin.tenantId, id);
+  }
+
   @Get('partials')
   @ApiOperation({ summary: 'List partial versions for the tenant' })
   @ApiOkResponse({ description: 'Partial list' })
@@ -109,5 +149,16 @@ export class AdminTemplateAssetsController {
     @Param('id') id: string,
   ): Promise<PartialView> {
     return this.assets.getPartial(admin.tenantId, id);
+  }
+
+  @Delete('partials/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an unused partial version' })
+  @ApiNoContentResponse({ description: 'Partial deleted' })
+  async deletePartial(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.assets.deletePartial(admin.tenantId, id);
   }
 }

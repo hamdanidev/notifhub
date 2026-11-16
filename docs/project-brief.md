@@ -166,11 +166,16 @@ npx prisma migrate status
   export belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override dari
   ingest awal tidak tersimpan. Endpoint console memakai wrapper `HttpTransport` sementara sampai
   rilis `@notifhub/js` berikutnya.
-- Template system v2: drag-and-drop/undo pada block builder, loop/conditional visual,
-  MJML/juice, markdown in-app, Meta approved WhatsApp template, plain-text alternative email,
-  diff visual versi, approval maker-checker, dan retensi aset/audit belum ada. Preview/test send
-  memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis pola, bukan parser penuh.
-  Lihat `docs/template-system-design.md` §18 dan `docs/email-block-builder-design.md`.
+- Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
+  WhatsApp template, upload gambar, impor HTML ke Visual, diff visual versi, approval
+  maker-checker, dan versi template per notifikasi belum ada. Drag-and-drop/undo-redo block
+  builder, ekspor HTML, serta usage count/proteksi hapus aset sudah tersedia (P1).
+  `builderData` divalidasi ketat oleh backend (schema v1, maksimum 200 block/64 KiB); plain-text
+  email digenerate otomatis dengan fallback HTML-only; audit/test send memiliki retensi
+  (180/730 hari, dapat dinonaktifkan). Aset hanya dapat dihapus jika tidak direferensikan.
+  Preview/test send memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis pola, bukan
+  parser penuh. Lihat `docs/template-system-design.md` §18,
+  `docs/email-block-builder-design.md`, dan `docs/template-limitations-roadmap.md`.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.

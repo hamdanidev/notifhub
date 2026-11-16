@@ -297,6 +297,7 @@ export function decodeHtmlEntities(value: string): string {
         : _full;
     })
     .replace(/&amp;/gi, '&')
+    .replace(/&nbsp;/gi, ' ')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')

@@ -156,6 +156,7 @@ export class EmailProcessor extends WorkerHost {
         templateKey: data.templateKey,
         subject: rendered.subject,
         body: rendered.body,
+        text: rendered.text,
         data: data.data,
         to,
       });

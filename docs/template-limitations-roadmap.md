@@ -1,7 +1,7 @@
 # Roadmap batasan template dan authoring
 
-Status: **draf desain — menunggu persetujuan**. Belum ada kode, migrasi, dependency, atau
-perubahan schema yang ditulis untuk dokumen ini.
+Status: **P0 dan P1 terimplementasi dan terverifikasi** pada 2026-11-16; P2 belum dimulai.
+Lihat §11 dan §12. Desain disetujui sebelum implementasi masing-masing fase.
 
 Tanggal: 2026-11-16
 Basis: `docs/template-system-design.md`, `docs/email-authoring-ui-design.md`,
@@ -832,7 +832,7 @@ Catatan implementasi test:
    keputusan rilis terpisah.
 7. Dokumentasi diperbarui (`project-brief` batasan, dokumen desain terkait, README bila perlu).
 
-### 10.2 Yang perlu disetujui sebelum implementasi
+### 10.2 Keputusan yang disetujui untuk P0
 
 - **D2**: limit 200 block / 64 KiB / field limit, dan penolakan tulis invalid (termasuk draft).
 - **D4**: ekspor HTML saja; impor HTML ditolak sampai P2.
@@ -843,5 +843,101 @@ Catatan implementasi test:
 - **D3**: native DnD + tombol, tanpa dependency.
 - **D13**: E21–E26 dan regresi E1–E20.
 
-**Berhenti di sini.** Tidak ada kode, migrasi, atau dependency yang ditulis sampai ada balasan
-**"setuju"**. Setelah itu, implementasi dimulai dari P0 saja; P1/P2 menunggu fase berikutnya.
+Implementasi P0 dimulai setelah persetujuan pengguna. P1/P2 tetap menunggu persetujuan fase
+berikutnya; tidak ada dependency baru yang ditambahkan untuk P0.
+
+---
+
+## 11. Implementasi dan verifikasi P0
+
+Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
+
+### 11.1 Perubahan yang diterapkan
+
+| Area | Perubahan |
+|---|---|
+| `builderData` | Modul `src/templates/template.builder.ts`; validasi + normalisasi di create/update/publish/clone/rollback; limit 200 block/64 KiB; legacy invalid hanya warning; clone/rollback tidak menyalin data invalid |
+| Plain-text | `src/templates/template.text.ts`; `RenderedTemplate.text`; `ProviderSendInput.text` opsional; `EmailProvider` mengirim `text` bila ada; worker email dan test send meneruskan; preview email mengisi `text`; console menampilkan tab **Plain text** |
+| Retensi | `CleanupService.runTemplateTelemetryCleanup` (03:00 UTC); env `TEMPLATE_TEST_SEND_RETENTION_DAYS` (180) dan `TEMPLATE_AUDIT_RETENTION_DAYS` (730), `0` menonaktifkan; index `createdAt` |
+| Dua kolom | Warning `two_column_css_missing` bila block `columns` dipakai tanpa layout yang mendukung `.nh-col` |
+| Test | Unit test baru (`test/*.unit-spec.ts`, `npm run test:unit`); E2E E21–E26 |
+| Console | Tab **Plain text**; parser block strict agar `builderData` invalid dibuka di mode HTML dengan warning, bukan dipotong diam-diam |
+
+Migration: `20261116074659_template_telemetry_indexes` (dua index baru; Prisma juga melakukan
+`RENAME INDEX` pada index `NotificationTemplate` yang sudah ada untuk normalisasi nama — metadata
+saja, tanpa perubahan data).
+
+### 11.2 Bukti verifikasi
+
+- `npm run test:unit`: **16/16** lulus (4 suite).
+- `npm run test:e2e -- --runInBand`: **26/26** lulus; E1–E20 tidak berubah, E21–E26 baru lulus.
+- `npm run typecheck`, `npm run build`: lulus.
+- `npm run console:typecheck`, `npm run console:build`: lulus; bundle 982,54 KB / 286,01 KB gzip
+  (naik ±2,5 KB dari sebelumnya).
+- `npx prisma migrate status`: database development dan test menerapkan 7 migrasi.
+- Tidak ada dependency baru; `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 tidak berubah.
+
+### 11.3 Deviasi dan catatan
+
+- `npx prisma generate` tidak dapat mengganti DLL engine saat dev watcher berjalan; tidak ada
+  perubahan model/field pada P0, sehingga client yang ada tetap valid dan build lulus. Generate
+  dapat dijalankan ulang saat dev server dihentikan.
+- Preview/test send tetap memakai UI manual; tidak ada Playwright.
+- Warning dua kolom adalah warning, bukan error; layout kustom tanpa `.nh-col` tetap dapat
+  disimpan/dipublish.
+- Server memvalidasi struktur `builderData` tetapi tidak merender ulang block menjadi `body`;
+  console tetap sumber render HTML block, dan `body` tetap sumber kebenaran worker. Drift antara
+  `builderData` dan `body` dari klien API non-console tidak dideteksi pada P0.
+- Retensi bersifat hard delete dan tidak dapat dibatalkan tanpa backup; default 180/730 dipilih
+  agar data baru tidak terhapus pada deployment pertama.
+
+### 11.4 Berikutnya
+
+P1 sudah diimplementasikan (lihat §12). P2 (impor HTML, upload, approval/diff, versi template per
+notifikasi, markdown, Meta WhatsApp, parser sanitizer/Playwright) belum dimulai dan memerlukan
+persetujuan fase masing-masing.
+
+---
+
+## 12. Implementasi dan verifikasi P1
+
+Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
+
+### 12.1 Perubahan yang diterapkan
+
+| Area | Perubahan |
+|---|---|
+| Drag-and-drop | Handle `⋮⋮` native HTML5; drop target per card; tombol naik/turun tetap menjadi jalur keyboard/screen reader; pengumuman `aria-live`; tanpa dependency |
+| Undo/redo | Riwayat lokal 50 langkah di `EmailBlockBuilder`; coalesce perubahan teks 500 ms; tombol Undo/Redo dan shortcut `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`/`Ctrl+Y`; reset saat template dimuat/disimpan |
+| Ekspor HTML | Tombol **Unduh HTML** dan **Salin HTML** di tab Konten untuk email; memakai `body` efektif (hasil builder di mode Visual) |
+| Aset | `usageCount` pada list/detail layout/theme/partial; endpoint `DELETE` baru; `409 asset_in_use` bila masih direferensikan; `404` untuk aset tenant lain; hard delete hanya aset tak terpakai |
+| Console aset | Kolom **Dipakai**, badge jumlah, tombol Hapus (disabled bila >0), konfirmasi, dan invalidasi query |
+| Two-column | P1 tidak menambah dependency; warning + E25 dari P0 tetap berlaku |
+
+### 12.2 Bukti verifikasi
+
+- `npm run test:unit`: **19/19** lulus (5 suite; termasuk `moveBlock`/parser console).
+- `npm run test:e2e -- --runInBand`: **27/27** lulus; E1–E26 regresi, E27 baru untuk usage/delete
+  aset dan isolasi tenant.
+- `npm run ci`: **6/6 langkah** lulus (typecheck, build, unit, e2e, migrate status).
+- `npm run console:typecheck`, `npm run console:build`: lulus; bundle 987,80 KB / 287,59 KB gzip.
+- Tidak ada dependency baru; `@notifhub/js` 0.3.0, `@notifhub/react` 0.2.0, Go module path, tiga
+  lane auth, dan stack console tidak berubah.
+
+### 12.3 Deviasi dan catatan
+
+- Drag-and-drop native hanya nyaman dengan mouse; perangkat sentuh memakai tombol naik/turun.
+  Tidak ada library DnD.
+- Ekspor mengunduh/menyalin **body** HTML, bukan dokumen layout lengkap; layout tetap dilihat
+  lewat preview server-side.
+- Impor HTML ke Visual tetap **ditolak**; hanya ekspor yang tersedia di P1.
+- `usageCount` menghitung semua baris template/partial yang mereferensikan aset, termasuk draft
+  dan versi lama. Ini sengaja: penghapusan aset tidak boleh memutus reproducibility template
+  published.
+- Penghapusan aset bersifat hard delete hanya untuk aset dengan usage 0; tidak ada soft delete.
+
+### 12.4 Berikutnya
+
+P2 (impor HTML, upload gambar, approval maker-checker/diff, versi template per notifikasi,
+markdown in-app, Meta WhatsApp, parser sanitizer penuh/Playwright) belum dimulai dan memerlukan
+persetujuan fase masing-masing.

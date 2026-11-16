@@ -47,6 +47,7 @@ export class EmailProvider implements NotificationProvider {
           recipient_id: input.recipientId,
           to,
           subject: input.subject,
+          text_chars: input.text?.length ?? 0,
           mode,
         },
         'email provider is log-only in development, no SMTP connection opened',
@@ -60,6 +61,9 @@ export class EmailProvider implements NotificationProvider {
       from: this.config.get<string>('SMTP_FROM') ?? DEFAULT_FROM,
       subject: input.subject ?? '',
       html: input.body,
+      ...(typeof input.text === 'string' && input.text.length > 0
+        ? { text: input.text }
+        : {}),
     });
 
     const providerMessageId = extractMessageId(info);

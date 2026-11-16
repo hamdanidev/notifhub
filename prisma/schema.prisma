@@ -230,6 +230,7 @@ model TemplateAuditEvent {
 
   @@index([tenantId, templateId, createdAt])
   @@index([tenantId, createdAt])
+  @@index([createdAt])
 }
 
 model TemplateTestSend {
@@ -255,6 +256,7 @@ model TemplateTestSend {
   @@index([tenantId, createdAt])
   @@index([templateId, createdAt])
   @@index([requestedByAdminId, createdAt])
+  @@index([createdAt])
 }
 
 model NotificationPreference {

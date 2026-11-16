@@ -1475,9 +1475,8 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 - Console: daftar status/versi, editor dua panel dengan tab konten/variabel/aset/pengaturan,
   preview iframe sandbox desktop/mobile, sample JSON, snippet, publish/test send, riwayat/audit,
   halaman aset, guard unsaved changes (`useBlocker` + `beforeunload`), router data mode.
-- 20 E2E lulus (E1–E20), termasuk legacy send, draft/publish worker, preview, clone/rollback,
-  tenant isolation, test send/rate limit, escaping teks/subject, payload admin vs ingest, dan
-  legacy `PUT` yang membuat versi baru tanpa memutasi baris published.
+- 26 E2E lulus (E1–E26; E1–E20 MVP template, E21–E26 roadmap P0: validasi `builderData`,
+  plain-text, retensi, dan warning dua kolom).
 
 ### 18.2 Deviasi dari desain awal
 
@@ -1499,11 +1498,15 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - Sanitizer HTML/CSS berbasis pola, bukan parser penuh; sandbox iframe dan validasi publish adalah
   lapisan utama. `{{{ }}}` dinamis tetap disanitasi saat render.
-- Block builder MVP sudah tersedia (lihat `docs/email-block-builder-design.md`); drag-and-drop,
-  undo/redo, loop/conditional visual, MJML/juice, markdown in-app, Meta approved WhatsApp template,
-  plain-text alternative email, diff visual versi, CodeMirror, atau approval maker-checker.
+- Block builder MVP sudah tersedia (lihat `docs/email-block-builder-design.md`); loop/conditional
+  visual, MJML/juice, markdown in-app, Meta approved WhatsApp template, upload gambar, impor HTML
+  ke Visual, diff visual versi, CodeMirror, atau approval maker-checker belum ada.
 - Test send hanya email/WhatsApp; in-app/SMS memakai preview.
-- Aset append-only dan belum ada penghapusan/retensi; audit/test send belum punya job retensi.
+- Aset append-only dan belum ada penghapusan otomatis. Roadmap P1 menambahkan `usageCount` dan
+  `DELETE` hanya untuk aset yang tidak direferensikan; aset yang dipakai tetap immutable.
+- Roadmap P0/P1 (2026-11-16) menambahkan validasi `builderData`, plain-text email otomatis,
+  retensi telemetry, warning dua kolom, drag-and-drop/undo-redo, ekspor HTML, dan proteksi hapus
+  aset; lihat `docs/template-limitations-roadmap.md` §11–§12.
 - `preview` tidak menulis tabel audit (hanya log terstruktur); publish/test send diaudit.
 - Dukungan email client/dark mode tetap best effort dan diverifikasi manual.
 
@@ -1511,7 +1514,8 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - `npm run typecheck`, `npm run build`, `npm run console:typecheck`, `npm run console:build`,
   `npm run sdk:test` (lihat laporan akhir).
-- `npm run test:e2e -- --runInBand`: 19/19 lulus.
-- `npx prisma migrate status`: 5 migrasi, tidak ada pending (dev dan test).
+- `npm run test:e2e -- --runInBand`: 27/27 lulus.
+- `npm run test:unit`: 19/19 lulus (builder, plain-text, sanitizer, provider, console blocks).
+- `npx prisma migrate status`: 7 migrasi, tidak ada pending (dev dan test).
 - Console dev `http://127.0.0.1:5180/` merespons `200` setelah build; UI interaktif diverifikasi
   manual (tanpa Playwright).

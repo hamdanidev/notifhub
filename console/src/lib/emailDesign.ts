@@ -236,7 +236,7 @@ export function buildLayoutHtml(preset: LayoutPresetId, options: LayoutOptions):
   </style>
 </head>
 <body class="nh-body" style="margin:0;padding:0;background:{{default theme.brand.background "#f4f5f7"}}">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">{{preheader}}</div>
+  <div data-nh-text-skip style="display:none;max-height:0;overflow:hidden;opacity:0">{{preheader}}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{default theme.brand.background "#f4f5f7"}}">
     <tr>
       <td align="center" style="padding:${isNotification ? '16px 8px' : '24px 12px'}">

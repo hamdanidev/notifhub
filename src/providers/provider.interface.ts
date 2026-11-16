@@ -9,6 +9,8 @@ export interface ProviderSendInput {
   templateKey: string;
   subject: string | null;
   body: string;
+  /** Optional plain-text alternative for email; ignored by text-only providers. */
+  text?: string | null;
   data: Record<string, unknown>;
   /** Resolved destination (email/phone). In-app providers ignore it. */
   to: string;

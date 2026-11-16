@@ -68,8 +68,9 @@ Redis logical database, so it never touches development data.
 
 ```bash
 npm run infra:up        # Postgres + Redis must be running
+npm run test:unit       # Jest unit tests (builder contract, plain-text, sanitizer, email provider)
 npm run test:e2e        # creates/migrates notifhub_test, flushes Redis db 15, then runs Jest
-npm run ci              # typecheck + build + e2e + migrate status (same order as CI)
+npm run ci              # typecheck + build + unit + e2e + migrate status (same order as CI)
 ```
 
 - Defaults: `postgresql://notifhub:notifhub_pass@localhost:5432/notifhub_test` and
@@ -272,6 +273,9 @@ docker exec notifhub-postgres psql -U notifhub -d notifhub_dev -c \
 - `overallStatus` is rolled up every minute from recipient statuses
   (`pending` / `partial` / `sent` / `failed`).
 - Retention job (UTC 02:00) soft deletes notifications older than `RETENTION_DAYS`.
+- Template telemetry job (UTC 03:00) hard deletes `TemplateTestSend` older than
+  `TEMPLATE_TEST_SEND_RETENTION_DAYS` (default 180) and `TemplateAuditEvent` older than
+  `TEMPLATE_AUDIT_RETENTION_DAYS` (default 730). Set either value to `0` to disable that window.
 - Idempotency job (UTC 02:30) rotates expired keys to `expired:<uuid>`, so the original key can
   be reused without deleting audit rows.
 

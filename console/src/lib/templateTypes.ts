@@ -141,6 +141,7 @@ export interface LayoutAsset {
   name: string;
   content: string | null;
   contentPreview: string;
+  usageCount: number;
   createdAt: string;
 }
 
@@ -152,6 +153,7 @@ export interface ThemeAsset {
   name: string;
   tokens: Record<string, unknown> | null;
   tokenKeys: string[];
+  usageCount: number;
   createdAt: string;
 }
 
@@ -163,6 +165,7 @@ export interface PartialAsset {
   name: string;
   content: string | null;
   contentPreview: string;
+  usageCount: number;
   createdAt: string;
 }
 

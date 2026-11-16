@@ -21,6 +21,11 @@ import {
   AdminTemplateValidationService,
 } from './admin-template-validation.service';
 import { AdminTemplateAssetsService } from './admin-template-assets.service';
+import {
+  builderLegacyWarning,
+  parseBuilderDocument,
+} from '../../templates/template.builder';
+import { dedupeIssues } from '../../templates/template.safety';
 import type {
   CloneTemplateDto,
   CreateTemplateDto,
@@ -202,6 +207,9 @@ export class AdminTemplatesService {
     const layout = await this.assets.resolveLayout(tenantId, dto.layoutId);
     const theme = await this.assets.resolveTheme(tenantId, dto.themeId);
     const partials = await this.assets.resolvePartials(tenantId, dto.partialIds);
+    const builder = parseBuilderDocument(dto.channel, dto.builderData);
+
+    this.throwIfErrors(builder.issues);
 
     const renderable = buildRenderable({
       channel: dto.channel,
@@ -214,6 +222,7 @@ export class AdminTemplatesService {
       strictVariables: dto.strictVariables ?? false,
       variables: dto.variables ?? null,
       sampleData: dto.sampleData ?? null,
+      builderData: builder.document,
       layout,
       theme,
       partials,
@@ -260,7 +269,7 @@ export class AdminTemplatesService {
             strictVariables: dto.strictVariables ?? false,
             variables: jsonInput(dto.variables),
             sampleData: jsonInput(dto.sampleData),
-            builderData: jsonInput(dto.builderData),
+            builderData: jsonInput(builder.document),
             layoutId: layout?.id ?? null,
             themeId: theme?.id ?? null,
             fallbackProvider: dto.fallbackProvider ?? null,
@@ -491,7 +500,15 @@ export class AdminTemplatesService {
       );
     }
 
-    const validation = this.validation.validate(existing);
+    const builder = parseBuilderDocument(existing.channel, existing.builderData);
+    const builderWarnings = builder.issues.some((issue) => issue.severity === 'error')
+      ? [builderLegacyWarning()]
+      : [];
+    const validation = dedupeIssues([
+      ...this.validation.validate(existing),
+      ...builderWarnings,
+    ]);
+
     this.throwIfErrors(validation);
 
     const published = await this.prisma.$transaction(async (tx) => {
@@ -562,8 +579,16 @@ export class AdminTemplatesService {
     const version =
       dto.version ??
       (await this.nextVersionFor(tenantId, key, source.channel, locale));
-    const renderable = toRenderable(source);
-    const validation = this.validation.validate(renderable);
+    const builder = parseBuilderDocument(source.channel, source.builderData);
+    const builderWarnings = builder.issues.some((issue) => issue.severity === 'error')
+      ? [builderLegacyWarning()]
+      : [];
+    const effectiveBuilder = builderWarnings.length > 0 ? null : builder.document;
+    const renderable = { ...toRenderable(source), builderData: effectiveBuilder };
+    const validation = dedupeIssues([
+      ...this.validation.validate(renderable),
+      ...builderWarnings,
+    ]);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.notificationTemplate.create({
@@ -584,7 +609,7 @@ export class AdminTemplatesService {
           strictVariables: source.strictVariables,
           variables: jsonInput(source.variables),
           sampleData: jsonInput(source.sampleData),
-          builderData: jsonInput(source.builderData),
+          builderData: jsonInput(effectiveBuilder),
           layoutId: source.layoutId,
           themeId: source.themeId,
           fallbackProvider: source.fallbackProvider,
@@ -650,8 +675,16 @@ export class AdminTemplatesService {
       source.channel,
       source.locale,
     );
-    const renderable = toRenderable(target);
-    const validation = this.validation.validate(renderable);
+    const builder = parseBuilderDocument(target.channel, target.builderData);
+    const builderWarnings = builder.issues.some((issue) => issue.severity === 'error')
+      ? [builderLegacyWarning()]
+      : [];
+    const effectiveBuilder = builderWarnings.length > 0 ? null : builder.document;
+    const renderable = { ...toRenderable(target), builderData: effectiveBuilder };
+    const validation = dedupeIssues([
+      ...this.validation.validate(renderable),
+      ...builderWarnings,
+    ]);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.notificationTemplate.create({
@@ -672,7 +705,7 @@ export class AdminTemplatesService {
           strictVariables: target.strictVariables,
           variables: jsonInput(target.variables),
           sampleData: jsonInput(target.sampleData),
-          builderData: jsonInput(target.builderData),
+          builderData: jsonInput(effectiveBuilder),
           layoutId: target.layoutId,
           themeId: target.themeId,
           fallbackProvider: target.fallbackProvider,
@@ -831,6 +864,15 @@ export class AdminTemplatesService {
         : dto.partialIds;
     const partials = await this.assets.resolvePartials(tenantId, partialIds);
     const format = dto.format ?? existing.format;
+    const builder =
+      dto.builderData === undefined
+        ? { document: existing.builderData, issues: [] as TemplateValidationIssue[] }
+        : parseBuilderDocument(existing.channel, dto.builderData);
+
+    this.throwIfErrors(builder.issues);
+
+    const effectiveBuilder =
+      dto.builderData === undefined ? existing.builderData : builder.document;
     const renderable = buildRenderable({
       id: existing.id,
       key: existing.key,
@@ -845,6 +887,7 @@ export class AdminTemplatesService {
       strictVariables: dto.strictVariables ?? existing.strictVariables,
       variables: dto.variables === undefined ? existing.variables : dto.variables,
       sampleData: dto.sampleData === undefined ? existing.sampleData : dto.sampleData,
+      builderData: effectiveBuilder,
       layout,
       theme,
       partials,
@@ -870,7 +913,7 @@ export class AdminTemplatesService {
           ...(dto.sampleData === undefined ? {} : { sampleData: jsonInput(dto.sampleData) }),
           ...(dto.builderData === undefined
             ? {}
-            : { builderData: jsonInput(dto.builderData) }),
+            : { builderData: jsonInput(builder.document) }),
           ...(dto.layoutId === undefined ? {} : { layoutId: layout?.id ?? null }),
           ...(dto.themeId === undefined ? {} : { themeId: theme?.id ?? null }),
           revision: { increment: 1 },
@@ -913,6 +956,21 @@ export class AdminTemplatesService {
         : dto.partialIds;
     const partials = await this.assets.resolvePartials(tenantId, partialIds);
     const format = dto.format ?? existing.format;
+    const builder = parseBuilderDocument(
+      existing.channel,
+      dto.builderData === undefined ? existing.builderData : dto.builderData,
+    );
+    const builderWarnings: TemplateValidationIssue[] = [];
+
+    if (builder.issues.some((issue) => issue.severity === 'error')) {
+      if (dto.builderData !== undefined) {
+        this.throwIfErrors(builder.issues);
+      }
+
+      builderWarnings.push(builderLegacyWarning());
+    }
+
+    const effectiveBuilder = builderWarnings.length > 0 ? null : builder.document;
     const renderable = buildRenderable({
       id: existing.id,
       key: existing.key,
@@ -927,12 +985,16 @@ export class AdminTemplatesService {
       strictVariables: dto.strictVariables ?? existing.strictVariables,
       variables: dto.variables === undefined ? existing.variables : dto.variables,
       sampleData: dto.sampleData === undefined ? existing.sampleData : dto.sampleData,
+      builderData: effectiveBuilder,
       layout,
       theme,
       partials,
       updatedAt: new Date(),
     });
-    const validation = this.validation.validate(renderable, { legacySubject: true });
+    const validation = dedupeIssues([
+      ...this.validation.validate(renderable, { legacySubject: true }),
+      ...builderWarnings,
+    ]);
     this.throwIfErrors(validation);
 
     const version = await this.nextVersionFor(
@@ -974,9 +1036,7 @@ export class AdminTemplatesService {
           sampleData: jsonInput(
             dto.sampleData === undefined ? existing.sampleData : dto.sampleData,
           ),
-          builderData: jsonInput(
-            dto.builderData === undefined ? existing.builderData : dto.builderData,
-          ),
+          builderData: jsonInput(effectiveBuilder),
           layoutId: layout?.id ?? null,
           themeId: theme?.id ?? null,
           fallbackProvider:

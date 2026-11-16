@@ -13,6 +13,10 @@ import {
   validateThemeTokens,
 } from '../../templates/template.safety';
 import {
+  builderDocumentUsesColumns,
+  parseBuilderDocument,
+} from '../../templates/template.builder';
+import {
   TemplateRenderError,
   type RenderableTemplate,
   type TemplateValidationIssue,
@@ -118,6 +122,23 @@ export class AdminTemplateValidationService {
 
       if (template.theme !== null) {
         issues.push(...validateThemeTokens(template.theme.tokens));
+      }
+
+      const builder = parseBuilderDocument(template.channel, template.builderData);
+
+      if (
+        builder.document !== null &&
+        builderDocumentUsesColumns(builder.document) &&
+        (template.layout === null ||
+          !layoutSupportsTwoColumnStacking(template.layout.content))
+      ) {
+        issues.push({
+          code: 'two_column_css_missing',
+          path: 'builderData.blocks',
+          message:
+            'block dua kolom membutuhkan layout dengan media query .nh-col agar menumpuk di mobile',
+          severity: 'warning',
+        });
       }
     } else {
       if (
@@ -268,6 +289,7 @@ export function buildRenderable(input: {
   strictVariables: boolean;
   variables: unknown;
   sampleData: unknown;
+  builderData?: unknown;
   layout: RenderableTemplate['layout'];
   theme: RenderableTemplate['theme'];
   partials: RenderableTemplate['partials'];
@@ -287,6 +309,7 @@ export function buildRenderable(input: {
     strictVariables: input.strictVariables,
     variables: input.variables,
     sampleData: input.sampleData,
+    builderData: input.builderData,
     layout: input.layout,
     theme: input.theme,
     partials: input.partials,
@@ -302,6 +325,14 @@ export function directionFor(locale: string, configured: TemplateDirection): 'lt
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function layoutSupportsTwoColumnStacking(content: string): boolean {
+  return (
+    /\.nh-col\b/.test(content) &&
+    /@media\b/i.test(content) &&
+    /display\s*:\s*block/i.test(content)
+  );
 }
 
 const KNOWN_CONTEXT = new Set([

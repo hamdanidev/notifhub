@@ -24,6 +24,7 @@ export interface RenderableTemplate {
   strictVariables: boolean;
   variables: unknown;
   sampleData: unknown;
+  builderData?: unknown;
   layout: { id: string; key: string; version: number; content: string } | null;
   theme: { id: string; key: string; version: number; tokens: unknown } | null;
   partials: Array<{
@@ -67,6 +68,8 @@ export interface RenderedTemplate {
   subject: string | null;
   preheader: string | null;
   body: string;
+  /** Generated alternative part for email; `null` means HTML-only. */
+  text: string | null;
   format: 'text' | 'html' | 'markdown';
   warnings: string[];
   missingVariables: string[];

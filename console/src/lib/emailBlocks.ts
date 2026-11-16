@@ -110,19 +110,40 @@ export function defaultBlockDocument(): EmailBlockDocument {
   };
 }
 
+const BLOCK_KEYS: Record<EmailBlockType, readonly string[]> = {
+  heading: ['id', 'type', 'text', 'level'],
+  text: ['id', 'type', 'text'],
+  image: ['id', 'type', 'url', 'alt', 'width'],
+  button: ['id', 'type', 'label', 'url', 'align'],
+  divider: ['id', 'type'],
+  spacer: ['id', 'type', 'height'],
+  columns: ['id', 'type', 'left', 'right'],
+};
+
 export function parseBlockDocument(value: unknown): EmailBlockDocument | null {
   if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.blocks)) {
     return null;
   }
 
   const blocks: EmailBlock[] = [];
+  const seen = new Set<string>();
 
   for (const raw of value.blocks) {
     const block = parseBlock(raw);
 
-    if (block !== null) {
-      blocks.push(block);
+    if (
+      block === null ||
+      seen.has(block.id) ||
+      !isRecord(raw) ||
+      !hasOnlyKnownKeys(raw, block.type)
+    ) {
+      // Never silently drop blocks: an unparseable document is opened in HTML mode so the
+      // original body and builderData remain untouched.
+      return null;
     }
+
+    seen.add(block.id);
+    blocks.push(block);
   }
 
   return { version: 1, blocks };
@@ -130,6 +151,29 @@ export function parseBlockDocument(value: unknown): EmailBlockDocument | null {
 
 export function renderBlocksToHtml(document: EmailBlockDocument): string {
   return document.blocks.map(renderBlock).join('\n');
+}
+
+export function moveBlock<T>(items: T[], from: number, to: number): T[] {
+  if (
+    from === to ||
+    from < 0 ||
+    to < 0 ||
+    from >= items.length ||
+    to >= items.length
+  ) {
+    return items;
+  }
+
+  const next = [...items];
+  const [current] = next.splice(from, 1);
+
+  if (current === undefined) {
+    return items;
+  }
+
+  next.splice(to, 0, current);
+
+  return next;
 }
 
 export function blockLabel(type: EmailBlockType): string {
@@ -187,7 +231,12 @@ function parseBlock(value: unknown): EmailBlock | null {
     return null;
   }
 
-  const id = typeof value.id === 'string' && value.id.length > 0 ? value.id : createId();
+  const id = typeof value.id === 'string' && value.id.length > 0 ? value.id : null;
+
+  if (id === null) {
+    return null;
+  }
+
   const type = value.type;
 
   if (type === 'heading') {
@@ -246,6 +295,15 @@ function parseBlock(value: unknown): EmailBlock | null {
 
 function stringValue(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+function hasOnlyKnownKeys(
+  raw: Record<string, unknown>,
+  type: EmailBlockType,
+): boolean {
+  const allowed = BLOCK_KEYS[type];
+
+  return Object.keys(raw).every((key) => allowed.includes(key));
 }
 
 function multiline(value: string): string {

@@ -96,6 +96,12 @@ export function TemplatePreviewPane({
                 <pre className="preview-text">{preview.text ?? preview.body}</pre>
               )}
             </div>
+            {preview.html !== null && preview.text !== null ? (
+              <details className="mt-2">
+                <summary className="small text-muted">Plain text (otomatis)</summary>
+                <pre className="preview-text mt-2">{preview.text}</pre>
+              </details>
+            ) : null}
             <div className="small text-muted mt-2">
               Locale {preview.resolved.locale} · arah {preview.resolved.direction}
               {preview.resolved.layout !== null

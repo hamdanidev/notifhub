@@ -104,6 +104,7 @@ export class AdminTemplatePreviewService {
 
       if (template.channel === Channel.email) {
         html = wrapPreviewDocument(body);
+        text = rendered.text;
       } else {
         text = body;
       }

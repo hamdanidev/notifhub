@@ -129,6 +129,7 @@ export class AdminTemplateTestSendService {
         templateKey: template.key,
         subject: rendered.subject,
         body: rendered.body,
+        text: rendered.text,
         data: sampleData,
         to: recipient,
       });

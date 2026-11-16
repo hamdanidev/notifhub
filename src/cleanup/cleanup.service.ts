@@ -15,6 +15,11 @@ export interface IdempotencyCleanupResult {
   released: number;
 }
 
+export interface TemplateTelemetryCleanupResult {
+  auditDeleted: number;
+  testSendDeleted: number;
+}
+
 /**
  * Nightly data lifecycle jobs (PART 1 rules 26 and 27), scheduled in UTC.
  *
@@ -26,6 +31,7 @@ export interface IdempotencyCleanupResult {
 export class CleanupService {
   private retentionRunning = false;
   private idempotencyRunning = false;
+  private telemetryRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -88,6 +94,55 @@ export class CleanupService {
     }
   }
 
+  /**
+   * Template telemetry retention. Test sends are operational metadata and are deleted after the
+   * configured window; audit events default to a longer window because they are compliance
+   * evidence. `0` disables a window. This job never reads row contents into logs.
+   */
+  @Cron('0 3 * * *', { name: 'template-telemetry-cleanup', timeZone: 'UTC' })
+  async runTemplateTelemetryCleanup(): Promise<TemplateTelemetryCleanupResult> {
+    if (this.telemetryRunning) {
+      return { auditDeleted: 0, testSendDeleted: 0 };
+    }
+
+    this.telemetryRunning = true;
+
+    try {
+      const testSendDays = this.config.getOrThrow<number>(
+        'TEMPLATE_TEST_SEND_RETENTION_DAYS',
+      );
+      const auditDays = this.config.getOrThrow<number>('TEMPLATE_AUDIT_RETENTION_DAYS');
+      const now = Date.now();
+      const testSendDeleted =
+        testSendDays === 0
+          ? 0
+          : await this.deleteTemplateTestSendsBefore(
+              new Date(now - testSendDays * MILLISECONDS_PER_DAY),
+            );
+      const auditDeleted =
+        auditDays === 0
+          ? 0
+          : await this.deleteTemplateAuditEventsBefore(
+              new Date(now - auditDays * MILLISECONDS_PER_DAY),
+            );
+
+      this.logger.info(
+        {
+          event: 'template.telemetry.cleanup',
+          test_send_retention_days: testSendDays,
+          audit_retention_days: auditDays,
+          test_send_deleted: testSendDeleted,
+          audit_deleted: auditDeleted,
+        },
+        'template telemetry retention job completed',
+      );
+
+      return { auditDeleted, testSendDeleted };
+    } finally {
+      this.telemetryRunning = false;
+    }
+  }
+
   @Cron('30 2 * * *', { name: 'idempotency-cleanup', timeZone: 'UTC' })
   async runIdempotencyCleanup(): Promise<IdempotencyCleanupResult> {
     if (this.idempotencyRunning) {
@@ -117,5 +172,61 @@ export class CleanupService {
     } finally {
       this.idempotencyRunning = false;
     }
+  }
+
+  private async deleteTemplateTestSendsBefore(cutoff: Date): Promise<number> {
+    let deleted = 0;
+
+    for (;;) {
+      const rows = await this.prisma.templateTestSend.findMany({
+        where: { createdAt: { lt: cutoff } },
+        select: { id: true },
+        take: RETENTION_BATCH_SIZE,
+      });
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      const result = await this.prisma.templateTestSend.deleteMany({
+        where: { id: { in: rows.map((row) => row.id) } },
+      });
+
+      deleted += result.count;
+
+      if (rows.length < RETENTION_BATCH_SIZE) {
+        break;
+      }
+    }
+
+    return deleted;
+  }
+
+  private async deleteTemplateAuditEventsBefore(cutoff: Date): Promise<number> {
+    let deleted = 0;
+
+    for (;;) {
+      const rows = await this.prisma.templateAuditEvent.findMany({
+        where: { createdAt: { lt: cutoff } },
+        select: { id: true },
+        take: RETENTION_BATCH_SIZE,
+      });
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      const result = await this.prisma.templateAuditEvent.deleteMany({
+        where: { id: { in: rows.map((row) => row.id) } },
+      });
+
+      deleted += result.count;
+
+      if (rows.length < RETENTION_BATCH_SIZE) {
+        break;
+      }
+    }
+
+    return deleted;
   }
 }

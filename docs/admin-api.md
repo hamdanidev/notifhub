@@ -441,6 +441,12 @@ Desain lengkap dan keputusan D1–D12 ada di `docs/template-system-design.md`.
   `preview` (inline/saved), `test-send`, dan `/admin/template-assets/{layouts,themes,partials}`.
   Endpoint lama tetap ada; `PUT` pada published membuat versi published baru (legacy, deprecated)
   tanpa memutasi baris lama.
+- Aset list/detail mengembalikan `usageCount`. `DELETE /admin/template-assets/{layouts,themes,
+  partials}/:id` menghapus versi yang tidak direferensikan (`204`), menolak aset terpakai dengan
+  `409 asset_in_use`, dan `404` untuk aset tenant lain.
+- Roadmap P0/P1 menambahkan validasi `builderData`, plain-text email, retensi audit/test send,
+  warning dua kolom, drag-and-drop/undo-redo console, serta ekspor HTML; lihat
+  `docs/template-limitations-roadmap.md`.
 - Payload admin memakai parser 1 MB (`TEMPLATE_MAX_PAYLOAD_BYTES`); ingest tetap
   `INGEST_MAX_PAYLOAD_BYTES` 64 KB.
 - Test send hanya email/WhatsApp, memakai template tersimpan, melewati preferensi, dibatasi

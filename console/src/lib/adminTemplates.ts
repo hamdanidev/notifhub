@@ -224,6 +224,14 @@ export function getLayout(id: string): Promise<LayoutAsset> {
   );
 }
 
+export function deleteLayout(id: string): Promise<void> {
+  return transport.request<void>(
+    'DELETE',
+    `/template-assets/layouts/${encodeURIComponent(id)}`,
+    { retry: false },
+  );
+}
+
 export function listThemes(params: { limit?: number; offset?: number } = {}): Promise<
   Paged<ThemeAsset>
 > {
@@ -251,6 +259,14 @@ export function getTheme(id: string): Promise<ThemeAsset> {
   );
 }
 
+export function deleteTheme(id: string): Promise<void> {
+  return transport.request<void>(
+    'DELETE',
+    `/template-assets/themes/${encodeURIComponent(id)}`,
+    { retry: false },
+  );
+}
+
 export function listPartials(params: { limit?: number; offset?: number } = {}): Promise<
   Paged<PartialAsset>
 > {
@@ -275,5 +291,13 @@ export function getPartial(id: string): Promise<PartialAsset> {
   return transport.request<PartialAsset>(
     'GET',
     `/template-assets/partials/${encodeURIComponent(id)}`,
+  );
+}
+
+export function deletePartial(id: string): Promise<void> {
+  return transport.request<void>(
+    'DELETE',
+    `/template-assets/partials/${encodeURIComponent(id)}`,
+    { retry: false },
   );
 }

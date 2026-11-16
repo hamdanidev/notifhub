@@ -9,6 +9,9 @@ import { z } from 'zod';
 const positiveInt = (defaultValue: number) =>
   z.coerce.number().int().positive().default(defaultValue);
 
+const nonNegativeInt = (defaultValue: number) =>
+  z.coerce.number().int().nonnegative().default(defaultValue);
+
 const optionalString = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
   z.string().optional(),
@@ -33,6 +36,8 @@ export const envSchema = z
     DEFAULT_LOCALE: z.string().min(1).default('id'),
     IDEMPOTENCY_TTL_DAYS: positiveInt(7),
     RETENTION_DAYS: positiveInt(90),
+    TEMPLATE_TEST_SEND_RETENTION_DAYS: nonNegativeInt(180),
+    TEMPLATE_AUDIT_RETENTION_DAYS: nonNegativeInt(730),
     INGEST_MAX_PAYLOAD_BYTES: positiveInt(65536),
     TEMPLATE_MAX_PAYLOAD_BYTES: positiveInt(1048576),
     INGEST_RATE_LIMIT_PER_KEY: positiveInt(100),

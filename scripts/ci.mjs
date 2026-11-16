@@ -13,6 +13,7 @@ const TEST_DATABASE_URL =
 const steps = [
   { name: 'typecheck backend', command: 'npm run typecheck' },
   { name: 'build backend', command: 'npm run build' },
+  { name: 'unit (jest)', command: 'npm run test:unit' },
   { name: 'siapkan database + redis test', command: 'npm run test:db:setup' },
   { name: 'e2e (jest)', command: 'npm run test:e2e -- --runInBand' },
   {

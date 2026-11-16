@@ -156,6 +156,25 @@ function snapshot(
   return JSON.stringify({ form, blockDocument, editorMode });
 }
 
+function builderWarningIfDropped(
+  builderData: unknown,
+  parsed: EmailBlockDocument | null,
+): TemplateValidationIssue[] {
+  if (builderData === null || builderData === undefined || parsed !== null) {
+    return [];
+  }
+
+  return [
+    {
+      code: 'builder_legacy_invalid',
+      path: 'builderData',
+      message:
+        'builderData tidak dapat dibuka di mode visual; template dibuka di mode HTML tanpa mengubah body.',
+      severity: 'warning',
+    },
+  ];
+}
+
 export function TemplateFormPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const isEdit = id !== undefined;
@@ -211,7 +230,7 @@ export function TemplateFormPage(): JSX.Element {
       setBlockDocument(document);
       setEditorMode(mode);
       baselineRef.current = snapshot(next, document, mode);
-      setValidation([]);
+      setValidation(builderWarningIfDropped(existing.data.builderData, parsedDocument));
       setPreview(null);
       setPreviewError(null);
     }
@@ -693,6 +712,7 @@ export function TemplateFormPage(): JSX.Element {
                     onChangeEditorMode={changeEditorMode}
                     blockDocument={blockDocument}
                     setBlockDocument={setBlockDocument}
+                    historyKey={`${current?.id ?? 'new'}:${current?.revision ?? 0}`}
                     variableKeys={variableKeys}
                     onInsertSnippet={(value) =>
                       setForm((previous) => ({ ...previous, body: `${previous.body}\n${value}` }))
@@ -772,6 +792,7 @@ function ContentTab({
   onChangeEditorMode,
   blockDocument,
   setBlockDocument,
+  historyKey,
   variableKeys,
   onInsertSnippet,
 }: {
@@ -783,11 +804,37 @@ function ContentTab({
   onChangeEditorMode: (mode: 'visual' | 'html') => void;
   blockDocument: EmailBlockDocument;
   setBlockDocument: Dispatch<SetStateAction<EmailBlockDocument>>;
+  historyKey: string;
   variableKeys: string[];
   onInsertSnippet: (value: string) => void;
 }): JSX.Element {
   const visualSupported = form.channel === 'email';
   const useVisual = visualSupported && editorMode === 'visual';
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const exportBody = useVisual ? renderBlocksToHtml(blockDocument) : form.body;
+  const fileName = `${form.key.trim().replace(/[^a-zA-Z0-9._-]+/g, '-') || 'template'}.html`;
+
+  const downloadHtml = (): void => {
+    const blob = new Blob([exportBody], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = window.document.createElement('a');
+
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setExportNotice('HTML body diunduh.');
+  };
+
+  const copyHtml = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(exportBody);
+      setExportNotice('HTML body disalin ke clipboard.');
+    } catch {
+      setExportNotice('Gagal menyalin; gunakan tombol Unduh HTML.');
+    }
+  };
+
   return (
     <>
       <Row className="g-3">
@@ -907,6 +954,26 @@ function ContentTab({
               </button>
             </div>
           ) : null}
+          {form.channel === 'email' ? (
+            <div className="d-flex gap-1 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                onClick={downloadHtml}
+                title="Unduh body HTML saat ini"
+              >
+                Unduh HTML
+              </Button>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                onClick={() => void copyHtml()}
+                title="Salin body HTML saat ini"
+              >
+                Salin HTML
+              </Button>
+            </div>
+          ) : null}
           {!useVisual ? (
             <div className="d-flex gap-1 flex-wrap">
               {SNIPPETS.map((snippet) => (
@@ -924,12 +991,19 @@ function ContentTab({
           ) : null}
         </div>
       </div>
+      {exportNotice !== null ? (
+        <div className="small text-muted mb-2" role="status">
+          {exportNotice}
+        </div>
+      ) : null}
       {useVisual ? (
         <fieldset disabled={readOnly} className="border-0 p-0 m-0">
           <EmailBlockBuilder
             document={blockDocument}
             onChange={setBlockDocument}
             variableKeys={variableKeys}
+            readOnly={readOnly}
+            historyKey={historyKey}
           />
         </fieldset>
       ) : (

@@ -52,7 +52,7 @@ punya model data jelas**.
 
 ## 5. Batasan
 
-- Belum ada drag-and-drop/block builder.
+- Block builder + drag-and-drop/undo-redo sudah tersedia; impor HTML ke Visual belum.
 - Layout dua kolom kompleks tetap memakai advanced HTML/snippet.
 - Theme form hanya mengelola token yang dikenal; token kustom dipertahankan lewat advanced JSON.
 - Belum ada upload gambar; logo memakai URL.
