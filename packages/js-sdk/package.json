@@ -3,6 +3,29 @@
   "version": "0.3.0",
   "description": "Headless TypeScript SDK for NotifHub in-app notifications (fetch-based SSE)",
   "license": "UNLICENSED",
+  "author": {
+    "name": "hamdanidev",
+    "url": "https://github.com/hamdanidev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hamdanidev/notifhub.git",
+    "directory": "packages/js-sdk"
+  },
+  "homepage": "https://github.com/hamdanidev/notifhub/tree/main/packages/js-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/hamdanidev/notifhub/issues"
+  },
+  "keywords": [
+    "notifications",
+    "in-app",
+    "sse",
+    "sdk",
+    "notifhub"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -18,8 +41,12 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

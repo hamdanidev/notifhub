@@ -1,0 +1,88 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to publish
+        required: true
+        type: choice
+        options:
+          - js
+          - react
+      dry_run:
+        description: Only run npm publish --dry-run
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish @notifhub/${{ inputs.package }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve package metadata
+        id: meta
+        run: |
+          if [ "${{ inputs.package }}" = "js" ]; then
+            echo "workspace=@notifhub/js" >> "$GITHUB_OUTPUT"
+            echo "dir=packages/js-sdk" >> "$GITHUB_OUTPUT"
+            echo "tag_prefix=js-v" >> "$GITHUB_OUTPUT"
+            echo "build_script=sdk:build" >> "$GITHUB_OUTPUT"
+            echo "test_script=sdk:test" >> "$GITHUB_OUTPUT"
+          else
+            echo "workspace=@notifhub/react" >> "$GITHUB_OUTPUT"
+            echo "dir=packages/react" >> "$GITHUB_OUTPUT"
+            echo "tag_prefix=react-v" >> "$GITHUB_OUTPUT"
+            echo "build_script=react:build" >> "$GITHUB_OUTPUT"
+            echo "test_script=react:test" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify version matches git tag
+        run: |
+          VERSION=$(node -p "require('./${{ steps.meta.outputs.dir }}/package.json').version")
+          TAG="${{ steps.meta.outputs.tag_prefix }}${VERSION}"
+          if ! git rev-parse "refs/tags/${TAG}" > /dev/null 2>&1; then
+            echo "Tag ${TAG} tidak ditemukan. Buat tag ${TAG} pada commit rilis sebelum publish." >&2
+            exit 1
+          fi
+          echo "Publishing ${TAG}"
+
+      - name: Build and test
+        run: |
+          npm run ${{ steps.meta.outputs.build_script }}
+          npm run ${{ steps.meta.outputs.test_script }}
+
+      - name: Ensure the dependency is on the registry
+        if: inputs.package == 'react'
+        run: npm view @notifhub/js version
+
+      - name: Pack (dry run)
+        run: npm pack --dry-run --workspace ${{ steps.meta.outputs.workspace }}
+
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          args=(--workspace "${{ steps.meta.outputs.workspace }}" --access public --provenance)
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          npm publish "${args[@]}"

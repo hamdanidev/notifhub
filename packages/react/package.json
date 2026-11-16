@@ -3,6 +3,29 @@
   "version": "0.2.0",
   "description": "React bindings for NotifHub in-app notifications (built on @notifhub/js)",
   "license": "UNLICENSED",
+  "author": {
+    "name": "hamdanidev",
+    "url": "https://github.com/hamdanidev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hamdanidev/notifhub.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/hamdanidev/notifhub/tree/main/packages/react#readme",
+  "bugs": {
+    "url": "https://github.com/hamdanidev/notifhub/issues"
+  },
+  "keywords": [
+    "notifications",
+    "in-app",
+    "react",
+    "sdk",
+    "notifhub"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -18,8 +41,12 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -28,7 +55,7 @@
     "react-dom": ">=18 <19"
   },
   "dependencies": {
-    "@notifhub/js": "file:../js-sdk"
+    "@notifhub/js": "^0.3.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.31",

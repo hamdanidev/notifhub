@@ -237,7 +237,8 @@ Build manual: `docker build --target runner .`, `docker build -f console/Dockerf
 
 - Platform admin lintas tenant dan RBAC.
 - Self-service topic subscription oleh end-user.
-- Publikasi npm untuk `@notifhub/js` / `@notifhub/react` dan rilis tag `notifhub-go`.
+- Publish npm `@notifhub/js` / `@notifhub/react` (sudah siap dan lolos dry-run; menunggu
+  autentikasi 2FA pemilik akun, lihat `docs/npm-publishing.md`).
 - Penjadwalan pengiriman (`scheduled_at` hanya disimpan).
 - Approved template WhatsApp dan pesan inbound.
 - Refresh token admin dan pencabutan token subscriber per user.
