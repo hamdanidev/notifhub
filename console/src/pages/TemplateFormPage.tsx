@@ -20,6 +20,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
+import { EmailBlockBuilder } from '../components/EmailBlockBuilder';
 import { PageHeader } from '../components/PageHeader';
 import { PublishDialog } from '../components/PublishDialog';
 import { QueryState } from '../components/QueryState';
@@ -39,6 +40,12 @@ import {
   updateTemplate,
 } from '../lib/adminTemplates';
 import { describeError } from '../lib/format';
+import {
+  defaultBlockDocument,
+  parseBlockDocument,
+  renderBlocksToHtml,
+  type EmailBlockDocument,
+} from '../lib/emailBlocks';
 import type {
   Channel,
   PreviewResult,
@@ -96,6 +103,8 @@ const SNIPPETS: Array<{ label: string; value: string }> = [
   },
 ];
 
+const INITIAL_BLOCK_DOCUMENT = defaultBlockDocument();
+
 function emptyForm(): TemplateFormState {
   return {
     key: '',
@@ -103,7 +112,7 @@ function emptyForm(): TemplateFormState {
     locale: 'id',
     subject: '',
     preheader: '',
-    body: '<p style="font-family:Arial,sans-serif">Halo {{nama}},</p>',
+    body: renderBlocksToHtml(INITIAL_BLOCK_DOCUMENT),
     format: 'html',
     direction: 'auto',
     strictVariables: true,
@@ -139,12 +148,22 @@ function toForm(template: TemplateSummary): TemplateFormState {
   };
 }
 
+function snapshot(
+  form: TemplateFormState,
+  blockDocument: EmailBlockDocument,
+  editorMode: 'visual' | 'html',
+): string {
+  return JSON.stringify({ form, blockDocument, editorMode });
+}
+
 export function TemplateFormPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const isEdit = id !== undefined;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<TemplateFormState>(emptyForm);
+  const [blockDocument, setBlockDocument] = useState<EmailBlockDocument>(INITIAL_BLOCK_DOCUMENT);
+  const [editorMode, setEditorMode] = useState<'visual' | 'html'>('visual');
   const [current, setCurrent] = useState<TemplateSummary | null>(null);
   const [validation, setValidation] = useState<TemplateValidationIssue[]>([]);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
@@ -158,7 +177,7 @@ export function TemplateFormPage(): JSX.Element {
   const [testResult, setTestResult] = useState<TestSendResult | null>(null);
   const [actionError, setActionError] = useState<unknown>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-  const baselineRef = useRef<string>(JSON.stringify(emptyForm()));
+  const baselineRef = useRef<string>(snapshot(emptyForm(), INITIAL_BLOCK_DOCUMENT, 'visual'));
   const requestRef = useRef(0);
   const skipBlockerRef = useRef(false);
 
@@ -177,10 +196,21 @@ export function TemplateFormPage(): JSX.Element {
 
   useEffect(() => {
     if (existing.data !== undefined) {
-      setCurrent(existing.data);
+      const parsedDocument = parseBlockDocument(existing.data.builderData);
+      const mode =
+        parsedDocument !== null && existing.data.channel === 'email' ? 'visual' : 'html';
+      const document = parsedDocument ?? defaultBlockDocument();
       const next = toForm(existing.data);
+
+      if (parsedDocument !== null) {
+        next.body = renderBlocksToHtml(parsedDocument);
+      }
+
+      setCurrent(existing.data);
       setForm(next);
-      baselineRef.current = JSON.stringify(next);
+      setBlockDocument(document);
+      setEditorMode(mode);
+      baselineRef.current = snapshot(next, document, mode);
       setValidation([]);
       setPreview(null);
       setPreviewError(null);
@@ -189,16 +219,29 @@ export function TemplateFormPage(): JSX.Element {
 
   useEffect(() => {
     if (!isEdit) {
-      const next = emptyForm();
+      const document = defaultBlockDocument();
+      const next = {
+        ...emptyForm(),
+        body: renderBlocksToHtml(document),
+      };
       setForm(next);
-      baselineRef.current = JSON.stringify(next);
+      setBlockDocument(document);
+      setEditorMode('visual');
+      baselineRef.current = snapshot(next, document, 'visual');
       setCurrent(null);
     }
   }, [isEdit]);
 
+  useEffect(() => {
+    if (form.channel !== 'email' && editorMode === 'visual') {
+      setEditorMode('html');
+      setForm((previous) => ({ ...previous, body: '' }));
+    }
+  }, [editorMode, form.channel]);
+
   const dirty = useMemo(
-    () => JSON.stringify(form) !== baselineRef.current,
-    [form, baselineRef.current],
+    () => snapshot(form, blockDocument, editorMode) !== baselineRef.current,
+    [blockDocument, editorMode, form, baselineRef.current],
   );
 
   useEffect(() => {
@@ -237,6 +280,44 @@ export function TemplateFormPage(): JSX.Element {
 
   const readOnly = current?.status === 'published';
 
+  const changeEditorMode = (mode: 'visual' | 'html'): void => {
+    if (mode === editorMode) {
+      return;
+    }
+
+    if (mode === 'visual') {
+      if (form.channel !== 'email') {
+        return;
+      }
+
+      const confirmed = window.confirm(
+        'Mode visual memakai blocks, bukan mengimpor HTML yang sedang ada. HTML saat ini akan diganti saat disimpan. Lanjut?',
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      if (blockDocument.blocks.length === 0) {
+        setBlockDocument(defaultBlockDocument());
+      }
+
+      setEditorMode('visual');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Body akan memakai HTML hasil builder. Menyimpan dalam mode HTML akan menghapus data block builder. Lanjut?',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setForm((previous) => ({ ...previous, body: effectiveBody }));
+    setEditorMode('html');
+  };
+
   const parsed = useMemo(() => {
     try {
       const variables = JSON.parse(form.variablesText) as unknown;
@@ -260,6 +341,25 @@ export function TemplateFormPage(): JSX.Element {
     }
   }, [form.sampleText, form.variablesText]);
 
+  const variableKeys = useMemo(() => {
+    if (!isRecord(parsed.variables) || !Array.isArray(parsed.variables.variables)) {
+      return [];
+    }
+
+    return parsed.variables.variables
+      .filter(isRecord)
+      .map((variable) => (typeof variable.key === 'string' ? variable.key : ''))
+      .filter((key) => key.length > 0);
+  }, [parsed.variables]);
+
+  const effectiveBody = useMemo(
+    () =>
+      editorMode === 'visual' && form.channel === 'email'
+        ? renderBlocksToHtml(blockDocument)
+        : form.body,
+    [blockDocument, editorMode, form.body, form.channel],
+  );
+
   const buildPreviewInput = useCallback(() => {
     if (parsed.error !== null) {
       throw new Error(parsed.error);
@@ -270,7 +370,7 @@ export function TemplateFormPage(): JSX.Element {
       format: form.format,
       subject: form.channel === 'email' ? form.subject : null,
       preheader: form.channel === 'email' ? form.preheader : null,
-      body: form.body,
+      body: effectiveBody,
       locale: form.locale,
       direction: form.direction,
       strictVariables: form.strictVariables,
@@ -280,10 +380,10 @@ export function TemplateFormPage(): JSX.Element {
       themeId: form.channel === 'email' && form.themeId !== '' ? form.themeId : null,
       partialIds: form.channel === 'email' ? form.partialIds : [],
     };
-  }, [form, parsed]);
+  }, [effectiveBody, form, parsed]);
 
   const refreshPreview = useCallback(async () => {
-    if (form.body.trim().length === 0) {
+    if (effectiveBody.trim().length === 0) {
       setPreview(null);
       return;
     }
@@ -308,7 +408,7 @@ export function TemplateFormPage(): JSX.Element {
         setPreviewLoading(false);
       }
     }
-  }, [buildPreviewInput, form.body]);
+  }, [buildPreviewInput, effectiveBody]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -331,7 +431,9 @@ export function TemplateFormPage(): JSX.Element {
       const payload = {
         subject: form.channel === 'email' ? form.subject : undefined,
         preheader: form.channel === 'email' ? form.preheader : undefined,
-        body: form.body,
+        body: effectiveBody,
+        builderData:
+          editorMode === 'visual' && form.channel === 'email' ? blockDocument : null,
         format: form.format,
         direction: form.direction,
         strictVariables: form.strictVariables,
@@ -364,9 +466,20 @@ export function TemplateFormPage(): JSX.Element {
       setActionError(null);
       setValidation(result.validation);
       setCurrent(result);
+      const parsedDocument = parseBlockDocument(result.builderData);
+      const mode =
+        parsedDocument !== null && result.channel === 'email' ? 'visual' : 'html';
+      const document = parsedDocument ?? defaultBlockDocument();
       const next = toForm(result);
+
+      if (parsedDocument !== null) {
+        next.body = renderBlocksToHtml(parsedDocument);
+      }
+
       setForm(next);
-      baselineRef.current = JSON.stringify(next);
+      setBlockDocument(document);
+      setEditorMode(mode);
+      baselineRef.current = snapshot(next, document, mode);
       setSaveNotice(`Draft tersimpan (revision ${result.revision}).`);
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
       void queryClient.invalidateQueries({ queryKey: ['template', result.id] });
@@ -393,9 +506,20 @@ export function TemplateFormPage(): JSX.Element {
       setActionError(null);
       setValidation(result.validation);
       setCurrent(result);
+      const parsedDocument = parseBlockDocument(result.builderData);
+      const mode =
+        parsedDocument !== null && result.channel === 'email' ? 'visual' : 'html';
+      const document = parsedDocument ?? defaultBlockDocument();
       const next = toForm(result);
+
+      if (parsedDocument !== null) {
+        next.body = renderBlocksToHtml(parsedDocument);
+      }
+
       setForm(next);
-      baselineRef.current = JSON.stringify(next);
+      setBlockDocument(document);
+      setEditorMode(mode);
+      baselineRef.current = snapshot(next, document, mode);
       setPublishOpen(false);
       setSaveNotice(`Template dipublish sebagai versi ${result.version}.`);
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
@@ -565,6 +689,11 @@ export function TemplateFormPage(): JSX.Element {
                     setForm={setForm}
                     readOnly={readOnly === true}
                     isEdit={isEdit}
+                    editorMode={editorMode}
+                    onChangeEditorMode={changeEditorMode}
+                    blockDocument={blockDocument}
+                    setBlockDocument={setBlockDocument}
+                    variableKeys={variableKeys}
                     onInsertSnippet={(value) =>
                       setForm((previous) => ({ ...previous, body: `${previous.body}\n${value}` }))
                     }
@@ -639,14 +768,26 @@ function ContentTab({
   setForm,
   readOnly,
   isEdit,
+  editorMode,
+  onChangeEditorMode,
+  blockDocument,
+  setBlockDocument,
+  variableKeys,
   onInsertSnippet,
 }: {
   form: TemplateFormState;
   setForm: Dispatch<SetStateAction<TemplateFormState>>;
   readOnly: boolean;
   isEdit: boolean;
+  editorMode: 'visual' | 'html';
+  onChangeEditorMode: (mode: 'visual' | 'html') => void;
+  blockDocument: EmailBlockDocument;
+  setBlockDocument: Dispatch<SetStateAction<EmailBlockDocument>>;
+  variableKeys: string[];
   onInsertSnippet: (value: string) => void;
 }): JSX.Element {
+  const visualSupported = form.channel === 'email';
+  const useVisual = visualSupported && editorMode === 'visual';
   return (
     <>
       <Row className="g-3">
@@ -743,37 +884,73 @@ function ContentTab({
         </Row>
       ) : null}
 
-      <div className="d-flex align-items-center justify-content-between mt-3 mb-1">
+      <div className="d-flex align-items-center justify-content-between mt-3 mb-1 flex-wrap gap-2">
         <Form.Label className="mb-0">Body</Form.Label>
-        <div className="d-flex gap-1 flex-wrap">
-          {SNIPPETS.map((snippet) => (
-            <Button
-              key={snippet.label}
-              size="sm"
-              variant="outline-secondary"
-              disabled={readOnly}
-              onClick={() => onInsertSnippet(snippet.value)}
-            >
-              + {snippet.label}
-            </Button>
-          ))}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {visualSupported ? (
+            <div className="btn-group btn-group-sm" role="group" aria-label="Mode editor body">
+              <button
+                type="button"
+                className={useVisual ? 'btn btn-dark' : 'btn btn-outline-secondary'}
+                disabled={readOnly}
+                onClick={() => onChangeEditorMode('visual')}
+              >
+                Visual
+              </button>
+              <button
+                type="button"
+                className={!useVisual ? 'btn btn-dark' : 'btn btn-outline-secondary'}
+                disabled={readOnly}
+                onClick={() => onChangeEditorMode('html')}
+              >
+                HTML
+              </button>
+            </div>
+          ) : null}
+          {!useVisual ? (
+            <div className="d-flex gap-1 flex-wrap">
+              {SNIPPETS.map((snippet) => (
+                <Button
+                  key={snippet.label}
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={readOnly}
+                  onClick={() => onInsertSnippet(snippet.value)}
+                >
+                  + {snippet.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
-      <Form.Control
-        as="textarea"
-        rows={16}
-        className="font-monospace small"
-        value={form.body}
-        disabled={readOnly}
-        onChange={(event) => setForm((prev) => ({ ...prev, body: event.target.value }))}
-      />
-      <div className="d-flex justify-content-between small text-muted mt-1">
-        <span>
-          Handlebars: {'{{var}}'} escape HTML untuk email; {'{{{var}}}'} mentah. Teks memakai nilai
-          apa adanya.
-        </span>
-        <span>{form.body.length} karakter</span>
-      </div>
+      {useVisual ? (
+        <fieldset disabled={readOnly} className="border-0 p-0 m-0">
+          <EmailBlockBuilder
+            document={blockDocument}
+            onChange={setBlockDocument}
+            variableKeys={variableKeys}
+          />
+        </fieldset>
+      ) : (
+        <>
+          <Form.Control
+            as="textarea"
+            rows={16}
+            className="font-monospace small"
+            value={form.body}
+            disabled={readOnly}
+            onChange={(event) => setForm((prev) => ({ ...prev, body: event.target.value }))}
+          />
+          <div className="d-flex justify-content-between small text-muted mt-1">
+            <span>
+              Handlebars: {'{{var}}'} escape HTML untuk email; {'{{{var}}}'} mentah. Teks memakai
+              nilai apa adanya.
+            </span>
+            <span>{form.body.length} karakter</span>
+          </div>
+        </>
+      )}
       {form.channel === 'whatsapp' ? (
         <div className={form.body.length > 4096 ? 'small text-danger mt-1' : 'small text-muted mt-1'}>
           WhatsApp: {form.body.length}/4096 karakter

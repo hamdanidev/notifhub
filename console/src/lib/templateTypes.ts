@@ -29,6 +29,7 @@ export interface TemplateSummary {
   strictVariables: boolean;
   variables: unknown;
   sampleData: unknown;
+  builderData: unknown;
   layoutId: string | null;
   themeId: string | null;
   partialIds: string[];
@@ -180,6 +181,7 @@ export interface CreateTemplateInput {
   strictVariables?: boolean;
   variables?: unknown;
   sampleData?: unknown;
+  builderData?: unknown;
   layoutId?: string | null;
   themeId?: string | null;
   partialIds?: string[];
@@ -198,6 +200,7 @@ export interface UpdateTemplateInput {
   strictVariables?: boolean;
   variables?: unknown;
   sampleData?: unknown;
+  builderData?: unknown;
   layoutId?: string | null;
   themeId?: string | null;
   partialIds?: string[];

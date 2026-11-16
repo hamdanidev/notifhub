@@ -379,3 +379,10 @@ Desain dan batasan ada di `docs/template-system-design.md`.
 - Layout memakai galeri preset (transaksional/promo/notifikasi) + field logo/brand/footer;
   partial memakai form header/footer/CTA/signature. HTML tetap bisa diedit lewat mode advanced.
 - Detail dan batasan: `docs/email-authoring-ui-design.md`.
+
+### 11.2 Block builder email (2026-11-16)
+
+- Tab Konten punya toggle **Visual/HTML**. Visual menyediakan block heading, teks, gambar, tombol,
+  divider, spacer, dan dua kolom; properti block, reorder, duplikat, hapus, dan variable picker.
+- `builderData` JSON disimpan di samping `body` HTML; worker tidak membacanya. Template lama tanpa
+  builderData tetap memakai HTML. Detail: `docs/email-block-builder-design.md`.

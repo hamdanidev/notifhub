@@ -64,6 +64,7 @@ export interface TemplateView {
   strictVariables: boolean;
   variables: unknown;
   sampleData: unknown;
+  builderData: unknown;
   layoutId: string | null;
   themeId: string | null;
   partialIds: string[];
@@ -259,6 +260,7 @@ export class AdminTemplatesService {
             strictVariables: dto.strictVariables ?? false,
             variables: jsonInput(dto.variables),
             sampleData: jsonInput(dto.sampleData),
+            builderData: jsonInput(dto.builderData),
             layoutId: layout?.id ?? null,
             themeId: theme?.id ?? null,
             fallbackProvider: dto.fallbackProvider ?? null,
@@ -582,6 +584,7 @@ export class AdminTemplatesService {
           strictVariables: source.strictVariables,
           variables: jsonInput(source.variables),
           sampleData: jsonInput(source.sampleData),
+          builderData: jsonInput(source.builderData),
           layoutId: source.layoutId,
           themeId: source.themeId,
           fallbackProvider: source.fallbackProvider,
@@ -669,6 +672,7 @@ export class AdminTemplatesService {
           strictVariables: target.strictVariables,
           variables: jsonInput(target.variables),
           sampleData: jsonInput(target.sampleData),
+          builderData: jsonInput(target.builderData),
           layoutId: target.layoutId,
           themeId: target.themeId,
           fallbackProvider: target.fallbackProvider,
@@ -864,6 +868,9 @@ export class AdminTemplatesService {
             : { strictVariables: dto.strictVariables }),
           ...(dto.variables === undefined ? {} : { variables: jsonInput(dto.variables) }),
           ...(dto.sampleData === undefined ? {} : { sampleData: jsonInput(dto.sampleData) }),
+          ...(dto.builderData === undefined
+            ? {}
+            : { builderData: jsonInput(dto.builderData) }),
           ...(dto.layoutId === undefined ? {} : { layoutId: layout?.id ?? null }),
           ...(dto.themeId === undefined ? {} : { themeId: theme?.id ?? null }),
           revision: { increment: 1 },
@@ -966,6 +973,9 @@ export class AdminTemplatesService {
           ),
           sampleData: jsonInput(
             dto.sampleData === undefined ? existing.sampleData : dto.sampleData,
+          ),
+          builderData: jsonInput(
+            dto.builderData === undefined ? existing.builderData : dto.builderData,
           ),
           layoutId: layout?.id ?? null,
           themeId: theme?.id ?? null,
@@ -1232,6 +1242,7 @@ function hasContentChanges(dto: UpdateTemplateDto, existing: TemplateWithAssets)
     return true;
   if (dto.variables !== undefined) return true;
   if (dto.sampleData !== undefined) return true;
+  if (dto.builderData !== undefined) return true;
   if (dto.layoutId !== undefined && dto.layoutId !== existing.layoutId) return true;
   if (dto.themeId !== undefined && dto.themeId !== existing.themeId) return true;
   if (
@@ -1255,6 +1266,7 @@ function changedFields(dto: UpdateTemplateDto): string[] {
     'strictVariables',
     'variables',
     'sampleData',
+    'builderData',
     'layoutId',
     'themeId',
     'partialIds',
@@ -1323,6 +1335,7 @@ function toTemplateView(template: TemplateMeta, full: boolean): TemplateView {
     strictVariables: template.strictVariables,
     variables: template.variables,
     sampleData: template.sampleData,
+    builderData: template.builderData,
     layoutId: template.layoutId,
     themeId: template.themeId,
     partialIds: template.partials.map((link) => link.partialId),

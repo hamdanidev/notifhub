@@ -72,6 +72,7 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
   [email and preferences](docs/email-and-preferences.md) ·
   [template system](docs/template-system-design.md) ·
   [email authoring UI](docs/email-authoring-ui-design.md) ·
+  [email block builder](docs/email-block-builder-design.md) ·
   [webhooks](docs/webhooks.md) ·
   [admin API](docs/admin-api.md) ·
   [React and console](docs/react-and-console.md) ·

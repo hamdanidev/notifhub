@@ -68,7 +68,7 @@ Aturan kerja:
 | ApiKey table, admin auth, topics + membership, Admin API tenant-scoped | selesai & terverifikasi |
 | `@notifhub/react` (headless) + `NotifHubAdminClient` + `notifhub-console` | selesai & terverifikasi |
 | Console refresh/auto-refresh + resend failed (notification baru, audit link) | selesai & terverifikasi (tanpa browser automation) |
-| Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode (form theme, galeri layout, form partial) | selesai & terverifikasi (E12–E19, UI manual tanpa browser automation) |
+| Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode + block builder email (heading/teks/gambar/tombol/divider/spacer/dua kolom) | selesai & terverifikasi (E12–E20, UI manual tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
@@ -166,10 +166,11 @@ npx prisma migrate status
   export belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override dari
   ingest awal tidak tersimpan. Endpoint console memakai wrapper `HttpTransport` sementara sampai
   rilis `@notifhub/js` berikutnya.
-- Template system v2: block builder/MJML/juice, markdown in-app, Meta approved WhatsApp template,
-  plain-text alternative email, diff visual versi, approval maker-checker, dan retensi aset/audit
-  belum ada. Preview/test send memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis
-  pola, bukan parser penuh. Lihat `docs/template-system-design.md` §18.
+- Template system v2: drag-and-drop/undo pada block builder, loop/conditional visual,
+  MJML/juice, markdown in-app, Meta approved WhatsApp template, plain-text alternative email,
+  diff visual versi, approval maker-checker, dan retensi aset/audit belum ada. Preview/test send
+  memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis pola, bukan parser penuh.
+  Lihat `docs/template-system-design.md` §18 dan `docs/email-block-builder-design.md`.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.

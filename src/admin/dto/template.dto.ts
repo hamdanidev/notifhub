@@ -81,6 +81,11 @@ export class TemplateVariablesDto {
   @IsOptional()
   @IsObject()
   sampleData?: unknown;
+
+  @ApiPropertyOptional({ description: 'Opaque visual builder document (round-trip only)' })
+  @IsOptional()
+  @IsObject()
+  builderData?: unknown;
 }
 
 export class CreateTemplateDto extends TemplateVariablesDto {
@@ -232,6 +237,11 @@ export class UpdateTemplateDto {
   @IsOptional()
   @IsObject()
   sampleData?: unknown;
+
+  @ApiPropertyOptional({ description: 'Opaque visual builder document (round-trip only)' })
+  @IsOptional()
+  @IsObject()
+  builderData?: unknown;
 
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   @IsOptional()

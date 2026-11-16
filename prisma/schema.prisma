@@ -133,6 +133,7 @@ model NotificationTemplate {
   strictVariables    Boolean           @default(false)
   variables          Json?
   sampleData         Json?
+  builderData        Json?
   layoutId           String?
   layout             TemplateLayout?   @relation(fields: [layoutId], references: [id])
   themeId            String?

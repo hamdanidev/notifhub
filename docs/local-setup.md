@@ -331,7 +331,8 @@ Login with the bootstrapped admin (`ADMIN_EMAIL` and the password whose bcrypt h
 - Dashboard: status counts and a 14-day chart (aggregated client-side from the Admin API).
 - Notifications: filter by status/template/date; detail with recipients, attempts, and events.
 - Templates: list/filter status/channel/locale; editor draft/publish dengan preview, variabel,
-  layout/theme/partial, test send, dan riwayat/audit. Aset dikelola di Templates → Aset template.
+  layout/theme/partial, test send, riwayat/audit, serta editor body **Visual** (block builder) atau
+  **HTML**. Aset dikelola di Templates → Aset template.
 - Subscribers: list, detail, per-channel preference editor.
 - Topics: list, detail, membership replace/add with optional expiry.
 - API Keys: list, create (raw key shown once), revoke.

@@ -226,6 +226,7 @@ export function buildLayoutHtml(preset: LayoutPresetId, options: LayoutOptions):
     @media only screen and (max-width: 480px) {
       .nh-container { width: 100% !important; }
       .nh-pad { padding-left: 16px !important; padding-right: 16px !important; }
+      .nh-col { display: block !important; width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 12px !important; }
     }
     @media (prefers-color-scheme: dark) {
       .nh-body { background: #111827 !important; }

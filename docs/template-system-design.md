@@ -1465,7 +1465,8 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
   `TemplateDirection`/`TemplateAuditAction`, kolom baru `NotificationTemplate`, tabel
   `TemplateLayout`, `TemplateTheme`, `TemplatePartial`, `TemplatePartialLink`,
   `TemplateAuditEvent`, `TemplateTestSend`, index/foreign key, backfill `format` email dan
-  `publishedAt`.
+  `publishedAt`. Migrasi lanjutan `20261116160000_template_builder_data` menambah `builderData`
+  untuk round-trip block builder.
 - Renderer terpusat: `template.render.ts` (helper whitelist, layout/partial/theme, escaping
   sadar-channel, cache berbasis hash konten, sanitizer output), `template.variables.ts`,
   `template.safety.ts`; worker email/in-app/WhatsApp memakai resolver published + aset.
@@ -1474,7 +1475,7 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 - Console: daftar status/versi, editor dua panel dengan tab konten/variabel/aset/pengaturan,
   preview iframe sandbox desktop/mobile, sample JSON, snippet, publish/test send, riwayat/audit,
   halaman aset, guard unsaved changes (`useBlocker` + `beforeunload`), router data mode.
-- 19 E2E lulus (E1–E19), termasuk legacy send, draft/publish worker, preview, clone/rollback,
+- 20 E2E lulus (E1–E20), termasuk legacy send, draft/publish worker, preview, clone/rollback,
   tenant isolation, test send/rate limit, escaping teks/subject, payload admin vs ingest, dan
   legacy `PUT` yang membuat versi baru tanpa memutasi baris published.
 
@@ -1498,7 +1499,8 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - Sanitizer HTML/CSS berbasis pola, bukan parser penuh; sandbox iframe dan validasi publish adalah
   lapisan utama. `{{{ }}}` dinamis tetap disanitasi saat render.
-- Tidak ada block builder, MJML/juice, markdown in-app, Meta approved WhatsApp template,
+- Block builder MVP sudah tersedia (lihat `docs/email-block-builder-design.md`); drag-and-drop,
+  undo/redo, loop/conditional visual, MJML/juice, markdown in-app, Meta approved WhatsApp template,
   plain-text alternative email, diff visual versi, CodeMirror, atau approval maker-checker.
 - Test send hanya email/WhatsApp; in-app/SMS memakai preview.
 - Aset append-only dan belum ada penghapusan/retensi; audit/test send belum punya job retensi.

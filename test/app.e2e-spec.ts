@@ -911,4 +911,73 @@ describe('Template system e2e', () => {
     expect(summary.body.items[0].body).toBeNull();
     expect(summary.body.items[0].bodyPreview).toContain('versi 2');
   });
+
+  it('E20 builderData tersimpan, diperbarui, dipublish, dan diclone tanpa memengaruhi worker', async () => {
+    const builderData = {
+      version: 1,
+      blocks: [
+        { id: 'b1', type: 'heading', text: 'Halo {{nama}}', level: 1 },
+        { id: 'b2', type: 'text', text: 'Pesanan sudah dikirim.' },
+      ],
+    };
+
+    const created = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'builder.e2e',
+        channel: 'email',
+        locale: 'id',
+        format: 'html',
+        status: 'draft',
+        subject: 'Builder {{nama}}',
+        body: '<p>Halo {{nama}}</p><p>Pesanan sudah dikirim.</p>',
+        variables: {
+          version: 1,
+          variables: [{ key: 'nama', type: 'string', required: true, example: 'Budi' }],
+        },
+        sampleData: { nama: 'Budi' },
+        builderData,
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.builderData).toEqual(builderData);
+
+    const stored = await prisma.notificationTemplate.findUnique({
+      where: { id: created.body.id as string },
+      select: { builderData: true, status: true },
+    });
+    expect(stored).toMatchObject({ status: 'draft' });
+    expect(stored?.builderData).toEqual(builderData);
+
+    const updated = await request(server)
+      .put(`/api/v1/admin/templates/${created.body.id as string}`)
+      .set('Authorization', bearer(adminToken))
+      .send({
+        body: '<p>Halo {{nama}}</p><p>Pesanan sudah dikirim (versi 2).</p>',
+        builderData: {
+          version: 1,
+          blocks: [
+            { id: 'b1', type: 'heading', text: 'Halo {{nama}}', level: 1 },
+            { id: 'b2', type: 'text', text: 'Pesanan sudah dikirim (versi 2).' },
+          ],
+        },
+        expectedRevision: 0,
+      });
+    expect(updated.status).toBe(200);
+    expect(updated.body.builderData.blocks[1].text).toContain('versi 2');
+
+    const publish = await request(server)
+      .post(`/api/v1/admin/templates/${created.body.id as string}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: updated.body.revision as number });
+    expect(publish.status).toBe(200);
+    expect(publish.body.status).toBe('published');
+
+    const clone = await request(server)
+      .post(`/api/v1/admin/templates/${created.body.id as string}/clone`)
+      .set('Authorization', bearer(adminToken))
+      .send({ locale: 'en' });
+    expect(clone.status).toBe(201);
+    expect(clone.body.builderData).toEqual(updated.body.builderData);
+  });
 });
