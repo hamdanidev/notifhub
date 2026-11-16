@@ -1,7 +1,7 @@
 # Roadmap batasan template dan authoring
 
-Status: **P0 dan P1 terimplementasi dan terverifikasi** pada 2026-11-16; P2 belum dimulai.
-Lihat §11 dan §12. Desain disetujui sebelum implementasi masing-masing fase.
+Status: **P0, P1, dan slice P2 (D10) terimplementasi dan terverifikasi** pada 2026-11-16.
+Item P2 lain belum dimulai. Lihat §11, §12, dan §13.
 
 Tanggal: 2026-11-16
 Basis: `docs/template-system-design.md`, `docs/email-authoring-ui-design.md`,
@@ -40,7 +40,7 @@ terpisah dengan persetujuan baru.
 | 9 | Markdown in-app tertunda | **P2** | Tetap ditunda; prasyarat rilis SDK yang mendukung render markdown |
 | 10 | Meta approved WhatsApp tertunda | **P2** | Tetap ditunda; provider masih text-only, butuh model template Meta terpisah |
 | 11 | Sanitizer pola, preview manual tanpa Playwright | **P0/P2** | P0: tetap pola + sandbox + CSP, tambah corpus test; P2: evaluasi parser penuh/Playwright dengan persetujuan |
-| 12 | Versi template tidak dicatat per notifikasi | **P2** | Ditunda; usulan kolom nullable di `NotificationRecipient`, tanpa backfill |
+| 12 | Versi template tidak dicatat per notifikasi | **P2 (selesai)** | Kolom nullable `NotificationRecipient.templateId/templateVersion/templateResolvedAt`; worker mengisi saat resolve; tanpa backfill |
 | 13 | Aset belum usage count/proteksi hapus | **P1** | Tambah `usageCount` dan endpoint delete yang menolak aset terpakai (409) |
 
 ### 1.3 Prinsip yang dipakai
@@ -412,23 +412,22 @@ dokumentasi batas client; tanpa CSS inliner/MJML.**
 
 ### D10 — Pencatatan template version per notifikasi
 
-**Default: ditunda ke P2; tidak perlu untuk correctness saat ini.**
+**Default: diimplementasikan pada P2 (lihat §13); tetap tanpa backfill.**
 
 - Perilaku sekarang: template di-resolve saat worker memproses, bukan saat ingest. Job pending
   akan memakai versi published terbaru. Ini sudah didokumentasikan di desain template §D6.
 - Kebutuhan nyata: audit “konten apa yang benar-benar dikirim” untuk komplain/regulasi, dan
-  reproduksi saat investigasi. Saat ini bisa dilihat dari `templateId/version` di log dan
-  `delivery_attempts`, tetapi tidak tersimpan per recipient.
-- **Usulan P2** (aditif):
+  reproduksi saat investigasi.
+- **Implementasi P2** (aditif):
   - `NotificationRecipient.templateId String?`, `templateVersion Int?`, `templateResolvedAt
     DateTime?`.
-  - Worker email/in-app/WhatsApp mengisi setelah `resolve`, dalam transaksi yang sama dengan
-    status/attempt.
+  - Worker email/in-app/WhatsApp mengisi setelah `resolve` (sebelum preferensi/render/send),
+    hanya jika versi berubah atau belum tercatat.
   - Admin notification detail menampilkan versi; resend tetap memakai template aktif saat ini
     (batasan lama, terpisah).
-  - Tanpa backfill; baris lama `null`. Index opsional `[templateId]`.
-- Alasan tidak P0/P1: bukan bug keamanan/data; perubahan worker menyentuh tiga lane dan
-  membutuhkan test regresi tambahan. Dikerjakan bersama fitur audit/approval agar konsisten.
+  - Tanpa backfill; baris lama `null`. Index `[templateId]`.
+- Alasan ditempatkan di P2: bukan bug keamanan/data; perubahan worker menyentuh tiga lane dan
+  membutuhkan test regresi tambahan.
 
 ---
 
@@ -874,14 +873,14 @@ saja, tanpa perubahan data).
 - `npm run typecheck`, `npm run build`: lulus.
 - `npm run console:typecheck`, `npm run console:build`: lulus; bundle 982,54 KB / 286,01 KB gzip
   (naik ±2,5 KB dari sebelumnya).
-- `npx prisma migrate status`: database development dan test menerapkan 7 migrasi.
+- `npx prisma migrate status`: database development dan test menerapkan 8 migrasi.
 - Tidak ada dependency baru; `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 tidak berubah.
 
 ### 11.3 Deviasi dan catatan
 
-- `npx prisma generate` tidak dapat mengganti DLL engine saat dev watcher berjalan; tidak ada
-  perubahan model/field pada P0, sehingga client yang ada tetap valid dan build lulus. Generate
-  dapat dijalankan ulang saat dev server dihentikan.
+- `npx prisma generate` sempat gagal mengganti DLL engine saat dev watcher berjalan; setelah
+  watcher dihentikan, generate berhasil dan client baru dipakai untuk P2. P0 sendiri tidak
+  menambah model/field.
 - Preview/test send tetap memakai UI manual; tidak ada Playwright.
 - Warning dua kolom adalah warning, bukan error; layout kustom tanpa `.nh-col` tetap dapat
   disimpan/dipublish.
@@ -938,6 +937,51 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 
 ### 12.4 Berikutnya
 
-P2 (impor HTML, upload gambar, approval maker-checker/diff, versi template per notifikasi,
-markdown in-app, Meta WhatsApp, parser sanitizer penuh/Playwright) belum dimulai dan memerlukan
-persetujuan fase masing-masing.
+Slice P2 D10 sudah diimplementasikan (lihat §13). Item P2 lain (impor HTML, upload gambar,
+approval maker-checker/diff, markdown in-app, Meta WhatsApp, parser sanitizer penuh/Playwright)
+belum dimulai dan memerlukan persetujuan fase masing-masing.
+
+---
+
+## 13. Implementasi dan verifikasi P2 (D10)
+
+Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
+
+### 13.1 Perubahan yang diterapkan
+
+| Area | Perubahan |
+|---|---|
+| Schema | `NotificationRecipient.templateId`, `templateVersion`, `templateResolvedAt` (nullable, aditif); index `templateId`; migrasi `20261116180000_recipient_template_tracking` |
+| Worker | Email, in-app, dan WhatsApp mencatat template yang benar-benar di-resolve setelah `resolve`, sebelum preferensi/render/send; hanya update jika versi berubah atau belum tercatat |
+| Admin API | Detail notifikasi mengembalikan `templateId`, `templateVersion`, `templateResolvedAt` per recipient |
+| Console | Kolom **Template** di tabel recipient, menampilkan versi dan tautan ke editor template; baris lama menampilkan `—` |
+| Kompatibilitas | Tanpa backfill; data lama tetap `null`; worker/consumer tidak berubah; resend tetap memakai template aktif saat ini |
+
+### 13.2 Bukti verifikasi
+
+- `npm run test:e2e -- --runInBand`: **28/28** lulus; E28 baru memverifikasi versi 1 → publish
+  versi 2 → recipient baru memakai versi 2, sementara recipient lama tetap tercatat versi 1.
+- `npm run test:unit`: **19/19** lulus.
+- `npm run ci`: **6/6 langkah** lulus.
+- `npm run console:typecheck`, `npm run console:build`: lulus; bundle 988,04 KB / 287,64 KB gzip.
+- Migrasi diuji pada database **fresh**: 8/8 migrasi apply berurutan tanpa error.
+- `npx prisma migrate status`: 8 migrasi, dev dan test up to date.
+
+### 13.3 Perbaikan urutan migrasi
+
+Migrasi telemetry P0 semula dibuat dengan timestamp `20261116074659`, lebih kecil dari migrasi
+template system `20261116150000`. Akibatnya database fresh gagal apply karena
+`TemplateAuditEvent` belum ada. Migrasi di-rename menjadi
+`20261116170000_template_telemetry_indexes`, riwayat `_prisma_migrations` di dev/test diperbaiki,
+dan urutan diverifikasi pada database fresh. Ini penting untuk deployment/CI baru.
+
+### 13.4 Deviasi dan catatan
+
+- Pencatatan dilakukan setelah `resolve` dan sebelum preferensi/send, sehingga recipient yang
+  kemudian di-skip karena preferensi tetap memiliki jejak template. Ini bukan transaksi yang sama
+  dengan `recordSuccess`/`recordFailure`.
+- Jika template tidak ditemukan, metadata tetap `null`; job gagal seperti sebelumnya.
+- Kolom `templateId` sengaja tanpa foreign key: versi template tidak boleh terhapus/hilang dari
+  histori delivery.
+- Item P2 lain tetap ditunda karena membutuhkan storage, RBAC, parser dependency, rilis SDK,
+  atau perubahan provider WhatsApp.

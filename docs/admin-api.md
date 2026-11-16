@@ -446,7 +446,8 @@ Desain lengkap dan keputusan D1–D12 ada di `docs/template-system-design.md`.
   `409 asset_in_use`, dan `404` untuk aset tenant lain.
 - Roadmap P0/P1 menambahkan validasi `builderData`, plain-text email, retensi audit/test send,
   warning dua kolom, drag-and-drop/undo-redo console, serta ekspor HTML; lihat
-  `docs/template-limitations-roadmap.md`.
+  `docs/template-limitations-roadmap.md`. Detail notifikasi kini memuat `templateId`,
+  `templateVersion`, dan `templateResolvedAt` per recipient (P2 D10).
 - Payload admin memakai parser 1 MB (`TEMPLATE_MAX_PAYLOAD_BYTES`); ingest tetap
   `INGEST_MAX_PAYLOAD_BYTES` 64 KB.
 - Test send hanya email/WhatsApp, memakai template tersimpan, melewati preferensi, dibatasi

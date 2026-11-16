@@ -93,6 +93,18 @@ export class WhatsAppProcessor extends WorkerHost {
         throw new UnrecoverableError(`template not found: ${data.templateKey}`);
       }
 
+      if (
+        context.recipient.templateResolvedAt === null ||
+        context.recipient.templateId !== template.id ||
+        context.recipient.templateVersion !== template.version
+      ) {
+        await this.attempts.recordResolvedTemplate({
+          recipientRowId: context.recipient.id,
+          templateId: template.id,
+          templateVersion: template.version,
+        });
+      }
+
       const decision = await this.enforcement.evaluate(job, context.tenantId, subscriber?.timezone ?? null);
 
       if (decision.action === 'skip') {

@@ -128,6 +128,25 @@ export class DeliveryAttemptsService {
     });
   }
 
+  /**
+   * Records the exact published template version resolved for this recipient row. This is
+   * delivery provenance only; template resolution still happens when the worker processes the job.
+   */
+  async recordResolvedTemplate(params: {
+    recipientRowId: bigint;
+    templateId: string;
+    templateVersion: number;
+  }): Promise<void> {
+    await this.prisma.notificationRecipient.update({
+      where: { id: params.recipientRowId },
+      data: {
+        templateId: params.templateId,
+        templateVersion: params.templateVersion,
+        templateResolvedAt: new Date(),
+      },
+    });
+  }
+
   async recordSuccess(params: {
     recipientRowId: bigint;
     notificationId: string;

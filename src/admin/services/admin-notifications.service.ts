@@ -169,6 +169,12 @@ function toRecipientView(recipient: NotificationRecipient): Record<string, unkno
     attempts: recipient.attempts,
     providerName: recipient.providerName,
     providerMessageId: recipient.providerMessageId,
+    templateId: recipient.templateId,
+    templateVersion: recipient.templateVersion,
+    templateResolvedAt:
+      recipient.templateResolvedAt === null
+        ? null
+        : recipient.templateResolvedAt.toISOString(),
     lastError: recipient.lastError,
     sentAt: recipient.sentAt === null ? null : recipient.sentAt.toISOString(),
     deliveredAt: recipient.deliveredAt === null ? null : recipient.deliveredAt.toISOString(),

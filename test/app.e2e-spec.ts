@@ -1470,4 +1470,120 @@ describe('Template system e2e', () => {
     });
     expect(tenantBAssetStillThere).not.toBeNull();
   });
+
+  it('E28 mencatat templateId/version per recipient dan menampilkannya di admin detail', async () => {
+    const created = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'version.tracking.e2e',
+        channel: 'email',
+        locale: 'id',
+        subject: 'Versi 1',
+        body: '<p>Versi 1</p>',
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.status).toBe('published');
+
+    const firstNotify = await postNotify({
+      idempotency_key: `e2e-version-1-${randomUUID()}`,
+      template_key: 'version.tracking.e2e',
+      recipients: [RECIPIENT],
+      channels: ['email'],
+      data: {},
+    });
+    expect(firstNotify.status).toBe(202);
+    const firstNotificationId = firstNotify.body.notification_id as string;
+
+    const firstRecipient = await waitFor(
+      async () => {
+        const row = await prisma.notificationRecipient.findFirst({
+          where: {
+            notificationId: firstNotificationId,
+            recipientId: RECIPIENT,
+            channel: Channel.email,
+          },
+          select: {
+            status: true,
+            templateId: true,
+            templateVersion: true,
+            templateResolvedAt: true,
+          },
+        });
+
+        return row !== null && row.status !== 'pending' ? row : null;
+      },
+      'recipient versi 1 selesai diproses',
+    );
+    expect(firstRecipient).toMatchObject({
+      templateId: created.body.id,
+      templateVersion: 1,
+    });
+    expect(firstRecipient.templateResolvedAt).not.toBeNull();
+
+    const detail = await request(server)
+      .get(`/api/v1/admin/notifications/${firstNotificationId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(detail.status).toBe(200);
+    const detailRecipient = (detail.body.recipients as Array<Record<string, unknown>>).find(
+      (recipient) => recipient.channel === 'email',
+    );
+    expect(detailRecipient).toMatchObject({
+      templateId: created.body.id,
+      templateVersion: 1,
+    });
+
+    const updated = await request(server)
+      .put(`/api/v1/admin/templates/${created.body.id as string}`)
+      .set('Authorization', bearer(adminToken))
+      .send({ subject: 'Versi 2', body: '<p>Versi 2</p>' });
+    expect(updated.status).toBe(200);
+    expect(updated.body.version).toBe(2);
+    expect(updated.body.id).not.toBe(created.body.id);
+
+    const secondNotify = await postNotify({
+      idempotency_key: `e2e-version-2-${randomUUID()}`,
+      template_key: 'version.tracking.e2e',
+      recipients: [RECIPIENT],
+      channels: ['email'],
+      data: {},
+    });
+    expect(secondNotify.status).toBe(202);
+    const secondNotificationId = secondNotify.body.notification_id as string;
+
+    const secondRecipient = await waitFor(
+      async () => {
+        const row = await prisma.notificationRecipient.findFirst({
+          where: {
+            notificationId: secondNotificationId,
+            recipientId: RECIPIENT,
+            channel: Channel.email,
+          },
+          select: { status: true, templateId: true, templateVersion: true },
+        });
+
+        return row !== null && row.status !== 'pending' ? row : null;
+      },
+      'recipient versi 2 selesai diproses',
+    );
+    expect(secondRecipient).toMatchObject({
+      templateId: updated.body.id,
+      templateVersion: 2,
+    });
+
+    const firstStillVersionOne = await prisma.notificationRecipient.findFirst({
+      where: {
+        notificationId: firstNotificationId,
+        recipientId: RECIPIENT,
+        channel: Channel.email,
+      },
+      select: { templateId: true, templateVersion: true },
+    });
+    expect(firstStillVersionOne).toMatchObject({
+      templateId: created.body.id,
+      templateVersion: 1,
+    });
+  });
 });

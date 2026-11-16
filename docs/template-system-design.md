@@ -1506,7 +1506,8 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
   `DELETE` hanya untuk aset yang tidak direferensikan; aset yang dipakai tetap immutable.
 - Roadmap P0/P1 (2026-11-16) menambahkan validasi `builderData`, plain-text email otomatis,
   retensi telemetry, warning dua kolom, drag-and-drop/undo-redo, ekspor HTML, dan proteksi hapus
-  aset; lihat `docs/template-limitations-roadmap.md` §11–§12.
+  aset. Slice P2 D10 menambahkan pencatatan `templateId`/`templateVersion` per recipient; lihat
+  `docs/template-limitations-roadmap.md` §11–§13.
 - `preview` tidak menulis tabel audit (hanya log terstruktur); publish/test send diaudit.
 - Dukungan email client/dark mode tetap best effort dan diverifikasi manual.
 
@@ -1514,8 +1515,8 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - `npm run typecheck`, `npm run build`, `npm run console:typecheck`, `npm run console:build`,
   `npm run sdk:test` (lihat laporan akhir).
-- `npm run test:e2e -- --runInBand`: 27/27 lulus.
+- `npm run test:e2e -- --runInBand`: 28/28 lulus.
 - `npm run test:unit`: 19/19 lulus (builder, plain-text, sanitizer, provider, console blocks).
-- `npx prisma migrate status`: 7 migrasi, tidak ada pending (dev dan test).
+- `npx prisma migrate status`: 8 migrasi, tidak ada pending (dev dan test).
 - Console dev `http://127.0.0.1:5180/` merespons `200` setelah build; UI interaktif diverifikasi
   manual (tanpa Playwright).

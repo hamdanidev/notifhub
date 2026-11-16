@@ -245,6 +245,7 @@ export function NotificationDetailPage(): JSX.Element {
                 <tr>
                   <th>Recipient</th>
                   <th>Channel</th>
+                  <th>Template</th>
                   <th>Status</th>
                   <th>Attempts</th>
                   <th>Provider</th>
@@ -257,7 +258,7 @@ export function NotificationDetailPage(): JSX.Element {
               <tbody>
                 {recipients.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center text-muted py-4">
+                    <td colSpan={10} className="text-center text-muted py-4">
                       Tidak ada recipient dengan status ini.
                     </td>
                   </tr>
@@ -267,6 +268,15 @@ export function NotificationDetailPage(): JSX.Element {
                       <td>{asString(recipient.recipientId)}</td>
                       <td>
                         <ChannelBadge channel={asString(recipient.channel)} />
+                      </td>
+                      <td>
+                        {asString(recipient.templateId, '') !== '' ? (
+                          <Link to={`/templates/${asString(recipient.templateId)}/edit`}>
+                            v{asNumber(recipient.templateVersion)}
+                          </Link>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
                       </td>
                       <td>
                         <StatusBadge status={asString(recipient.status)} />

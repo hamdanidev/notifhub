@@ -167,11 +167,11 @@ npx prisma migrate status
   ingest awal tidak tersimpan. Endpoint console memakai wrapper `HttpTransport` sementara sampai
   rilis `@notifhub/js` berikutnya.
 - Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
-  WhatsApp template, upload gambar, impor HTML ke Visual, diff visual versi, approval
-  maker-checker, dan versi template per notifikasi belum ada. Drag-and-drop/undo-redo block
-  builder, ekspor HTML, serta usage count/proteksi hapus aset sudah tersedia (P1).
-  `builderData` divalidasi ketat oleh backend (schema v1, maksimum 200 block/64 KiB); plain-text
-  email digenerate otomatis dengan fallback HTML-only; audit/test send memiliki retensi
+  WhatsApp template, upload gambar, impor HTML ke Visual, diff visual versi, dan approval
+  maker-checker belum ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage
+  count/proteksi hapus aset, serta pencatatan versi template per recipient sudah tersedia
+  (P1/P2). `builderData` divalidasi ketat oleh backend (schema v1, maksimum 200 block/64 KiB);
+  plain-text email digenerate otomatis dengan fallback HTML-only; audit/test send memiliki retensi
   (180/730 hari, dapat dinonaktifkan). Aset hanya dapat dihapus jika tidak direferensikan.
   Preview/test send memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis pola, bukan
   parser penuh. Lihat `docs/template-system-design.md` §18,

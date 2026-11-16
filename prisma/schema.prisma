@@ -105,6 +105,9 @@ model NotificationRecipient {
   lastError         String?
   providerName      String?
   providerMessageId String?
+  templateId        String?
+  templateVersion   Int?
+  templateResolvedAt DateTime?   @db.Timestamptz
   sentAt            DateTime?    @db.Timestamptz
   deliveredAt       DateTime?    @db.Timestamptz
   readAt            DateTime?    @db.Timestamptz
@@ -113,6 +116,7 @@ model NotificationRecipient {
   @@unique([notificationId, recipientId, channel])
   @@index([recipientId, status])
   @@index([status])
+  @@index([templateId])
 }
 
 model NotificationTemplate {
