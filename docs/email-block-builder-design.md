@@ -66,7 +66,8 @@ Body HTML dihasilkan dari block dan disimpan seperti biasa. `builderData` tidak 
 - Loop/conditional Handlebars tidak direpresentasikan secara visual.
 - Two-column memakai tabel 50/50; stacking mobile bergantung pada `<style>` layout/theme dan
   divalidasi sebagai warning bila layout tidak mendukung `.nh-col`.
-- Belum ada upload gambar; memakai URL.
+- Upload gambar tersedia di block image (PNG/JPEG/WebP/GIF, maks 5 MB); URL manual tetap
+  didukung.
 - Belum ada impor HTML ke Visual; ekspor HTML tersedia.
 - Builder tidak menggantikan mode HTML advanced.
 

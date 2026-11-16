@@ -263,6 +263,21 @@ model TemplateTestSend {
   @@index([createdAt])
 }
 
+model TemplateImage {
+  id               String   @id @default(uuid())
+  tenantId         String   @default("default")
+  mimeType         String
+  size             Int
+  width            Int
+  height           Int
+  storageKey       String   @unique
+  checksum         String
+  createdByAdminId String?
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  @@index([tenantId, createdAt])
+}
+
 model NotificationPreference {
   id              String   @id @default(uuid())
   tenantId        String   @default("default")

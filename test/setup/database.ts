@@ -17,6 +17,7 @@ const TABLES = [
   'TemplateAuditEvent',
   'TemplatePartialLink',
   'NotificationTemplate',
+  'TemplateImage',
   'TemplateLayout',
   'TemplateTheme',
   'TemplatePartial',

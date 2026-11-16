@@ -7,5 +7,6 @@ dist-test/
 *.log
 .DS_Store
 coverage/
+var/
 .idea/
 .vscode/

@@ -1,7 +1,7 @@
 # Roadmap batasan template dan authoring
 
-Status: **P0, P1, dan slice P2 (D10) terimplementasi dan terverifikasi** pada 2026-11-16.
-Item P2 lain belum dimulai. Lihat §11, §12, dan §13.
+Status: **P0, P1, dan slice P2 (D10 + upload gambar) terimplementasi dan terverifikasi** pada
+2026-11-16. Item P2 lain belum dimulai. Lihat §11, §12, §13, dan §14.
 
 Tanggal: 2026-11-16
 Basis: `docs/template-system-design.md`, `docs/email-authoring-ui-design.md`,
@@ -33,7 +33,7 @@ terpisah dengan persetujuan baru.
 | 2 | Belum drag-and-drop/undo-redo | **P1** | Native HTML5 DnD + tombol naik/turun sebagai jalur keyboard; undo/redo stack lokal tanpa dependency |
 | 3 | HTML ↔ Visual belum impor/ekspor | **P1/P2** | Ekspor HTML di P1; impor HTML arbitrer **ditolak** sampai ada parser yang disetujui (P2) |
 | 4 | Dua kolom bergantung `.nh-col` | **P1** | Pertahankan tabel + media query; tambah warning validasi bila layout tidak punya `.nh-col` |
-| 5 | Belum upload gambar | **P2** | Tetap URL-only di fase ini; upload butuh storage, MIME sniffing, dan keputusan dependency |
+| 5 | Belum upload gambar | **P2 (selesai)** | Upload multipart tervalidasi (PNG/JPEG/WebP/GIF, maks 5 MiB/4000 px), storage lokal tenant-scoped, URL publik UUID; SVG ditolak |
 | 6 | Retensi audit/test send/aset | **P0/P1** | Cleanup test send 180 hari, audit 730 hari (bisa dimatikan); aset P1: hapus manual hanya jika usage=0 |
 | 7 | Belum approval maker-checker/diff | **P2** | Ditunda; butuh RBAC/role yang belum ada. Audit actor sudah tersedia |
 | 8 | Email HTML-only, tanpa plain-text | **P0** | Generate plain-text dari HTML final di server; fallback aman ke HTML-only; provider kirim multipart |
@@ -319,19 +319,22 @@ ke HTML-only; provider mengirim multipart/alternative.**
 
 ### D6 — Upload gambar vs URL-only
 
-**Default: tetap URL-only di fase ini; upload ditunda ke P2.**
+**Default: upload gambar diimplementasikan pada P2 (lihat §14); URL-only tetap didukung.**
 
 - URL gambar/logo tetap divalidasi `http/https` (sudah ada di console dan sanitizer).
 - Tidak ada fetch aset server-side, jadi tidak ada SSRF baru.
-- Alasan menunda:
-  - Butuh keputusan storage (lokal/S3-compatible), lifecycle, backup, dan biaya.
-  - Butuh MIME sniffing (magic bytes), batas ukuran/dimensi, penolakan SVG (XSS), sanitasi
-    metadata, dan mungkin antivirus.
-  - Butuh URL publik/signed URL, tenant prefix, dan rate limit upload.
-  - Menambah dependency (mis. `sharp`, `multer`/`@types/multer`) yang harus disetujui.
-- **Kriteria P2**: endpoint upload multipart, maksimum 5 MiB, MIME `image/png|jpeg|webp|gif`,
-  tanpa SVG, dimensi maksimum 4000×4000, nama file di-generate server, tenant-scoped, URL
-  hasil disimpan di block `image.url`. Tidak ada upload sampai ada persetujuan terpisah.
+- Implementasi:
+  - Endpoint multipart admin + `TemplateImage` tenant-scoped.
+  - Maksimum 5 MiB, MIME `image/png|jpeg|webp|gif`, tanpa SVG, dimensi maksimum 4000×4000.
+  - Magic bytes dan dimensi divalidasi server; nama file di-generate server; URL publik
+    unguessable UUID; `nosniff` + cache immutable.
+  - Storage lokal (`TEMPLATE_IMAGE_DIR`) dengan volume Docker; URL publik memakai
+    `TEMPLATE_IMAGE_BASE_URL` atau origin request.
+- Batasan yang tersisa: belum ada EXIF stripping/optimasi/antivirus, belum ada delete/orphan
+  cleanup, dan storage lokal belum cocok untuk multi-instance tanpa shared volume. Upload
+  S3-compatible menunggu keputusan terpisah.
+- Tanpa dependency runtime baru: `multer` sudah tersedia lewat `@nestjs/platform-express`;
+  tidak memakai `sharp`.
 
 ---
 
@@ -983,5 +986,53 @@ dan urutan diverifikasi pada database fresh. Ini penting untuk deployment/CI bar
 - Jika template tidak ditemukan, metadata tetap `null`; job gagal seperti sebelumnya.
 - Kolom `templateId` sengaja tanpa foreign key: versi template tidak boleh terhapus/hilang dari
   histori delivery.
-- Item P2 lain tetap ditunda karena membutuhkan storage, RBAC, parser dependency, rilis SDK,
-  atau perubahan provider WhatsApp.
+- Item P2 lain (impor HTML, approval/diff, markdown, Meta WhatsApp, parser sanitizer penuh/
+  Playwright) tetap ditunda karena membutuhkan RBAC, parser dependency, rilis SDK, atau
+  perubahan provider WhatsApp. Upload gambar diimplementasikan terpisah di §14.
+
+---
+
+## 14. Implementasi dan verifikasi P2 (upload gambar)
+
+Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
+
+### 14.1 Perubahan yang diterapkan
+
+| Area | Perubahan |
+|---|---|
+| Schema | Model `TemplateImage` (tenantId, mimeType, size, width, height, storageKey, checksum, createdByAdminId); migrasi `20261116190000_template_images` |
+| API admin | `POST /admin/template-assets/images` multipart field `file`; `GET` daftar gambar tenant |
+| API publik | `GET /api/v1/template-images/:id` tanpa auth; UUID, `Content-Type` dari metadata, `nosniff`, cache immutable |
+| Validasi | Magic bytes PNG/JPEG/WebP/GIF, dimensi maksimum 4000×4000, maksimum 5 MiB (env), SVG/teks ditolak |
+| Storage | `TEMPLATE_IMAGE_DIR` (default `var/template-images`), nama file UUID, checksum SHA-256; volume Docker `notifhub_prod_uploads` |
+| Console | Tombol unggah pada block `image`; URL hasil langsung mengisi `image.url`; tetap bisa memakai URL manual |
+| Konfigurasi | `TEMPLATE_IMAGE_DIR`, `TEMPLATE_IMAGE_MAX_BYTES`, `TEMPLATE_IMAGE_BASE_URL` |
+| Bugfix | `HttpExceptionFilter` mempertahankan `details` untuk 413 dari `PayloadTooLargeException` |
+
+### 14.2 Bukti verifikasi
+
+- `npm run test:unit`: **22/22** lulus (6 suite; termasuk deteksi PNG/GIF dan penolakan SVG).
+- `npm run test:e2e -- --runInBand`: **29/29** lulus; E29 menguji upload PNG, serving publik,
+  penolakan file menyamar, 413 oversize, dan file hilang.
+- `npm run ci`: **6/6 langkah** lulus.
+- `npm run console:typecheck`, `npm run console:build`: lulus; bundle 989,46 KB / 288,12 KB gzip.
+- Migrasi database fresh: **9/9** apply berurutan.
+- `npx prisma migrate status`: 9 migrasi, dev dan test up to date.
+
+### 14.3 Deviasi dan catatan
+
+- Storage lokal single-node; multi-instance membutuhkan shared volume atau object storage
+  (belum diputuskan).
+- Gambar disajikan publik dengan UUID unguessable, tanpa signed URL; ini kebutuhan email client.
+  Tidak ada data tenant lain yang dapat di-list lewat endpoint admin.
+- Belum ada EXIF stripping, re-encode/optimasi, antivirus, atau orphan cleanup. File yang
+  dihapus manual dari disk akan menghasilkan 404 dan log error.
+- `TEMPLATE_IMAGE_BASE_URL` perlu diisi di belakang reverse proxy agar URL absolut di email
+  benar; tanpa itu dipakai origin request.
+- URL-only tetap didukung; template yang sudah ada tidak berubah.
+
+### 14.4 Berikutnya
+
+Approval maker-checker/diff dipindahkan ke task berikutnya (posisi 2) sesuai permintaan. Item
+P2 lain (impor HTML, markdown, Meta WhatsApp, parser sanitizer penuh/Playwright) tetap menunggu
+keputusan fase.

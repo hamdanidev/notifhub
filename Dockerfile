@@ -41,6 +41,8 @@ COPY --from=prod-deps /app/prisma ./prisma
 COPY --from=prod-deps /app/package.json ./package.json
 
 ENV PORT=3000
+ENV TEMPLATE_IMAGE_DIR=/app/var/template-images
+RUN mkdir -p "$TEMPLATE_IMAGE_DIR" && chown -R node:node /app/var
 EXPOSE 3000
 
 USER node

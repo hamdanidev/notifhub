@@ -1586,4 +1586,74 @@ describe('Template system e2e', () => {
       templateVersion: 1,
     });
   });
+
+  it('E29 upload gambar tervalidasi dan disajikan publik', async () => {
+    const pixelPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2ZQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+
+    const uploaded = await request(server)
+      .post('/api/v1/admin/template-assets/images')
+      .set('Authorization', bearer(adminToken))
+      .attach('file', pixelPng, { filename: 'pixel.png', contentType: 'image/png' });
+
+    expect(uploaded.status).toBe(201);
+    expect(uploaded.body).toMatchObject({
+      mimeType: 'image/png',
+      width: 1,
+      height: 1,
+      size: pixelPng.length,
+    });
+    expect(uploaded.body.url).toContain(`/api/v1/template-images/${uploaded.body.id as string}`);
+
+    const publicPath = new URL(uploaded.body.url as string).pathname;
+    const served = await request(server).get(publicPath);
+    expect(served.status).toBe(200);
+    expect(served.headers['content-type']).toContain('image/png');
+    expect(served.headers['x-content-type-options']).toBe('nosniff');
+    expect(served.headers['cache-control']).toContain('immutable');
+
+    const list = await request(server)
+      .get('/api/v1/admin/template-assets/images')
+      .set('Authorization', bearer(adminToken));
+    expect(list.status).toBe(200);
+    expect(
+      (list.body.items as Array<{ id: string }>).some((item) => item.id === uploaded.body.id),
+    ).toBe(true);
+
+    const disguised = await request(server)
+      .post('/api/v1/admin/template-assets/images')
+      .set('Authorization', bearer(adminToken))
+      .attach('file', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'), {
+        filename: 'fake.png',
+        contentType: 'image/png',
+      });
+
+    expect(disguised.status).toBe(400);
+    expect(disguised.body.details.code).toBe('invalid_image');
+
+    const tooLarge = await request(server)
+      .post('/api/v1/admin/template-assets/images')
+      .set('Authorization', bearer(adminToken))
+      .attach('file', Buffer.alloc(5_242_881), {
+        filename: 'too-large.png',
+        contentType: 'image/png',
+      });
+
+    expect(tooLarge.status).toBe(413);
+    expect(tooLarge.body.details.code).toBe('image_too_large');
+
+    const missing = await request(server)
+      .post('/api/v1/admin/template-assets/images')
+      .set('Authorization', bearer(adminToken))
+      .send({});
+
+    expect(missing.status).toBe(400);
+    expect(missing.body.details.code).toBe('image_file_missing');
+
+    await prisma.templateImage.deleteMany({
+      where: { id: uploaded.body.id as string },
+    });
+  });
 });

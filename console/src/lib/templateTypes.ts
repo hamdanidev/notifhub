@@ -169,6 +169,16 @@ export interface PartialAsset {
   createdAt: string;
 }
 
+export interface TemplateImageAsset {
+  id: string;
+  url: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+  width: number;
+  height: number;
+  size: number;
+  createdAt: string;
+}
+
 export interface CreateTemplateInput {
   key: string;
   channel: Channel;

@@ -1499,15 +1499,15 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 - Sanitizer HTML/CSS berbasis pola, bukan parser penuh; sandbox iframe dan validasi publish adalah
   lapisan utama. `{{{ }}}` dinamis tetap disanitasi saat render.
 - Block builder MVP sudah tersedia (lihat `docs/email-block-builder-design.md`); loop/conditional
-  visual, MJML/juice, markdown in-app, Meta approved WhatsApp template, upload gambar, impor HTML
-  ke Visual, diff visual versi, CodeMirror, atau approval maker-checker belum ada.
+  visual, MJML/juice, markdown in-app, Meta approved WhatsApp template, impor HTML ke Visual,
+  diff visual versi, CodeMirror, atau approval maker-checker belum ada.
 - Test send hanya email/WhatsApp; in-app/SMS memakai preview.
 - Aset append-only dan belum ada penghapusan otomatis. Roadmap P1 menambahkan `usageCount` dan
   `DELETE` hanya untuk aset yang tidak direferensikan; aset yang dipakai tetap immutable.
 - Roadmap P0/P1 (2026-11-16) menambahkan validasi `builderData`, plain-text email otomatis,
   retensi telemetry, warning dua kolom, drag-and-drop/undo-redo, ekspor HTML, dan proteksi hapus
-  aset. Slice P2 D10 menambahkan pencatatan `templateId`/`templateVersion` per recipient; lihat
-  `docs/template-limitations-roadmap.md` §11–§13.
+  aset. Slice P2 menambahkan pencatatan `templateId`/`templateVersion` per recipient dan upload
+  gambar tervalidasi (storage lokal); lihat `docs/template-limitations-roadmap.md` §11–§14.
 - `preview` tidak menulis tabel audit (hanya log terstruktur); publish/test send diaudit.
 - Dukungan email client/dark mode tetap best effort dan diverifikasi manual.
 
@@ -1515,8 +1515,9 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - `npm run typecheck`, `npm run build`, `npm run console:typecheck`, `npm run console:build`,
   `npm run sdk:test` (lihat laporan akhir).
-- `npm run test:e2e -- --runInBand`: 28/28 lulus.
-- `npm run test:unit`: 19/19 lulus (builder, plain-text, sanitizer, provider, console blocks).
-- `npx prisma migrate status`: 8 migrasi, tidak ada pending (dev dan test).
+- `npm run test:e2e -- --runInBand`: 29/29 lulus.
+- `npm run test:unit`: 22/22 lulus (builder, plain-text, sanitizer, provider, console blocks,
+  image detection).
+- `npx prisma migrate status`: 9 migrasi, tidak ada pending (dev dan test).
 - Console dev `http://127.0.0.1:5180/` merespons `200` setelah build; UI interaktif diverifikasi
   manual (tanpa Playwright).

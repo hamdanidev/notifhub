@@ -92,19 +92,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   private normalize(exception: unknown): NormalizedError {
-    if (isPayloadTooLarge(exception)) {
-      const limit =
-        isRecord(exception) && typeof exception.limit === 'number'
-          ? exception.limit
-          : this.config.getOrThrow<number>('INGEST_MAX_PAYLOAD_BYTES');
-
-      return {
-        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
-        message: `Payload too large. The maximum accepted body size is ${limit} bytes.`,
-        error: 'Payload Too Large',
-      };
-    }
-
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const payload = exception.getResponse();
@@ -131,6 +118,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
 
       return { statusCode, message: exception.message, error: this.reasonPhrase(statusCode) };
+    }
+
+    if (isPayloadTooLarge(exception)) {
+      const limit =
+        isRecord(exception) && typeof exception.limit === 'number'
+          ? exception.limit
+          : this.config.getOrThrow<number>('INGEST_MAX_PAYLOAD_BYTES');
+
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        message: `Payload too large. The maximum accepted body size is ${limit} bytes.`,
+        error: 'Payload Too Large',
+      };
     }
 
     // Errors raised by express middleware (e.g. a malformed JSON body) carry a numeric

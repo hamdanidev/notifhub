@@ -167,14 +167,15 @@ npx prisma migrate status
   ingest awal tidak tersimpan. Endpoint console memakai wrapper `HttpTransport` sementara sampai
   rilis `@notifhub/js` berikutnya.
 - Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
-  WhatsApp template, upload gambar, impor HTML ke Visual, diff visual versi, dan approval
-  maker-checker belum ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage
-  count/proteksi hapus aset, serta pencatatan versi template per recipient sudah tersedia
-  (P1/P2). `builderData` divalidasi ketat oleh backend (schema v1, maksimum 200 block/64 KiB);
-  plain-text email digenerate otomatis dengan fallback HTML-only; audit/test send memiliki retensi
-  (180/730 hari, dapat dinonaktifkan). Aset hanya dapat dihapus jika tidak direferensikan.
-  Preview/test send memakai UI manual (tanpa Playwright); sanitizer HTML/CSS berbasis pola, bukan
-  parser penuh. Lihat `docs/template-system-design.md` §18,
+  WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
+  ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage count/proteksi hapus aset,
+  pencatatan versi template per recipient, serta upload gambar tervalidasi sudah tersedia
+  (P1/P2). Upload memakai storage lokal (`TEMPLATE_IMAGE_DIR`) dan URL publik UUID; belum ada
+  EXIF stripping/optimasi/orphan cleanup. `builderData` divalidasi ketat oleh backend (schema v1,
+  maksimum 200 block/64 KiB); plain-text email digenerate otomatis dengan fallback HTML-only;
+  audit/test send memiliki retensi (180/730 hari, dapat dinonaktifkan). Aset hanya dapat dihapus
+  jika tidak direferensikan. Preview/test send memakai UI manual (tanpa Playwright); sanitizer
+  HTML/CSS berbasis pola, bukan parser penuh. Lihat `docs/template-system-design.md` §18,
   `docs/email-block-builder-design.md`, dan `docs/template-limitations-roadmap.md`.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).

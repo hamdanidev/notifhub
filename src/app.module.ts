@@ -25,6 +25,7 @@ import { ProvidersModule } from './providers/providers.module';
 import { QueuesModule } from './queues/queues.module';
 import { SubscribersModule } from './subscribers/subscribers.module';
 import { SubscriberPreferencesModule } from './subscriber-preferences/subscriber-preferences.module';
+import { TemplateImagesModule } from './template-images/template-images.module';
 import { TopicsModule } from './topics/topics.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { WhatsAppWebhookModule } from './webhooks/whatsapp/whatsapp-webhook.module';
@@ -114,6 +115,7 @@ function resolveHeaderRequestId(request: IncomingMessage): string {
     WhatsAppWebhookModule,
     NotificationsModule,
     CleanupModule,
+    TemplateImagesModule,
     AdminModule,
     WorkersModule,
     IngestModule,

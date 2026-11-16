@@ -352,6 +352,10 @@ Notes:
 - Admin template/asset payloads use `TEMPLATE_MAX_PAYLOAD_BYTES` (default 1 MB); ingest remains
   limited by `INGEST_MAX_PAYLOAD_BYTES` (default 64 KB). Lihat
   `docs/template-system-design.md` untuk alur draft → preview → publish → test send.
+- Upload gambar template disimpan di `TEMPLATE_IMAGE_DIR` (default `var/template-images`,
+  di-ignore git). Maksimum `TEMPLATE_IMAGE_MAX_BYTES` (default 5 MB). Set
+  `TEMPLATE_IMAGE_BASE_URL` di belakang reverse proxy agar URL gambar di email absolut dan
+  stabil. Docker smoke stack memakai volume `notifhub_prod_uploads`.
 - Production build: `npm run console:build` (output `console/dist`), preview with
   `npm --prefix console run preview`.
 - Register the console origin in `CORS_ORIGINS` outside development.

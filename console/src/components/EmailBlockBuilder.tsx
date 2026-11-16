@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Card, Col, Form, Row } from 'react-bootstrap';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { Badge, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
+import { uploadTemplateImage } from '../lib/adminTemplates';
 import {
   BLOCK_TYPES,
   blockLabel,
@@ -437,6 +438,11 @@ export function EmailBlockBuilder({
                         onChange={(event) => update(block.id, { width: event.target.value })}
                       />
                     </Col>
+                    <Col xs={12}>
+                      <ImageUploadControl
+                        onUploaded={(url) => update(block.id, { url })}
+                      />
+                    </Col>
                   </Row>
                 ) : null}
 
@@ -539,14 +545,68 @@ export function EmailBlockBuilder({
   );
 }
 
+function ImageUploadControl({
+  onUploaded,
+}: {
+  onUploaded: (url: string) => void;
+}): JSX.Element {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = event.target.files?.[0];
+
+    if (file === undefined) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      const asset = await uploadTemplateImage(file);
+      onUploaded(asset.url);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Upload gambar gagal.');
+    } finally {
+      setBusy(false);
+
+      if (inputRef.current !== null) {
+        inputRef.current.value = '';
+      }
+    }
+  };
+
+  return (
+    <div>
+      <div className="d-flex align-items-center gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          className="form-control form-control-sm"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          aria-label="Unggah gambar template"
+          disabled={busy}
+          onChange={(event) => void handleFile(event)}
+        />
+        {busy ? <Spinner animation="border" size="sm" /> : null}
+      </div>
+      <Form.Text className="text-muted">
+        Atau unggah PNG/JPEG/WebP/GIF (maksimum 5 MB, tanpa SVG).
+      </Form.Text>
+      {error !== null ? <div className="small text-danger mt-1">{error}</div> : null}
+    </div>
+  );
+}
+
 function VariableInsert({
   keys,
   onInsert,
 }: {
   keys: string[];
   onInsert: (token: string) => void;
-}): JSX.Element | null {
-  const options = useMemo(
+}): JSX.Element | null {  const options = useMemo(
     () =>
       keys.map((key) => ({
         key,

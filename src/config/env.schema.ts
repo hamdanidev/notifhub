@@ -17,6 +17,11 @@ const optionalString = z.preprocess(
   z.string().optional(),
 );
 
+const optionalUrl = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.url().optional(),
+);
+
 const optionalPositiveInt = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
   z.coerce.number().int().positive().optional(),
@@ -40,6 +45,9 @@ export const envSchema = z
     TEMPLATE_AUDIT_RETENTION_DAYS: nonNegativeInt(730),
     INGEST_MAX_PAYLOAD_BYTES: positiveInt(65536),
     TEMPLATE_MAX_PAYLOAD_BYTES: positiveInt(1048576),
+    TEMPLATE_IMAGE_DIR: z.string().min(1).default('var/template-images'),
+    TEMPLATE_IMAGE_MAX_BYTES: positiveInt(5242880),
+    TEMPLATE_IMAGE_BASE_URL: optionalUrl,
     INGEST_RATE_LIMIT_PER_KEY: positiveInt(100),
     INGEST_RATE_LIMIT_WINDOW_SECONDS: positiveInt(60),
     PROVIDER_RATE_LIMIT_EMAIL_PER_SEC: positiveInt(10),

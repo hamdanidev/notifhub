@@ -215,6 +215,8 @@ Build manual: `docker build --target runner .`, `docker build -f console/Dockerf
 | `INGEST_RATE_LIMIT_PER_KEY`, `INGEST_RATE_LIMIT_WINDOW_SECONDS` | `100` per `60` detik (per IP) |
 | `IDEMPOTENCY_TTL_DAYS`, `RETENTION_DAYS` | `7`, `90` |
 | `TEMPLATE_TEST_SEND_RETENTION_DAYS`, `TEMPLATE_AUDIT_RETENTION_DAYS` | `180`, `730`; `0` menonaktifkan |
+| `TEMPLATE_IMAGE_DIR`, `TEMPLATE_IMAGE_MAX_BYTES` | `var/template-images`, `5242880` |
+| `TEMPLATE_IMAGE_BASE_URL` | Opsional; origin absolut untuk URL gambar di email |
 | `SSE_HEARTBEAT_INTERVAL_SECONDS`, `SSE_REPLAY_BUFFER_SECONDS` | `25`, `300` |
 | `CORS_ORIGINS` | `*` di development; daftar origin di produksi |
 | `NOTIFHUB_MODE` | `development` / `staging` / `production` |

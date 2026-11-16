@@ -10,6 +10,7 @@ import type {
   PreviewResult,
   Paged,
   TemplateAuditEvent,
+  TemplateImageAsset,
   TemplateListResult,
   TemplateMutation,
   TemplateStatus,
@@ -300,4 +301,38 @@ export function deletePartial(id: string): Promise<void> {
     `/template-assets/partials/${encodeURIComponent(id)}`,
     { retry: false },
   );
+}
+
+export async function uploadTemplateImage(file: File): Promise<TemplateImageAsset> {
+  const token = getToken();
+
+  if (token === undefined || token.length === 0) {
+    throw new Error('Sesi admin tidak tersedia. Silakan login ulang.');
+  }
+
+  const form = new FormData();
+  form.append('file', file);
+
+  const response = await fetch(
+    `${API_BASE_URL.replace(/\/+$/, '')}/api/v1/admin/template-assets/images`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    },
+  );
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as
+      | { message?: unknown; details?: { code?: unknown } }
+      | null;
+    const message =
+      typeof payload?.message === 'string'
+        ? payload.message
+        : `Upload gambar gagal (${response.status}).`;
+
+    throw new Error(message);
+  }
+
+  return (await response.json()) as TemplateImageAsset;
 }

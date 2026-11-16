@@ -444,6 +444,9 @@ Desain lengkap dan keputusan D1–D12 ada di `docs/template-system-design.md`.
 - Aset list/detail mengembalikan `usageCount`. `DELETE /admin/template-assets/{layouts,themes,
   partials}/:id` menghapus versi yang tidak direferensikan (`204`), menolak aset terpakai dengan
   `409 asset_in_use`, dan `404` untuk aset tenant lain.
+- Upload gambar: `POST /admin/template-assets/images` (multipart `file`) menyimpan PNG/JPEG/WebP/
+  GIF maksimum 5 MiB dan 4000×4000; `GET /admin/template-assets/images` daftar tenant.
+  `GET /api/v1/template-images/:id` menyajikan gambar publik (UUID) untuk email client.
 - Roadmap P0/P1 menambahkan validasi `builderData`, plain-text email, retensi audit/test send,
   warning dua kolom, drag-and-drop/undo-redo console, serta ekspor HTML; lihat
   `docs/template-limitations-roadmap.md`. Detail notifikasi kini memuat `templateId`,
