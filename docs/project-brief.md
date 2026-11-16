@@ -70,10 +70,11 @@ Aturan kerja:
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
-| Otomasi rilis: Jest e2e (E1–E10), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi lokal; workflow menunggu repo di-push ke GitHub |
+| Otomasi rilis: Jest e2e (E1–E10), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
+| Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
 
-Versi saat ini: root `0.10.0`, `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`,
-`notifhub-console` `0.1.0`, Go module `github.com/hamdanidev/notifhub-go` (Go 1.23).
+Versi saat ini: root `0.10.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
+`notifhub-console` `0.1.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
 
 ---
 

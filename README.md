@@ -7,6 +7,14 @@ Integration is SDK-first. Consumers trigger notifications through `POST /api/v1/
 (`X-API-Key`), browser clients use `@notifhub/js` / `@notifhub/react`, service consumers can use
 the Go SDK, and `/api/docs-json` is the single source of truth for SDK contracts.
 
+Packages are published:
+
+```bash
+npm install @notifhub/js                      # in-app client + admin client
+npm install @notifhub/react react react-dom   # headless React bindings
+go get github.com/hamdanidev/notifhub-go      # consumer API (release mirror)
+```
+
 ## What it does
 
 - **Channels**: in-app (SSE stream plus catch-up/read API), email (SMTP), and WhatsApp
@@ -93,8 +101,8 @@ The stack runs Postgres, Redis, a one-shot `migrate` job, the backend (`:3000`),
 
 ## Versions
 
-Root service `0.10.0`, `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`, `notifhub-console` `0.1.0`,
-Go module `github.com/hamdanidev/notifhub-go` (Go 1.23).
+Root service `0.10.0`; npm: `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`; `notifhub-console`
+`0.1.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
 
 ## License
 

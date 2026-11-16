@@ -1,7 +1,7 @@
 # Desain publikasi npm SDK JavaScript dan React
 
-Status: terimplementasi dan terverifikasi sampai `npm publish --dry-run`; publish ke registry menunggu
-autentikasi 2FA (lihat §11).
+Status: terpublikasi. `@notifhub/js@0.3.0` dan `@notifhub/react@0.2.0` tersedia di npm
+(lihat §11).
 Basis: `docs/project-brief.md`, `docs/usage/`, kondisi `packages/js-sdk` dan `packages/react`.
 
 ---
@@ -273,3 +273,20 @@ seluruh verifikasi di §7, lalu melaporkan hasil beserta deviasi. Publikasi ke n
    `--provenance`, dan `NPM_TOKEN` sebagai kredensial.
 10. **Sisa langkah**: publish `@notifhub/js` 0.3.0 lalu `@notifhub/react` 0.2.0 (urutan ini wajib),
     buat tag `js-v0.3.0` dan `react-v0.2.0`, lalu verifikasi `npm view` + instalasi dari registry.
+11. **Publikasi selesai.** Setelah 2FA ditangani oleh pemilik akun, kedua paket berhasil dipublish:
+    - `@notifhub/js@0.3.0` → `https://www.npmjs.com/package/@notifhub/js` (latest `0.3.0`)
+    - `@notifhub/react@0.2.0` → `https://www.npmjs.com/package/@notifhub/react` (latest `0.2.0`,
+      dependency `@notifhub/js: ^0.3.0`)
+
+    Registry membalas `202 Accepted` saat publish; dokumen paket muncul beberapa menit kemudian
+    (react butuh ±5 menit pada rilis pertama).
+12. **Verifikasi dari registry** (proyek bersih, bukan tarball/workspace): `npm install
+    @notifhub/js@0.3.0` lalu `require`/`import` → lulus; `npm install @notifhub/react@0.2.0
+    react@18 react-dom@18` lalu `require`/`import` → 6 ekspor tersedia dan dependency js terpasang
+    otomatis.
+13. **Tag rilis** `js-v0.3.0` dan `react-v0.2.0` dibuat pada commit `57737da` dan di-push; workflow
+    `publish-npm.yml` akan memakai tag ini sebagai guard.
+14. **Catatan:** paket juga memiliki versi placeholder `0.0.0-stage` yang dipublikasikan pemilik akun
+    sebelum rilis; `latest` sudah menunjuk ke versi rilis (`0.3.0`/`0.2.0`), jadi `npm install
+    @notifhub/js` memasang versi yang benar. Placeholder itu tidak dihapus/dideprecate tanpa
+    keputusan pemilik.
