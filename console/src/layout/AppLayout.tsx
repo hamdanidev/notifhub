@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 
 interface NavItem {
   to: string;
   label: string;
+  icon: IconName;
   end?: boolean;
 }
 
@@ -13,24 +14,27 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Workspace',
     items: [
-      { to: '/', label: 'Dashboard', end: true },
-      { to: '/notifications', label: 'Notifications' },
-      { to: '/templates', label: 'Templates' },
-      { to: '/templates/assets', label: 'Aset template' },
+      { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
+      { to: '/notifications', label: 'Notifications', icon: 'bell' },
+      { to: '/templates', label: 'Templates', icon: 'template' },
+      { to: '/templates/assets', label: 'Aset template', icon: 'layers' },
     ],
   },
   {
     title: 'Audience',
     items: [
-      { to: '/subscribers', label: 'Subscribers' },
-      { to: '/topics', label: 'Topics' },
+      { to: '/subscribers', label: 'Subscribers', icon: 'users' },
+      { to: '/topics', label: 'Topics', icon: 'layers' },
     ],
   },
   {
     title: 'Developer',
-    items: [{ to: '/api-keys', label: 'API keys' }],
+    items: [{ to: '/api-keys', label: 'API keys', icon: 'key' }],
   },
 ];
+
+const SIDEBAR_STORAGE_KEY = 'notifhub.console.sidebarCollapsed';
+const MOBILE_QUERY = '(max-width: 959.98px)';
 
 function pageTitle(pathname: string): string {
   if (pathname === '/') return 'Dashboard';
@@ -42,11 +46,48 @@ function pageTitle(pathname: string): string {
   return 'Console';
 }
 
+function initialCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function initialMobile(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches;
+}
+
 export function AppLayout(): JSX.Element {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const [isMobile, setIsMobile] = useState(initialMobile);
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_QUERY);
+    const onChange = (): void => {
+      setIsMobile(media.matches);
+
+      if (!media.matches) {
+        setMenuOpen(false);
+      }
+    };
+
+    media.addEventListener('change', onChange);
+
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed ? '1' : '0');
+    } catch {
+      // localStorage can be unavailable in private/embedded contexts.
+    }
+  }, [collapsed]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -61,9 +102,29 @@ export function AppLayout(): JSX.Element {
     navigate('/login', { replace: true });
   };
 
+  const handleSidebarToggle = (): void => {
+    if (isMobile) {
+      setMenuOpen((open) => !open);
+      return;
+    }
+
+    setCollapsed((value) => !value);
+  };
+
+  const sidebarToggleLabel = isMobile
+    ? menuOpen
+      ? 'Tutup menu'
+      : 'Buka menu'
+    : collapsed
+      ? 'Perluas sidebar'
+      : 'Ciutkan sidebar';
+
   return (
-    <div className="app-shell">
-      <aside className={menuOpen ? 'app-sidebar open' : 'app-sidebar'}>
+    <div className={`app-shell${collapsed && !isMobile ? ' sidebar-collapsed' : ''}`}>
+      <aside
+        className={`app-sidebar${menuOpen ? ' open' : ''}${collapsed && !isMobile ? ' collapsed' : ''}`}
+        aria-label="Navigasi utama"
+      >
         <div className="app-brand">
           <div className="brand-mark">N</div>
           <div className="brand-text">
@@ -81,11 +142,14 @@ export function AppLayout(): JSX.Element {
                   key={item.to}
                   to={item.to}
                   end={item.end}
+                  title={collapsed && !isMobile ? item.label : undefined}
+                  aria-label={item.label}
                   className={({ isActive }) =>
                     isActive ? 'app-nav-link active' : 'app-nav-link'
                   }
                 >
-                  {item.label}
+                  <Icon name={item.icon} size={16} />
+                  <span className="nav-label">{item.label}</span>
                 </NavLink>
               ))}
             </div>
@@ -119,10 +183,23 @@ export function AppLayout(): JSX.Element {
             <button
               type="button"
               className="app-menu-toggle"
-              aria-label="Buka menu"
-              onClick={() => setMenuOpen((open) => !open)}
+              aria-label={sidebarToggleLabel}
+              title={sidebarToggleLabel}
+              aria-expanded={isMobile ? menuOpen : !collapsed}
+              onClick={handleSidebarToggle}
             >
-              <Icon name="menu" size={16} />
+              <Icon
+                name={
+                  isMobile
+                    ? menuOpen
+                      ? 'x'
+                      : 'menu'
+                    : collapsed
+                      ? 'chevron-right'
+                      : 'chevron-left'
+                }
+                size={16}
+              />
             </button>
             <span className="app-crumb">Tenant / {pageTitle(location.pathname)}</span>
           </div>
