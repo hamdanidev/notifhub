@@ -33,23 +33,25 @@ enum OverallStatus {
 }
 
 model Notification {
-  id                   String       @id @default(uuid())
-  idempotencyKey       String       @unique
-  idempotencyExpiresAt DateTime
-  tenantId             String       @default("default")
-  templateKey          String
-  payload              Json
-  priority             Int          @default(3)
-  overallStatus        OverallStatus @default(pending)
-  targetType           String       @default("recipients")
-  targetSnapshot       Json?
-  groupAckRequired     Boolean      @default(false)
-  groupAckDeadline     DateTime?    @db.Timestamptz
-  groupAcknowledgedAt  DateTime?    @db.Timestamptz
-  groupAcknowledgedBy  String?
-  createdAt            DateTime     @default(now()) @db.Timestamptz
-  updatedAt            DateTime     @updatedAt @db.Timestamptz
-  deletedAt            DateTime?    @db.Timestamptz
+  id                     String        @id @default(uuid())
+  idempotencyKey         String        @unique
+  idempotencyExpiresAt   DateTime
+  tenantId               String        @default("default")
+  templateKey            String
+  payload                Json
+  priority               Int           @default(3)
+  overallStatus          OverallStatus @default(pending)
+  targetType             String        @default("recipients")
+  targetSnapshot         Json?
+  resendOfNotificationId String?
+  resendMode             String?
+  groupAckRequired       Boolean       @default(false)
+  groupAckDeadline       DateTime?     @db.Timestamptz
+  groupAcknowledgedAt    DateTime?     @db.Timestamptz
+  groupAcknowledgedBy    String?
+  createdAt              DateTime      @default(now()) @db.Timestamptz
+  updatedAt              DateTime      @updatedAt @db.Timestamptz
+  deletedAt              DateTime?     @db.Timestamptz
 
   recipients       NotificationRecipient[]
   billingEvents    BillingEvent[]
@@ -60,23 +62,24 @@ model Notification {
   @@index([overallStatus])
   @@index([idempotencyExpiresAt])
   @@index([priority, overallStatus])
+  @@index([resendOfNotificationId])
 }
 
 model NotificationRecipient {
-  id                BigInt   @id @default(autoincrement())
+  id                BigInt       @id @default(autoincrement())
   notificationId    String
   notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   recipientId       String
   channel           Channel
-  status            Status   @default(pending)
-  attempts          Int      @default(0)
+  status            Status       @default(pending)
+  attempts          Int          @default(0)
   lastError         String?
   providerName      String?
   providerMessageId String?
-  sentAt            DateTime? @db.Timestamptz
-  deliveredAt       DateTime? @db.Timestamptz
-  readAt            DateTime? @db.Timestamptz
-  acknowledgedAt    DateTime? @db.Timestamptz
+  sentAt            DateTime?    @db.Timestamptz
+  deliveredAt       DateTime?    @db.Timestamptz
+  readAt            DateTime?    @db.Timestamptz
+  acknowledgedAt    DateTime?    @db.Timestamptz
 
   @@unique([notificationId, recipientId, channel])
   @@index([recipientId, status])
@@ -132,7 +135,7 @@ model DeliveryEvent {
 }
 
 model DeliveryAttempt {
-  id             BigInt   @id @default(autoincrement())
+  id             BigInt       @id @default(autoincrement())
   notificationId String
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   recipientId    String
@@ -144,7 +147,7 @@ model DeliveryAttempt {
   errorMessage   String?
   errorStack     String?
   durationMs     Int
-  occurredAt     DateTime @default(now()) @db.Timestamptz
+  occurredAt     DateTime     @default(now()) @db.Timestamptz
 
   @@index([notificationId])
   @@index([status, occurredAt])
@@ -152,12 +155,12 @@ model DeliveryAttempt {
 }
 
 model BillingEvent {
-  id             BigInt   @id @default(autoincrement())
+  id             BigInt       @id @default(autoincrement())
   notificationId String
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  tenantId       String   @default("default")
+  tenantId       String       @default("default")
   eventType      String
-  occurredAt     DateTime @default(now()) @db.Timestamptz
+  occurredAt     DateTime     @default(now()) @db.Timestamptz
 
   @@index([tenantId, occurredAt])
   @@index([notificationId])

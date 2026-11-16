@@ -5,6 +5,7 @@ import { Alert, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
 import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { adminClient } from '../lib/adminClient';
 import { describeError, formatDateTime } from '../lib/format';
 
@@ -83,9 +84,19 @@ export function TopicDetailPage(): JSX.Element {
         title="Topic detail"
         subtitle={topicKey}
         actions={
-          <Link to="/topics" className="btn btn-sm btn-outline-secondary">
-            Kembali
-          </Link>
+          <>
+            <RefreshControl
+              isFetching={topic.isFetching || members.isFetching}
+              updatedAt={Math.max(topic.dataUpdatedAt, members.dataUpdatedAt)}
+              onRefresh={() => {
+                void topic.refetch();
+                void members.refetch();
+              }}
+            />
+            <Link to="/topics" className="btn btn-sm btn-outline-secondary">
+              Kembali
+            </Link>
+          </>
         }
       />
 

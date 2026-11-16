@@ -29,6 +29,18 @@ export function formatDay(value: string): string {
   return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd');
 }
 
+export function formatUpdatedAt(timestamp: number, now = Date.now()): string {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return 'belum dimuat';
+  }
+
+  if (now - timestamp < 5_000) {
+    return 'baru saja';
+  }
+
+  return formatDistanceToNowStrict(new Date(timestamp), { addSuffix: true });
+}
+
 export function describeError(error: unknown): string {
   if (isNotifHubError(error)) {
     switch (error.code) {

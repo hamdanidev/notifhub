@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from '../auth/auth.module';
+import { QueuesModule } from '../queues/queues.module';
 import { TopicsModule } from '../topics/topics.module';
 import { AdminApiKeysController } from './controllers/admin-api-keys.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
@@ -10,6 +11,7 @@ import { AdminTemplatesController } from './controllers/admin-templates.controll
 import { AdminTopicsController } from './controllers/admin-topics.controller';
 import { AdminApiKeysService } from './services/admin-api-keys.service';
 import { AdminAuthService } from './services/admin-auth.service';
+import { AdminNotificationResendService } from './services/admin-notification-resend.service';
 import { AdminNotificationsService } from './services/admin-notifications.service';
 import { AdminSubscribersService } from './services/admin-subscribers.service';
 import { AdminTemplatesService } from './services/admin-templates.service';
@@ -23,6 +25,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
   imports: [
     AuthModule,
     TopicsModule,
+    QueuesModule,
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 5 }]),
   ],
   controllers: [
@@ -40,6 +43,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
     AdminSubscribersService,
     AdminTopicsService,
     AdminNotificationsService,
+    AdminNotificationResendService,
     ThrottlerGuard,
   ],
 })

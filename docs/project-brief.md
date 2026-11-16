@@ -48,7 +48,7 @@ Aturan kerja:
 - Topic: membership push, auto-create, `isTimeBound` + expiry; ingest mendukung `recipients` +
   `topics` (union, dedupe, `targetType`).
 - Admin API tenant-scoped: auth, api-keys, templates, subscribers + preferences, topics,
-  notifications + detail. Login throttled 5/menit.
+  notifications + detail + resend failed. Login throttled 5/menit.
 - Preference center end-user: `GET/PUT /api/v1/subscriber/preferences` pada lane subscriber JWT,
   tenant-scoped, rate limit 60/menit per IP.
 - Schema penting: `Notification`, `NotificationRecipient`, `DeliveryAttempt`, `DeliveryEvent`,
@@ -67,11 +67,12 @@ Aturan kerja:
 | Webhook signed → `delivery_events`, rollup status, retention/idempotency cleanup | selesai & terverifikasi |
 | ApiKey table, admin auth, topics + membership, Admin API tenant-scoped | selesai & terverifikasi |
 | `@notifhub/react` (headless) + `NotifHubAdminClient` + `notifhub-console` | selesai & terverifikasi |
+| Console refresh/auto-refresh + resend failed (notification baru, audit link) | selesai & terverifikasi (tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
-| Otomasi rilis: Jest e2e (E1–E10), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
+| Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
 
 Versi saat ini: root `0.10.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
@@ -86,7 +87,7 @@ Versi saat ini: root `0.10.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `routing/`, `preferences/`, `subscriber-preferences/`, `templates/`, `subscribers/`,
   `notifications/`, `cleanup/`, `queues/`, `metrics/`, `health/`, `config/`, `common/`.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
-- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (3 migrasi).
+- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (4 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
 - `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile`, `console/nginx.conf`,
   `docker-compose.prod.yml`, `.env.prod.example`.
@@ -160,6 +161,10 @@ npx prisma migrate status
 - Sample `sample/in-app-web` memakai middleware Vite dev-only untuk menerbitkan token dan memanggil
   ingest. Ia bukan pola produksi, tidak punya test runner sendiri, dan interaksi visualnya belum
   diotomasi; verifikasi memakai HTTP/SSE/DB serta `typecheck`/`build`.
+- Console baru mendukung re-send **failed-only**. Re-send `all`, search notification, compose/send,
+  template preview/test, dan export belum ada. Re-send memakai template aktif/data Subscriber saat
+  ini; inline override dari ingest awal tidak tersimpan. Endpoint console memakai wrapper
+  `HttpTransport` sementara sampai rilis `@notifhub/js` berikutnya.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.

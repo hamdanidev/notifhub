@@ -148,6 +148,9 @@ function toNotificationView(notification: Notification): Record<string, unknown>
     overallStatus: notification.overallStatus,
     targetType: notification.targetType,
     targetSnapshot: notification.targetSnapshot,
+    payload: notification.payload,
+    resendOfNotificationId: notification.resendOfNotificationId,
+    resendMode: notification.resendMode,
     groupAckRequired: notification.groupAckRequired,
     groupAckDeadline:
       notification.groupAckDeadline === null ? null : notification.groupAckDeadline.toISOString(),
@@ -197,6 +200,7 @@ function toEventView(event: DeliveryEvent): Record<string, unknown> {
     channel: event.channel,
     providerName: event.providerName,
     eventType: event.eventType,
+    rawPayload: event.rawPayload,
     occurredAt: event.occurredAt.toISOString(),
   };
 }

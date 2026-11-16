@@ -7,12 +7,18 @@ import { DataTable, type DataTableColumn } from '../components/DataTable';
 import { Pagination } from '../components/Pagination';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { StatusBadge } from '../components/StatusBadge';
 import { adminClient } from '../lib/adminClient';
 import { formatDateTime } from '../lib/format';
 
 const LIMIT = 20;
+const AUTO_REFRESH_MS = 5_000;
 const STATUS_OPTIONS: Array<OverallStatus | ''> = ['', 'pending', 'partial', 'sent', 'failed'];
+
+function hasInFlight(items: NotificationSummary[]): boolean {
+  return items.some((item) => item.overallStatus === 'pending' || item.overallStatus === 'partial');
+}
 
 export function NotificationsPage(): JSX.Element {
   const [status, setStatus] = useState<OverallStatus | ''>('');
@@ -32,7 +38,11 @@ export function NotificationsPage(): JSX.Element {
         ...(from === '' ? {} : { from: `${from}T00:00:00.000Z` }),
         ...(to === '' ? {} : { to: `${to}T23:59:59.999Z` }),
       }),
+    refetchInterval: (current) =>
+      hasInFlight(current.state.data?.items ?? []) ? AUTO_REFRESH_MS : false,
   });
+
+  const autoRefreshMs = hasInFlight(query.data?.items ?? []) ? AUTO_REFRESH_MS : undefined;
 
   const columns = useMemo<DataTableColumn<NotificationSummary>[]>(
     () => [
@@ -74,7 +84,20 @@ export function NotificationsPage(): JSX.Element {
 
   return (
     <>
-      <PageHeader title="Notifications" subtitle="Semua notifikasi tenant ini." />
+      <PageHeader
+        title="Notifications"
+        subtitle="Semua notifikasi tenant ini."
+        actions={
+          <RefreshControl
+            isFetching={query.isFetching}
+            updatedAt={query.dataUpdatedAt}
+            autoRefreshMs={autoRefreshMs}
+            onRefresh={() => {
+              void query.refetch();
+            }}
+          />
+        }
+      />
 
       <Card className="filter-card mb-3">
         <Card.Body>

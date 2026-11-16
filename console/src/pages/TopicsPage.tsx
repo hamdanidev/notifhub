@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from '../components/DataTable';
 import { Pagination } from '../components/Pagination';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { adminClient } from '../lib/adminClient';
 import { formatDateTime } from '../lib/format';
 
@@ -57,6 +58,15 @@ export function TopicsPage(): JSX.Element {
       <PageHeader
         title="Topics"
         subtitle="Topic dibuat otomatis saat membership pertama di-push."
+        actions={
+          <RefreshControl
+            isFetching={query.isFetching}
+            updatedAt={query.dataUpdatedAt}
+            onRefresh={() => {
+              void query.refetch();
+            }}
+          />
+        }
       />
 
       <Card className="filter-card mb-3">

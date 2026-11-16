@@ -270,6 +270,10 @@ README console.
 | D10 | Console tidak memakai SSE admin (tidak ada endpoint SSE admin); SSE hanya untuk `@notifhub/react` di aplikasi end-user | Ya |
 | D11 | Login page menampilkan pesan rate limit (429) dan kredensial salah (401) secara berbeda | Ya |
 | D12 | Versi root naik ke `0.6.0`; `@notifhub/js` `0.2.0`, `@notifhub/react` `0.1.0` | Ya |
+| D13 | Refresh per halaman + waktu update; `refetchOnWindowFocus`; auto-refresh 5s saat notifikasi in-flight | Ya |
+| D14 | Re-send failed membuat notification baru (bukan mutasi), audit `resendOfNotificationId`/`resendMode` | Ya |
+| D15 | Re-send failed memakai wrapper `HttpTransport` console sampai method masuk rilis SDK berikutnya | Ya |
+| D16 | Re-send tidak membuat BillingEvent baru; `all` belum didukung | Ya |
 
 ---
 
@@ -299,3 +303,54 @@ README console.
 10. **UI console dirombak** setelah review: desain netral/minimal (sidebar terang, tanpa gradient
     atau glow, tipografi tenang, stat strip, status berbasis teks + titik, skeleton loading,
     responsif). Fungsionalitas dan alur data tidak berubah.
+
+---
+
+## 10. Iterasi console: refresh dan resend failed
+
+Status: terimplementasi dan terverifikasi pada 2026-11-16.
+
+### 10.1 Refresh
+
+- `RefreshControl` reusable di `PageHeader.actions` untuk dashboard, notifications, notification
+  detail, templates, subscribers, subscriber detail, topics, topic detail, dan API keys.
+- Menampilkan waktu update relatif dan spinner saat `isFetching`.
+- `refetchOnWindowFocus: true` di QueryClient.
+- Auto-refresh 5 detik hanya saat notification list/detail berisi `pending`/`partial`; dashboard
+  60 detik. Tidak ada polling saat status terminal.
+- Filter dan pagination dipertahankan saat refetch.
+
+### 10.2 Re-send failed
+
+- Endpoint `POST /api/v1/admin/notifications/:id/resend` dengan body `{ mode: "failed",
+  requestKey }`.
+- Hanya pasangan `(recipientId, channel)` berstatus `failed` yang dikirim ulang; bukan fan-out
+  ulang semua channel.
+- Notification baru + baris baru + job baru; notification asli immutable.
+- `resendOfNotificationId` dan `resendMode` menyimpan audit link.
+- `requestKey` idempotent; replay dengan key yang sama mengembalikan notification baru yang sama.
+- Tidak membuat `BillingEvent` baru.
+- UI: tombol **Kirim ulang yang gagal (N)**, dialog konfirmasi yang menjelaskan template/preferensi/
+  override, dan link ke notification hasil.
+- Kolom audit ditambahkan lewat migrasi `20261116130000_resend_audit`.
+
+### 10.3 Detail troubleshooting
+
+- Admin detail sekarang mengembalikan `payload`; event mengembalikan `rawPayload`.
+- UI menampilkan payload, target snapshot, `errorMessage` attempt, event payload (collapsible),
+  serta filter status recipient.
+- `resendOfNotificationId` ditampilkan sebagai tautan ke notification asli.
+
+### 10.4 Verifikasi
+
+- Backend: `npm run typecheck`, `npm run build`, `npm run test:e2e -- --runInBand`; E1–E11 lulus,
+  termasuk resend failed, audit link, idempotensi, dan tidak ada BillingEvent baru.
+- Console: `npm run console:typecheck`, `npm run console:build`; UI manual di browser tetap langkah
+  pengguna (tanpa Playwright).
+
+### 10.5 Batasan
+
+- Mode `all` belum tersedia.
+- Re-send memakai template aktif dan data Subscriber saat ini; inline override lama tidak tersimpan.
+- Wrapper `HttpTransport` lokal harus dipindahkan ke `NotifHubAdminClient` pada rilis SDK berikutnya.
+- Tidak ada RBAC granular; semua tenant admin dapat melakukan re-send.

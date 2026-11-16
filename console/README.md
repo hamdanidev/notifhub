@@ -2,8 +2,17 @@
 
 Tenant Admin Console for NotifHub (React 18 + Vite + Bootstrap 5). It manages data scoped to
 the authenticated admin's `tenantId` only: notifications, templates, subscribers + preferences,
-topics, and API keys. All API calls go through `@notifhub/js` (`NotifHubAdminClient`); there is
-no direct `fetch`/`axios` usage.
+topics, and API keys. API calls go through `@notifhub/js`; there is no direct `fetch`/`axios`
+usage. The resend endpoint (not yet in the published `NotifHubAdminClient`) uses the SDK's
+exported `HttpTransport` through a small console-local wrapper until the next SDK release.
+
+Operational features:
+
+- **Muat ulang** + “Diperbarui …” on lists and detail pages; window focus refetches.
+- Auto-refresh every 5 seconds for notifications that are `pending`/`partial`; dashboard 60s.
+- Notification detail shows payload, target snapshot, attempt error messages, and event payloads.
+- **Kirim ulang yang gagal** creates a new notification for failed recipient/channel pairs, links
+  the audit trail, and never mutates the original notification.
 
 ## Requirements
 

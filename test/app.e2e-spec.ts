@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Channel } from '@prisma/client';
@@ -348,5 +348,76 @@ describe('NotifHub e2e', () => {
       .set('X-NotifHub-Signature', `t=${timestamp},v1=${signature}`)
       .send(payload);
     expect(unknownProvider.status).toBe(404);
+  });
+
+  it('E11 admin resend failed membuat notification baru dengan audit link', async () => {
+    const source = await postNotify(notifyBody('e2e-resend-source-1', ['inapp', 'email']));
+    expect(source.status).toBe(202);
+    const sourceId = source.body.notification_id as string;
+
+    await waitFor(
+      async () => {
+        const row = await prisma.notificationRecipient.findFirst({
+          where: { notificationId: sourceId, recipientId: RECIPIENT, channel: Channel.inapp },
+          select: { status: true },
+        });
+
+        return row !== null && row.status !== 'pending' ? row : null;
+      },
+      'source notification selesai diproses sebelum disimulasikan gagal',
+    );
+
+    await prisma.notificationRecipient.updateMany({
+      where: { notificationId: sourceId, recipientId: RECIPIENT, channel: Channel.inapp },
+      data: { status: 'failed', lastError: 'forced_e2e_failure' },
+    });
+
+    const requestKey = randomUUID();
+    const resend = await request(server)
+      .post(`/api/v1/admin/notifications/${sourceId}/resend`)
+      .set('Authorization', bearer(adminToken))
+      .send({ mode: 'failed', requestKey });
+
+    expect(resend.status).toBe(202);
+    expect(resend.body).toMatchObject({
+      status: 'accepted',
+      mode: 'failed',
+      recipient_count: 1,
+      channels: ['inapp'],
+    });
+
+    const resendId = resend.body.notification_id as string;
+    expect(resendId).not.toBe(sourceId);
+
+    const created = await prisma.notification.findUnique({
+      where: { id: resendId },
+      include: { recipients: true },
+    });
+    expect(created?.resendOfNotificationId).toBe(sourceId);
+    expect(created?.resendMode).toBe('failed');
+    expect(created?.recipients).toHaveLength(1);
+
+    const billingEvents = await prisma.billingEvent.count({ where: { notificationId: resendId } });
+    expect(billingEvents).toBe(0);
+
+    const replay = await request(server)
+      .post(`/api/v1/admin/notifications/${sourceId}/resend`)
+      .set('Authorization', bearer(adminToken))
+      .send({ mode: 'failed', requestKey });
+    expect(replay.status).toBe(202);
+    expect(replay.body.notification_id).toBe(resendId);
+
+    const detail = await request(server)
+      .get(`/api/v1/admin/notifications/${resendId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(detail.status).toBe(200);
+    expect(detail.body.notification.resendOfNotificationId).toBe(sourceId);
+    expect(detail.body.notification.payload.data.nama).toBe('Budi');
+
+    const noFailed = await request(server)
+      .post(`/api/v1/admin/notifications/${inAppNotificationId}/resend`)
+      .set('Authorization', bearer(adminToken))
+      .send({ mode: 'failed', requestKey: randomUUID() });
+    expect(noFailed.status).toBe(409);
   });
 });

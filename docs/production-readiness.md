@@ -118,6 +118,7 @@ Satu file spec (`test/app.e2e-spec.ts`), dijalankan `--runInBand`:
 | E8 | Subscriber lane: tanpa token; token tenant B ditandatangani `SUBSCRIBER_JWT_SECRET` (tenant B punya secret sendiri); token valid | `401` / `401` / `200` |
 | E9 | Preference center: `GET` (3 channel, default), `PUT` email `enabled=false`, ingest email | `200` / `200`; recipient email berakhir `skipped` + `preference_disabled`; tenant A lain tidak berubah |
 | E10 | Webhook: signature valid; signature salah; provider tak dikenal | `202` + baris `DeliveryEvent` + `deliveredAt` terisi / `401` / `404` |
+| E11 | Admin resend failed-only: notification sumber dua channel, hanya baris inapp disimulasikan gagal | `202` notification baru dengan satu pasangan inapp (email tidak ikut), audit link/mode, replay request key tidak menduplikasi, tanpa `BillingEvent`; tanpa failed → `409` |
 
 Di luar e2e (tetap diverifikasi manual, lihat §10): SSE stream, rate limit 429 (sudah diuji di
 `verify:preferences`), dan UI console.
@@ -189,7 +190,7 @@ YAML workflow tetap divalidasi secara struktural (parse + daftar job) saat verif
 | D3 | Jest + ts-jest + supertest; **tanpa** `@nestjs/testing` | Ya |
 | D4 | Database test terpisah `notifhub_test` + Redis DB 15; dibuat oleh `scripts/test-db-setup.mjs`; data dev tidak disentuh | Ya |
 | D5 | `ignoreEnvFile` saat `NODE_ENV=test`; env test eksplisit di `test/env.ts`, tanpa `.env` repo | Ya |
-| D6 | Cakupan e2e = E1–E10; SSE dan rate limit tetap di `verify:preferences` (manual/smoke) | Ya |
+| D6 | Cakupan e2e = E1–E11; SSE dan rate limit tetap di `verify:preferences` (manual/smoke) | Ya |
 | D7 | Image backend multi-stage Node 24, non-root, hanya dependency produksi, HEALTHCHECK `/health/live`, target `migrator` terpisah | Ya |
 | D8 | Image console = Vite build + nginx alpine, SPA fallback, API URL lewat build arg | Ya |
 | D9 | `docker-compose.prod.yml` sebagai smoke stack (bukan deployment produksi); kredensial dari `.env.prod` | Ya |
@@ -197,6 +198,10 @@ YAML workflow tetap divalidasi secara struktural (parse + daftar job) saat verif
 | D11 | `npm run ci` = padanan lokal job backend, satu sumber urutan perintah | Ya |
 | D12 | Tidak ada dependency runtime baru; dependency dev baru hanya untuk test | Ya |
 | D13 | Versi root `0.10.0`; perbaiki deskripsi Swagger yang masih menyebut fase; perbarui README/local-setup/project-brief | Ya |
+
+> Catatan 2026-11-16: fitur console re-send failed menambah migrasi
+> `20261116130000_resend_audit` (`Notification.resendOfNotificationId`/`resendMode`) dan E11.
+> Ini berada di luar scope awal production-readiness yang semula menyatakan tanpa perubahan schema.
 
 Bila ada nomor yang ingin diubah, sebutkan nomornya.
 
@@ -213,7 +218,7 @@ Bila ada nomor yang ingin diubah, sebutkan nomornya.
 | `test/jest-e2e.json` | konfigurasi Jest e2e (ts-jest, setupFiles, `maxWorkers: 1`) |
 | `test/env.ts` | env test deterministik |
 | `test/setup/database.ts` | `resetDatabase()`, `waitFor()`, fixture helper |
-| `test/app.e2e-spec.ts` | E1–E10 |
+| `test/app.e2e-spec.ts` | E1–E11 |
 | `scripts/test-db-setup.mjs` | buat DB test, `migrate deploy`, flush Redis |
 | `scripts/ci.mjs` | urutan CI backend lokal |
 | `Dockerfile` | backend multi-stage (+ `migrator`) |

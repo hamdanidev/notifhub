@@ -14,32 +14,39 @@ import {
 } from 'recharts';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { StatusBadge } from '../components/StatusBadge';
 import { adminClient } from '../lib/adminClient';
 import { formatDateTime, formatDay } from '../lib/format';
 
 const STATUSES: OverallStatus[] = ['pending', 'partial', 'sent', 'failed'];
+const AUTO_REFRESH_MS = 60_000;
 
 export function DashboardPage(): JSX.Element {
   const pending = useQuery({
     queryKey: ['dashboard', 'status', 'pending'],
     queryFn: () => adminClient.listNotifications({ status: 'pending', limit: 1 }),
+    refetchInterval: AUTO_REFRESH_MS,
   });
   const partial = useQuery({
     queryKey: ['dashboard', 'status', 'partial'],
     queryFn: () => adminClient.listNotifications({ status: 'partial', limit: 1 }),
+    refetchInterval: AUTO_REFRESH_MS,
   });
   const sent = useQuery({
     queryKey: ['dashboard', 'status', 'sent'],
     queryFn: () => adminClient.listNotifications({ status: 'sent', limit: 1 }),
+    refetchInterval: AUTO_REFRESH_MS,
   });
   const failed = useQuery({
     queryKey: ['dashboard', 'status', 'failed'],
     queryFn: () => adminClient.listNotifications({ status: 'failed', limit: 1 }),
+    refetchInterval: AUTO_REFRESH_MS,
   });
   const recent = useQuery({
     queryKey: ['dashboard', 'recent'],
     queryFn: () => adminClient.listNotifications({ limit: 100 }),
+    refetchInterval: AUTO_REFRESH_MS,
   });
 
   const totals: Record<OverallStatus, number> = {
@@ -69,6 +76,23 @@ export function DashboardPage(): JSX.Element {
   const error = pending.error ?? partial.error ?? sent.error ?? failed.error ?? recent.error;
   const isLoading =
     pending.isLoading || partial.isLoading || sent.isLoading || failed.isLoading || recent.isLoading;
+  const isFetching =
+    pending.isFetching || partial.isFetching || sent.isFetching || failed.isFetching || recent.isFetching;
+  const updatedAt = Math.max(
+    pending.dataUpdatedAt,
+    partial.dataUpdatedAt,
+    sent.dataUpdatedAt,
+    failed.dataUpdatedAt,
+    recent.dataUpdatedAt,
+  );
+
+  const refreshAll = (): void => {
+    void pending.refetch();
+    void partial.refetch();
+    void sent.refetch();
+    void failed.refetch();
+    void recent.refetch();
+  };
 
   return (
     <>
@@ -77,6 +101,12 @@ export function DashboardPage(): JSX.Element {
         subtitle="Aktivitas pengiriman notifikasi untuk tenant ini."
         actions={
           <>
+            <RefreshControl
+              isFetching={isFetching}
+              updatedAt={updatedAt}
+              autoRefreshMs={AUTO_REFRESH_MS}
+              onRefresh={refreshAll}
+            />
             <Link to="/notifications" className="btn btn-outline-secondary btn-sm">
               Lihat notifikasi
             </Link>

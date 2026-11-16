@@ -73,6 +73,7 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
   [webhooks](docs/webhooks.md) ·
   [admin API](docs/admin-api.md) ·
   [React and console](docs/react-and-console.md) ·
+  [console refresh/re-send](docs/console-needs-analysis.md) ·
   [sample in-app](docs/sample-in-app-design.md) ·
   [WhatsApp](docs/whatsapp.md) ·
   [Go SDK](docs/go-sdk.md) ·

@@ -240,11 +240,33 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 - `GET /notifications?status&templateKey&from&to&limit&offset`
   → ringkasan: id, templateKey, tenantId, priority, overallStatus, targetType, createdAt,
   recipientCount, sentCount, failedCount.
-- `GET /notifications/:id` → detail: notification + recipients (status, attempts, provider,
-  timestamps, lastError) + 20 `delivery_attempts` terakhir + 20 `delivery_events` terakhir.
+- `GET /notifications/:id` → detail: notification (termasuk `payload`, `targetSnapshot`,
+  `resendOfNotificationId`, `resendMode`) + recipients (status, attempts, provider, timestamps,
+  lastError) + 20 `delivery_attempts` terakhir + 20 `delivery_events` terakhir.
 - `404` bila bukan milik tenant admin.
 
-### 6.6 Pagination
+### 6.6 Re-send failed
+
+`POST /admin/notifications/:id/resend` (admin JWT, tenant-scoped):
+
+```json
+{
+  "mode": "failed",
+  "requestKey": "<uuid>"
+}
+```
+
+- Hanya baris `NotificationRecipient` berstatus `failed` yang dikirim ulang, dengan pasangan
+  `(recipientId, channel)` yang sama; channel yang sudah sukses tidak ikut dikirim.
+- Membuat **notification baru**; notification asli tetap immutable.
+- `resendOfNotificationId` dan `resendMode` menyimpan jejak audit.
+- `requestKey` adalah idempotency key; request berulang mengembalikan notification baru yang sama.
+- Tidak membuat `BillingEvent` baru.
+- `202 { notification_id, status: "accepted", mode: "failed", recipient_count, channels }`.
+- Tidak ada failed recipient → `409`; notification bukan milik tenant → `404`.
+- `mode: "all"` belum didukung pada fase ini.
+
+### 6.7 Pagination
 
 - Semua list: `limit` (default 20, max 100) + `offset` (default 0).
 - Response list: `{ items, total, limit, offset }`.
@@ -254,9 +276,9 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 
 ## 7. Data model & konfigurasi
 
-- **Tidak ada perubahan `schema.prisma`**: `ApiKey`, `AdminUser`, `Topic`, `TopicSubscriber`
-  sudah lengkap sejak skema dasar. Satu deviasi implementasi pada `NotificationTemplate`
-  (kolom `tenantId`, tenant-scoped) tercatat di §11.1.
+- **Perubahan schema setelah fase awal:** `NotificationTemplate.tenantId` (§11.1) dan, untuk
+  re-send console, `Notification.resendOfNotificationId` + `Notification.resendMode` (migrasi
+  `20261116130000_resend_audit`).
 - **Env baru:** `ADMIN_JWT_EXPIRES_IN` (pola `^\d+[smhd]$`, default `1h`).
 - **Dependency:** tidak ada yang baru (`jsonwebtoken`, `bcrypt`, `@nestjs/throttler` sudah ada).
 - **Versi root:** `0.5.0`.
@@ -300,8 +322,10 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 | `src/admin/controllers/admin-templates.controller.ts` | CRUD template |
 | `src/admin/controllers/admin-subscribers.controller.ts` | list, detail, preferences |
 | `src/admin/controllers/admin-topics.controller.ts` | list, detail, members |
-| `src/admin/controllers/admin-notifications.controller.ts` | list, detail |
-| `src/admin/services/*.service.ts` | Logika per resource (6 service) |
+| `src/admin/controllers/admin-notifications.controller.ts` | list, detail, resend failed |
+| `src/admin/services/admin-notification-resend.service.ts` | Resend failed-only + audit + dispatch |
+| `src/admin/dto/resend-notification.dto.ts` | Body mode/requestKey |
+| `src/admin/services/*.service.ts` | Logika per resource |
 | `src/admin/dto/*.dto.ts` | Login, api key, template, preference, list query, response |
 
 ### Diubah
@@ -310,6 +334,9 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 (resolusi topic, tenant dari API key, snapshot/targetType), `src/ingest/ingest.module.ts`,
 `src/app.module.ts`, `src/main.ts` (scheme `admin-jwt`), `src/config/env.schema.ts`,
 `.env.example`/`.env`, `package.json`, `README.md`, `docs/local-setup.md`.
+Untuk re-send: `prisma/schema.prisma`, migrasi
+`prisma/migrations/20261116130000_resend_audit/`, `src/admin/admin.module.ts`,
+`src/admin/services/admin-notifications.service.ts`.
 
 ---
 
@@ -338,11 +365,13 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 12. Admin subscribers: list/detail; upsert preference `enabled=false` untuk email lalu ingest
     email → recipient `skipped` (regresi preferensi tetap bekerja; lihat
     `docs/email-and-preferences.md`).
-13. Admin notifications: list filter status + detail berisi recipients, attempts, events;
+13. Admin notifications: list filter status + detail berisi recipients, attempts, events, payload;
     notification tenant lain → `404`.
-14. Admin topics: list dengan member count, detail, membership write memakai tenant admin.
-15. Swagger: path admin/topic muncul, skema `admin-jwt`, login tidak memakai `api-key`.
-16. Login throttle: 6 percobaan cepat → `429`.
+14. Admin re-send failed: notification baru dibuat, original tidak berubah, audit link terisi,
+    request key yang sama tidak menduplikasi, tidak ada BillingEvent baru; tanpa failed → `409`.
+15. Admin topics: list dengan member count, detail, membership write memakai tenant admin.
+16. Swagger: path admin/topic muncul, skema `admin-jwt`, login tidak memakai `api-key`.
+17. Login throttle: 6 percobaan cepat → `429`.
 
 ---
 
@@ -357,13 +386,13 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 | D5 | Subscriber JWT tetap memakai `SUBSCRIBER_JWT_SECRET` global; secret per key reserved | Ya |
 | D6 | Admin JWT HS256 + `ADMIN_JWT_EXPIRES_IN` (default `1h`); hanya role `tenant_admin`; `platform_admin` → `403` | Ya |
 | D7 | Bootstrap satu admin dari env (upsert; hash diperbarui bila env berubah) | Ya |
-| D8 | Cakupan Admin API: auth, api-keys, templates CRUD, subscribers read + preferences write, topics read + membership write, notifications read | Ya |
+| D8 | Cakupan Admin API: auth, api-keys, templates CRUD, subscribers read + preferences write, topics read + membership write, notifications read + resend failed | Ya |
 | D9 | Topic consumer API: `PUT` replace, `POST` add, `GET` members; auto-create; `isTimeBound` hanya saat create | Ya |
 | D10 | Cleanup member kedaluwarsa ditunda; resolusi memfilter `expiresAt` | Ya |
 | D11 | Group acknowledgment ditunda; di luar cakupan dokumen ini | Ya |
 | D12 | Pagination admin limit/offset + `total` | Ya |
 | D13 | Login throttle 5/menit per IP | Ya |
-| D14 | Tanpa perubahan schema (kecuali deviasi `NotificationTemplate`; lihat §11.1), tanpa dependency baru; versi `0.5.0` | Ya |
+| D14 | Tanpa dependency baru; schema berubah untuk `NotificationTemplate.tenantId` (§11.1) dan audit re-send `Notification.resendOfNotificationId`/`resendMode` | Ya |
 | D15 | Preference write admin memakai validasi timezone yang sama dengan DTO subscriber | Ya |
 
 ---
@@ -390,3 +419,8 @@ Bootstrap admin (saat `onApplicationBootstrap`):
    pemeriksaan SQL untuk `targetType`/snapshot union, isolasi tenant, preferensi, admin
    bootstrap, API key, dan topic time-bound.
 8. **Versi root** `0.5.0`; tidak ada dependency baru.
+9. **Re-send failed (2026-11-16):** endpoint admin baru, migrasi audit
+   `20261116130000_resend_audit`, notification baru dengan baris/job hanya untuk pasangan
+   `(recipientId, channel)` failed, `requestKey` idempotent, deterministik job id untuk replay,
+   dan tanpa BillingEvent baru. E2E E11 mencakup pasangan channel campuran (hanya inapp yang
+   di-resend) serta replay request key.

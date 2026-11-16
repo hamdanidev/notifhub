@@ -9,6 +9,7 @@ import { DataTable, type DataTableColumn } from '../components/DataTable';
 import { Pagination } from '../components/Pagination';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { adminClient } from '../lib/adminClient';
 import { describeError, formatDateTime } from '../lib/format';
 
@@ -85,9 +86,18 @@ export function TemplatesPage(): JSX.Element {
         title="Templates"
         subtitle="Template per channel, locale, dan versi."
         actions={
-          <Link to="/templates/new" className="btn btn-primary btn-sm">
-            Template baru
-          </Link>
+          <>
+            <RefreshControl
+              isFetching={query.isFetching}
+              updatedAt={query.dataUpdatedAt}
+              onRefresh={() => {
+                void query.refetch();
+              }}
+            />
+            <Link to="/templates/new" className="btn btn-primary btn-sm">
+              Template baru
+            </Link>
+          </>
         }
       />
 

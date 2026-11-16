@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../components/DataTable';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { adminClient } from '../lib/adminClient';
 import { describeError, formatDateTime } from '../lib/format';
 
@@ -83,7 +84,19 @@ export function ApiKeysPage(): JSX.Element {
 
   return (
     <>
-      <PageHeader title="API Keys" subtitle="Key untuk autentikasi service-to-service (X-API-Key)." />
+      <PageHeader
+        title="API Keys"
+        subtitle="Key untuk autentikasi service-to-service (X-API-Key)."
+        actions={
+          <RefreshControl
+            isFetching={query.isFetching}
+            updatedAt={query.dataUpdatedAt}
+            onRefresh={() => {
+              void query.refetch();
+            }}
+          />
+        }
+      />
 
       <Card className="filter-card mb-3">
         <Card.Body>

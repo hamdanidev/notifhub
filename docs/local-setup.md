@@ -76,9 +76,10 @@ npm run ci              # typecheck + build + e2e + migrate status (same order a
   `redis://localhost:6379/15`; override with `TEST_DATABASE_URL` / `TEST_REDIS_URL`.
 - The database name must end with `_test` (safety guard; override with `ALLOW_NON_TEST_DB=1`).
 - Test configuration lives in `test/env.ts`; the suite does not read `.env`.
-- Coverage (E1–E10): health, ingest auth, in-app delivery through the worker, idempotency,
+- Coverage (E1–E11): health, ingest auth, in-app delivery through the worker, idempotency,
   tenant mismatch, admin login/roles, admin tenant isolation, subscriber secrets per tenant,
-  preference center + enforcement, signed webhooks.
+  preference center + enforcement, signed webhooks, and admin resend failed (new notification,
+  audit link, idempotency, no new billing event).
 
 ## Verify
 

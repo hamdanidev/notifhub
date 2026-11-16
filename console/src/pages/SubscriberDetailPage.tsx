@@ -5,6 +5,7 @@ import { Alert, Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
+import { RefreshControl } from '../components/RefreshControl';
 import { CHANNELS, isValidQuietHoursPair } from '../forms/schemas';
 import { adminClient } from '../lib/adminClient';
 import { describeError, formatDateTime } from '../lib/format';
@@ -100,9 +101,19 @@ export function SubscriberDetailPage(): JSX.Element {
         title="Subscriber detail"
         subtitle={externalId}
         actions={
-          <Link to="/subscribers" className="btn btn-sm btn-outline-secondary">
-            Kembali
-          </Link>
+          <>
+            <RefreshControl
+              isFetching={subscriber.isFetching || preferences.isFetching}
+              updatedAt={Math.max(subscriber.dataUpdatedAt, preferences.dataUpdatedAt)}
+              onRefresh={() => {
+                void subscriber.refetch();
+                void preferences.refetch();
+              }}
+            />
+            <Link to="/subscribers" className="btn btn-sm btn-outline-secondary">
+              Kembali
+            </Link>
+          </>
         }
       />
 
