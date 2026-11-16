@@ -53,6 +53,7 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
 | `prisma/` | Schema, migrations, and development seed |
 | `packages/js-sdk/` | `@notifhub/js`: in-app client, SSE transport, `NotifHubAdminClient`, preference center methods |
 | `packages/react/` | `@notifhub/react`: provider, bell, inbox, `usePreferences` |
+| `sample/in-app-web/` | Sample lokal React 18 + Vite untuk in-app/SSE/preference center, memakai SDK npm terbit dan middleware dev-only |
 | `console/` | Tenant admin console (React 18 + Vite + Bootstrap 5) |
 | `sdk/go/` | Go SDK (`github.com/hamdanidev/notifhub-go`) generated from the public OpenAPI document |
 | `openapi/notifhub.json` | Public consumer OpenAPI subset used for SDK generation |
@@ -72,6 +73,7 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
   [webhooks](docs/webhooks.md) ·
   [admin API](docs/admin-api.md) ·
   [React and console](docs/react-and-console.md) ·
+  [sample in-app](docs/sample-in-app-design.md) ·
   [WhatsApp](docs/whatsapp.md) ·
   [Go SDK](docs/go-sdk.md) ·
   [preference center](docs/preference-center.md)
@@ -83,6 +85,8 @@ npm run ci                              # typecheck + build + e2e + migrate stat
 npm run test:e2e                        # Jest e2e against notifhub_test + Redis db 15
 npm run sdk:typecheck && npm run sdk:test
 npm run react:typecheck && npm run react:test
+npm --prefix sample/in-app-web ci
+npm run typecheck --prefix sample/in-app-web && npm run build --prefix sample/in-app-web
 npm run console:typecheck && npm run console:build
 npm run sdk:go:test
 npm run verify:preferences              # HTTP + DB smoke test, needs a running backend

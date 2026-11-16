@@ -256,6 +256,16 @@ function Preferences({ client }) {
 `usePreferences(client)` mengembalikan `{ preferences, status, error, reload, update }` dan tidak
 memerlukan `NotifHubProvider` (tidak membuka SSE).
 
+### 6.1 Sample lengkap
+
+Contoh React 18 + Vite yang bisa dijalankan ada di
+[`sample/in-app-web`](../../sample/in-app-web/README.md). Sample mendemonstrasikan sesi subscriber,
+bell, inbox, status SSE, `markRead`, dan preference center dengan quiet hours. Token diterbitkan
+middleware Vite dev di server; API key tidak pernah masuk browser.
+
+Sample bersifat **lokal saja**: middleware `/dev/*` tidak ikut build produksi dan bukan pola
+deployment. Lihat README sample untuk prasyarat, skenario uji, dan troubleshooting.
+
 ## 7. Keamanan dan batasan
 
 - Token hanya di header `Authorization`; jangan pernah di query string, localStorage jangka

@@ -71,7 +71,7 @@ jobs:
           git diff --exit-code openapi/notifhub.json
 
   packages:
-    name: Packages (JS SDK, React, console)
+    name: Packages (JS SDK, React, sample, console)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +95,12 @@ jobs:
           npm run react:typecheck
           npm run react:test
           npm run react:build
+
+      - name: In-app sample
+        run: |
+          npm --prefix sample/in-app-web ci
+          npm run typecheck --prefix sample/in-app-web
+          npm run build --prefix sample/in-app-web
 
       - name: Console
         run: |

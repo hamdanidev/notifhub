@@ -67,6 +67,7 @@ Aturan kerja:
 | Webhook signed → `delivery_events`, rollup status, retention/idempotency cleanup | selesai & terverifikasi |
 | ApiKey table, admin auth, topics + membership, Admin API tenant-scoped | selesai & terverifikasi |
 | `@notifhub/react` (headless) + `NotifHubAdminClient` + `notifhub-console` | selesai & terverifikasi |
+| Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
@@ -95,6 +96,8 @@ Versi saat ini: root `0.10.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
 - `packages/react/` — `@notifhub/react`: provider, hook, bell, inbox, `usePreferences`.
 - `console/` — aplikasi React 18 + Vite + Bootstrap 5 (desain minimal/netral; jangan kembali ke
   gradient/glow). Tenant admin only.
+- `sample/in-app-web/` — sample end-user React 18 + Vite (CSS biasa, SDK npm terbit), middleware
+  `/dev/*` hanya untuk lokal; lihat `docs/sample-in-app-design.md` dan README sample.
 - `sdk/go/` — Go SDK: `client.gen.go` (generated, jangan diedit), `client.go`, `errors.go`,
   `types.go`, `examples/send`, test.
 - `openapi/notifhub.json` — spec publik konsumen (3 path, 9 schema).
@@ -127,6 +130,8 @@ npm run typecheck && npm run build
 npm run test:e2e                # Jest e2e, database notifhub_test + Redis db 15
 npm run ci                      # typecheck + build + e2e + migrate status (padanan CI)
 npm run sdk:test
+npm --prefix sample/in-app-web ci
+npm run typecheck --prefix sample/in-app-web && npm run build --prefix sample/in-app-web
 npm run console:typecheck && npm run console:build
 npm run sdk:go:test
 npm run verify:preferences      # HTTP + DB, backend harus hidup
@@ -152,6 +157,9 @@ npx prisma migrate status
 - Go SDK hanya mencakup endpoint consumer (notify, subscriber, topic membership); admin/in-app/
   webhook/preference center tidak masuk. Tidak ada publikasi registry untuk Go SDK.
 - Console saat ini disajikan sebagai image nginx statis; belum ada browser automation permanen.
+- Sample `sample/in-app-web` memakai middleware Vite dev-only untuk menerbitkan token dan memanggil
+  ingest. Ia bukan pola produksi, tidak punya test runner sendiri, dan interaksi visualnya belum
+  diotomasi; verifikasi memakai HTTP/SSE/DB serta `typecheck`/`build`.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.
