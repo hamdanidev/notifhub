@@ -217,6 +217,13 @@ export function createLayout(input: {
   });
 }
 
+export function getLayout(id: string): Promise<LayoutAsset> {
+  return transport.request<LayoutAsset>(
+    'GET',
+    `/template-assets/layouts/${encodeURIComponent(id)}`,
+  );
+}
+
 export function listThemes(params: { limit?: number; offset?: number } = {}): Promise<
   Paged<ThemeAsset>
 > {
@@ -237,6 +244,13 @@ export function createTheme(input: {
   });
 }
 
+export function getTheme(id: string): Promise<ThemeAsset> {
+  return transport.request<ThemeAsset>(
+    'GET',
+    `/template-assets/themes/${encodeURIComponent(id)}`,
+  );
+}
+
 export function listPartials(params: { limit?: number; offset?: number } = {}): Promise<
   Paged<PartialAsset>
 > {
@@ -255,4 +269,11 @@ export function createPartial(input: {
     body: input,
     retry: false,
   });
+}
+
+export function getPartial(id: string): Promise<PartialAsset> {
+  return transport.request<PartialAsset>(
+    'GET',
+    `/template-assets/partials/${encodeURIComponent(id)}`,
+  );
 }

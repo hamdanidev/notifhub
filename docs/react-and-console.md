@@ -371,3 +371,11 @@ Desain dan batasan ada di `docs/template-system-design.md`.
   `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 tidak diubah.
 - Router console memakai `createBrowserRouter` agar editor bisa memakai `useBlocker` untuk
   perubahan belum disimpan.
+
+## 11. Aset template tanpa kode (2026-11-16)
+
+- Theme memakai form warna/font/ukuran/radius/button dengan preview langsung; JSON hanya untuk
+  mode advanced.
+- Layout memakai galeri preset (transaksional/promo/notifikasi) + field logo/brand/footer;
+  partial memakai form header/footer/CTA/signature. HTML tetap bisa diedit lewat mode advanced.
+- Detail dan batasan: `docs/email-authoring-ui-design.md`.

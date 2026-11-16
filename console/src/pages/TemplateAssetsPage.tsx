@@ -1,84 +1,85 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Nav, Row, Spinner } from 'react-bootstrap';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Form,
+  Nav,
+  Row,
+  Spinner,
+} from 'react-bootstrap';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
 import {
   createLayout,
   createPartial,
   createTheme,
+  getLayout,
+  getPartial,
+  getTheme,
   listLayouts,
   listPartials,
   listThemes,
 } from '../lib/adminTemplates';
+import {
+  DEFAULT_LAYOUT_OPTIONS,
+  DEFAULT_PARTIAL_OPTIONS,
+  DEFAULT_THEME_FORM,
+  FONT_OPTIONS,
+  LAYOUT_PRESETS,
+  PARTIAL_PRESETS,
+  buildLayoutHtml,
+  buildPartialHtml,
+  renderAssetPreview,
+  themeFormFromTokens,
+  themeTokensFromForm,
+  type LayoutOptions,
+  type LayoutPresetId,
+  type PartialOptions,
+  type PartialPresetId,
+  type ThemeFormValues,
+} from '../lib/emailDesign';
 import { describeError, formatDateTime } from '../lib/format';
 
-type AssetType = 'layouts' | 'themes' | 'partials';
+type AssetType = 'themes' | 'layouts' | 'partials';
 
-const STARTER_LAYOUT = `<!doctype html>
-<html lang="{{lang}}" dir="{{dir}}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <style>
-    body { margin: 0; padding: 0; }
-    @media only screen and (max-width: 480px) {
-      .nh-container { width: 100% !important; }
-      .nh-pad { padding-left: 16px !important; padding-right: 16px !important; }
-    }
-    @media (prefers-color-scheme: dark) {
-      .nh-body { background: #111827 !important; }
-      .nh-surface { background: #1f2937 !important; }
-      .nh-text { color: #f9fafb !important; }
-    }
-  </style>
-</head>
-<body class="nh-body" style="margin:0;padding:0;background:{{default theme.brand.background "#f4f5f7"}}">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">{{preheader}}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{default theme.brand.background "#f4f5f7"}}">
-    <tr>
-      <td align="center" style="padding:24px 12px">
-        <table role="presentation" class="nh-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:{{default theme.brand.surface "#ffffff"}};border-radius:{{default theme.radius.md "8px"}}">
-          <tr>
-            <td class="nh-pad nh-text" style="padding:32px;font-family:{{default theme.font.family "Arial, Helvetica, sans-serif"}};font-size:15px;line-height:1.6;color:{{default theme.text.primary "#111827"}}">
-              {{{body}}}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+interface AssetRow {
+  id: string;
+  key: string;
+  name: string;
+  version: number;
+  createdAt: string;
+}
 
-const STARTER_THEME = `{
-  "brand": {
-    "primary": "#0d6efd",
-    "onPrimary": "#ffffff",
-    "background": "#f4f5f7",
-    "surface": "#ffffff"
-  },
-  "text": {
-    "primary": "#111827",
-    "muted": "#6b7280"
-  },
-  "font": {
-    "family": "Arial, Helvetica, sans-serif"
-  },
-  "radius": {
-    "md": "8px"
-  }
-}`;
+const DEFAULT_KEYS: Record<AssetType, { key: string; name: string }> = {
+  themes: { key: 'brand', name: 'Brand theme' },
+  layouts: { key: 'base', name: 'Base layout' },
+  partials: { key: 'header', name: 'Header' },
+};
 
 export function TemplateAssetsPage(): JSX.Element {
   const queryClient = useQueryClient();
-  const [activeType, setActiveType] = useState<AssetType>('layouts');
-  const [key, setKey] = useState('');
-  const [name, setName] = useState('');
-  const [content, setContent] = useState('');
-  const [tokens, setTokens] = useState('{\n  "brand": {\n    "primary": "#0d6efd",\n    "background": "#ffffff"\n  }\n}');
+  const [activeType, setActiveType] = useState<AssetType>('themes');
+  const [key, setKey] = useState(DEFAULT_KEYS.themes.key);
+  const [name, setName] = useState(DEFAULT_KEYS.themes.name);
+  const [advanced, setAdvanced] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loadingAssetId, setLoadingAssetId] = useState<string | null>(null);
+
+  const [themeForm, setThemeForm] = useState<ThemeFormValues>(DEFAULT_THEME_FORM);
+  const [themeJson, setThemeJson] = useState(
+    JSON.stringify(themeTokensFromForm(DEFAULT_THEME_FORM), null, 2),
+  );
+  const [layoutPreset, setLayoutPreset] = useState<LayoutPresetId>('transactional');
+  const [layoutOptions, setLayoutOptions] = useState<LayoutOptions>(DEFAULT_LAYOUT_OPTIONS);
+  const [layoutContent, setLayoutContent] = useState('');
+  const [partialPreset, setPartialPreset] = useState<PartialPresetId>('header');
+  const [partialOptions, setPartialOptions] = useState<PartialOptions>(DEFAULT_PARTIAL_OPTIONS);
+  const [partialContent, setPartialContent] = useState('');
 
   const layouts = useQuery({ queryKey: ['template-assets', 'layouts'], queryFn: () => listLayouts() });
   const themes = useQuery({ queryKey: ['template-assets', 'themes'], queryFn: () => listThemes() });
@@ -87,6 +88,71 @@ export function TemplateAssetsPage(): JSX.Element {
     queryFn: () => listPartials(),
   });
 
+  useEffect(() => {
+    const defaults = DEFAULT_KEYS[activeType];
+    setKey(defaults.key);
+    setName(defaults.name);
+    setAdvanced(false);
+    setFormError(null);
+    setNotice(null);
+  }, [activeType]);
+
+  const themeTokens = useMemo<Record<string, unknown>>(() => {
+    if (activeType === 'themes' && advanced) {
+      try {
+        const parsed: unknown = JSON.parse(themeJson);
+
+        if (isRecord(parsed)) {
+          return parsed;
+        }
+      } catch {
+        // handled by the form error on save; preview falls back to the form values
+      }
+    }
+
+    return themeTokensFromForm(themeForm);
+  }, [activeType, advanced, themeForm, themeJson]);
+
+  const activeContent = useMemo(() => {
+    if (activeType === 'layouts') {
+      return advanced && layoutContent.trim().length > 0
+        ? layoutContent
+        : buildLayoutHtml(layoutPreset, layoutOptions);
+    }
+
+    if (activeType === 'partials') {
+      return advanced && partialContent.trim().length > 0
+        ? partialContent
+        : buildPartialHtml(partialPreset, partialOptions);
+    }
+
+    return '';
+  }, [
+    activeType,
+    advanced,
+    layoutContent,
+    layoutOptions,
+    layoutPreset,
+    partialContent,
+    partialOptions,
+    partialPreset,
+  ]);
+
+  const previewHtml = useMemo(() => {
+    if (activeType === 'themes') {
+      return renderAssetPreview(
+        buildLayoutHtml('transactional', DEFAULT_LAYOUT_OPTIONS),
+        themeTokens,
+      );
+    }
+
+    if (activeType === 'layouts') {
+      return renderAssetPreview(activeContent, themeTokens);
+    }
+
+    return renderAssetPreview(activeContent, themeTokens, { partial: true });
+  }, [activeContent, activeType, themeTokens]);
+
   const create = useMutation({
     mutationFn: async () => {
       if (key.trim().length === 0 || name.trim().length === 0) {
@@ -94,199 +160,714 @@ export function TemplateAssetsPage(): JSX.Element {
       }
 
       if (activeType === 'themes') {
-        let parsed: unknown;
+        const tokens = advanced
+          ? parseJsonRecord(themeJson, 'Tokens theme')
+          : themeTokensFromForm(themeForm);
 
-        try {
-          parsed = JSON.parse(tokens);
-        } catch {
-          throw new Error('Tokens theme bukan JSON yang valid.');
-        }
-
-        if (!isRecord(parsed)) {
-          throw new Error('Tokens theme harus berupa objek JSON.');
-        }
-
-        return createTheme({ key: key.trim(), name: name.trim(), tokens: parsed });
+        return createTheme({ key: key.trim(), name: name.trim(), tokens });
       }
+
+      if (activeType === 'layouts') {
+        const content = advanced ? layoutContent : buildLayoutHtml(layoutPreset, layoutOptions);
+
+        if (content.trim().length === 0) {
+          throw new Error('Konten layout wajib diisi.');
+        }
+
+        return createLayout({ key: key.trim(), name: name.trim(), content });
+      }
+
+      const content = advanced ? partialContent : buildPartialHtml(partialPreset, partialOptions);
 
       if (content.trim().length === 0) {
-        throw new Error('Konten aset wajib diisi.');
+        throw new Error('Konten partial wajib diisi.');
       }
 
-      return activeType === 'layouts'
-        ? createLayout({ key: key.trim(), name: name.trim(), content })
-        : createPartial({ key: key.trim(), name: name.trim(), content });
+      return createPartial({ key: key.trim(), name: name.trim(), content });
     },
-    onSuccess: () => {
+    onSuccess: (asset) => {
       setFormError(null);
-      setKey('');
-      setName('');
-      setContent('');
+      setNotice(`Versi baru dibuat: ${asset.key} v${asset.version}.`);
       void queryClient.invalidateQueries({ queryKey: ['template-assets'] });
     },
     onError: (error) => {
-      setFormError(error instanceof Error ? error.message : 'Gagal membuat aset.');
+      setFormError(describeError(error));
+      setNotice(null);
     },
   });
 
-  const rows = useMemo(() => {
-    if (activeType === 'layouts') return layouts.data?.items ?? [];
-    if (activeType === 'themes') return themes.data?.items ?? [];
-    return partials.data?.items ?? [];
+  const loadAsset = async (row: AssetRow): Promise<void> => {
+    setLoadingAssetId(row.id);
+    setFormError(null);
+    setNotice(null);
+
+    try {
+      if (activeType === 'themes') {
+        const detail = await getTheme(row.id);
+        setThemeForm(themeFormFromTokens(detail.tokens));
+        setThemeJson(JSON.stringify(detail.tokens ?? {}, null, 2));
+        setAdvanced(false);
+      } else if (activeType === 'layouts') {
+        const detail = await getLayout(row.id);
+        setLayoutContent(detail.content ?? '');
+        setAdvanced(true);
+      } else {
+        const detail = await getPartial(row.id);
+        setPartialContent(detail.content ?? '');
+        setAdvanced(true);
+      }
+
+      setKey(row.key);
+      setName(row.name);
+      setNotice(`Dimuat: ${row.key} v${row.version}. Simpan untuk membuat versi baru.`);
+    } catch (error) {
+      setFormError(describeError(error));
+    } finally {
+      setLoadingAssetId(null);
+    }
+  };
+
+  const rows = useMemo<AssetRow[]>(() => {
+    const source =
+      activeType === 'themes'
+        ? (themes.data?.items ?? [])
+        : activeType === 'layouts'
+          ? (layouts.data?.items ?? [])
+          : (partials.data?.items ?? []);
+
+    return source.map((asset) => ({
+      id: asset.id,
+      key: asset.key,
+      name: asset.name,
+      version: asset.version,
+      createdAt: asset.createdAt,
+    }));
   }, [activeType, layouts.data, partials.data, themes.data]);
 
-  const activeQuery = activeType === 'layouts' ? layouts : activeType === 'themes' ? themes : partials;
+  const activeQuery = activeType === 'themes' ? themes : activeType === 'layouts' ? layouts : partials;
 
   return (
     <>
       <PageHeader
         title="Aset template"
-        subtitle="Layout, theme, dan partial versioned. Perubahan selalu membuat versi baru."
+        subtitle="Theme, layout, dan partial tanpa menulis kode untuk kasus umum."
         actions={
-          <Button size="sm" variant="outline-secondary" onClick={() => {
-            void layouts.refetch();
-            void themes.refetch();
-            void partials.refetch();
-          }}>
-            Refresh
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => {
+                void layouts.refetch();
+                void themes.refetch();
+                void partials.refetch();
+              }}
+            >
+              Refresh
+            </Button>
+          </>
         }
       />
 
-      <Nav variant="tabs" activeKey={activeType} onSelect={(value) => setActiveType((value ?? 'layouts') as AssetType)} className="mb-3">
-        <Nav.Item><Nav.Link eventKey="layouts">Layout</Nav.Link></Nav.Item>
+      <Nav
+        variant="tabs"
+        activeKey={activeType}
+        onSelect={(value) => setActiveType((value ?? 'themes') as AssetType)}
+        className="mb-3"
+      >
         <Nav.Item><Nav.Link eventKey="themes">Theme</Nav.Link></Nav.Item>
+        <Nav.Item><Nav.Link eventKey="layouts">Layout</Nav.Link></Nav.Item>
         <Nav.Item><Nav.Link eventKey="partials">Partial</Nav.Link></Nav.Item>
       </Nav>
 
+      {notice !== null ? (
+        <Alert variant="success" className="py-2" dismissible onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      ) : null}
+      {formError !== null ? (
+        <Alert variant="danger" className="py-2" dismissible onClose={() => setFormError(null)}>
+          {formError}
+        </Alert>
+      ) : null}
+
       <Row className="g-3">
-        <Col xl={5}>
+        <Col xl={7}>
           <Card>
-            <Card.Header className="small fw-semibold">Versi baru</Card.Header>
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <span className="small fw-semibold">
+                {activeType === 'themes'
+                  ? 'Editor theme'
+                  : activeType === 'layouts'
+                    ? 'Editor layout'
+                    : 'Editor partial'}
+              </span>
+              <Badge bg="light" text="dark" className="fw-normal">
+                versi baru dari key yang sama
+              </Badge>
+            </Card.Header>
             <Card.Body>
-              <p className="small text-muted">
-                Gunakan key yang sama untuk membuat versi berikutnya. Template published tetap
-                memakai versi lama sampai draft baru memilih versi ini.
-              </p>
-              {formError !== null ? <Alert variant="danger" className="py-2 small">{formError}</Alert> : null}
-              <Form.Group className="mb-2" controlId="asset-key">
-                <Form.Label className="small">Key</Form.Label>
-                <Form.Control
-                  value={key}
-                  maxLength={64}
-                  placeholder="mis. base, brand, header"
-                  onChange={(event) => setKey(event.target.value)}
-                />
-              </Form.Group>
-              <Form.Group className="mb-2" controlId="asset-name">
-                <Form.Label className="small">Nama</Form.Label>
-                <Form.Control value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
-              </Form.Group>
-              {activeType === 'themes' ? (
-                <>
-                  <div className="d-flex justify-content-end mb-1">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      className="p-0"
-                      onClick={() => setTokens(STARTER_THEME)}
-                    >
-                      Isi starter theme
-                    </Button>
-                  </div>
-                  <Form.Group controlId="asset-tokens">
-                    <Form.Label className="small">Tokens JSON</Form.Label>
+              <Row className="g-3">
+                <Col xs={12} md={5}>
+                  <Form.Group controlId="asset-key">
+                    <Form.Label className="small">Key</Form.Label>
                     <Form.Control
-                      as="textarea"
-                      rows={10}
-                      className="font-monospace small"
-                      value={tokens}
-                      onChange={(event) => setTokens(event.target.value)}
+                      value={key}
+                      maxLength={64}
+                      onChange={(event) => setKey(event.target.value)}
                     />
                   </Form.Group>
-                </>
-              ) : (
-                <Form.Group controlId="asset-content">
-                  <Form.Label className="small d-flex justify-content-between">
-                    <span>
-                      {activeType === 'layouts' ? 'HTML layout (wajib {{{body}}})' : 'HTML partial'}
-                    </span>
-                    {activeType === 'layouts' ? (
-                      <Button
-                        size="sm"
-                        variant="link"
-                        className="p-0"
-                        onClick={() => {
-                          setKey('base');
-                          setName('Base layout');
-                          setContent(STARTER_LAYOUT);
-                        }}
-                      >
-                        Isi starter layout
-                      </Button>
-                    ) : null}
-                  </Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={12}
-                    className="font-monospace small"
-                    value={content}
-                    onChange={(event) => setContent(event.target.value)}
+                </Col>
+                <Col xs={12} md={7}>
+                  <Form.Group controlId="asset-name">
+                    <Form.Label className="small">Nama</Form.Label>
+                    <Form.Control
+                      value={name}
+                      maxLength={120}
+                      onChange={(event) => setName(event.target.value)}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <div className="d-flex justify-content-end mt-3">
+                <Form.Check
+                  type="switch"
+                  id="asset-advanced"
+                  label="Mode advanced (JSON/HTML)"
+                  checked={advanced}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    setAdvanced(next);
+
+                    if (activeType === 'themes') {
+                      if (next) {
+                        setThemeJson(JSON.stringify(themeTokensFromForm(themeForm), null, 2));
+                      } else {
+                        try {
+                          const parsed: unknown = JSON.parse(themeJson);
+
+                          if (isRecord(parsed)) {
+                            setThemeForm(themeFormFromTokens(parsed));
+                          }
+                        } catch {
+                          setFormError('JSON theme tidak valid.');
+                        }
+                      }
+                    } else if (activeType === 'layouts' && next && layoutContent.trim().length === 0) {
+                      setLayoutContent(buildLayoutHtml(layoutPreset, layoutOptions));
+                    } else if (
+                      activeType === 'partials' &&
+                      next &&
+                      partialContent.trim().length === 0
+                    ) {
+                      setPartialContent(buildPartialHtml(partialPreset, partialOptions));
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="mt-3">
+                {activeType === 'themes' ? (
+                  advanced ? (
+                    <Form.Group controlId="theme-json">
+                      <Form.Label className="small">Tokens JSON</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={18}
+                        className="font-monospace small"
+                        value={themeJson}
+                        onChange={(event) => setThemeJson(event.target.value)}
+                      />
+                    </Form.Group>
+                  ) : (
+                    <ThemeFormFields form={themeForm} setForm={setThemeForm} />
+                  )
+                ) : null}
+
+                {activeType === 'layouts' ? (
+                  <LayoutFormFields
+                    preset={layoutPreset}
+                    setPreset={setLayoutPreset}
+                    options={layoutOptions}
+                    setOptions={setLayoutOptions}
+                    advanced={advanced}
+                    content={layoutContent}
+                    setContent={setLayoutContent}
                   />
-                </Form.Group>
-              )}
-              <Button className="mt-3" size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
-                {create.isPending ? <Spinner animation="border" size="sm" /> : 'Buat versi'}
-              </Button>
+                ) : null}
+
+                {activeType === 'partials' ? (
+                  <PartialFormFields
+                    preset={partialPreset}
+                    setPreset={setPartialPreset}
+                    options={partialOptions}
+                    setOptions={setPartialOptions}
+                    advanced={advanced}
+                    content={partialContent}
+                    setContent={setPartialContent}
+                  />
+                ) : null}
+              </div>
+
+              <div className="d-flex gap-2 mt-3">
+                <Button onClick={() => create.mutate()} disabled={create.isPending}>
+                  {create.isPending ? <Spinner animation="border" size="sm" /> : 'Buat versi baru'}
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  onClick={() => {
+                    setKey(DEFAULT_KEYS[activeType].key);
+                    setName(DEFAULT_KEYS[activeType].name);
+                    setAdvanced(false);
+                    setFormError(null);
+                    setNotice(null);
+                  }}
+                  disabled={create.isPending}
+                >
+                  Reset form
+                </Button>
+              </div>
             </Card.Body>
           </Card>
         </Col>
-        <Col xl={7}>
-          <Card>
-            <Card.Body>
-              <QueryState
-                isLoading={activeQuery.isLoading}
-                error={activeQuery.error}
-                skeleton="table"
-                onRetry={() => void activeQuery.refetch()}
-              >
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Key</th>
-                        <th>Nama</th>
-                        <th>Versi</th>
-                        <th>Dibuat</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="text-center text-muted py-4">
-                            Belum ada aset.
-                          </td>
-                        </tr>
-                      ) : (
-                        rows.map((row) => (
-                          <tr key={row.id}>
-                            <td><code>{row.key}</code></td>
-                            <td>{row.name}</td>
-                            <td>v{row.version}</td>
-                            <td>{formatDateTime(row.createdAt)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </QueryState>
+
+        <Col xl={5}>
+          <Card className="template-preview-card">
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <span className="small fw-semibold">Preview aset</span>
+              <span className="small text-muted">sandbox</span>
+            </Card.Header>
+            <Card.Body className="template-preview-canvas">
+              <div className="preview-frame-wrap">
+                <iframe
+                  title="Preview aset template"
+                  sandbox=""
+                  referrerPolicy="no-referrer"
+                  srcDoc={previewHtml}
+                  className="preview-frame"
+                />
+              </div>
+              <p className="small text-muted mt-2 mb-0">
+                Preview memakai sample data. Tema aktual diterapkan saat template memakai aset ini.
+              </p>
             </Card.Body>
           </Card>
         </Col>
       </Row>
+
+      <Card className="mt-3">
+        <Card.Header className="small fw-semibold">Versi aset</Card.Header>
+        <Card.Body>
+          <QueryState
+            isLoading={activeQuery.isLoading}
+            error={activeQuery.error}
+            skeleton="table"
+            onRetry={() => void activeQuery.refetch()}
+          >
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Nama</th>
+                    <th>Versi</th>
+                    <th>Dibuat</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center text-muted py-4">
+                        Belum ada aset.
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((row) => (
+                      <tr key={row.id}>
+                        <td><code>{row.key}</code></td>
+                        <td>{row.name}</td>
+                        <td>v{row.version}</td>
+                        <td>{formatDateTime(row.createdAt)}</td>
+                        <td className="text-end">
+                          <Button
+                            size="sm"
+                            variant="outline-secondary"
+                            onClick={() => void loadAsset(row)}
+                            disabled={loadingAssetId !== null}
+                          >
+                            {loadingAssetId === row.id ? <Spinner animation="border" size="sm" /> : 'Muat'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </QueryState>
+        </Card.Body>
+      </Card>
     </>
   );
+}
+
+function ThemeFormFields({
+  form,
+  setForm,
+}: {
+  form: ThemeFormValues;
+  setForm: (value: ThemeFormValues) => void;
+}): JSX.Element {
+  const set = <K extends keyof ThemeFormValues>(field: K, value: ThemeFormValues[K]): void => {
+    setForm({ ...form, [field]: value });
+  };
+
+  return (
+    <>
+      <p className="small text-muted">
+        Atur warna, font, dan button. Nilai ini disimpan sebagai token theme dan dipakai layout/partial.
+      </p>
+      <Row className="g-3">
+        <ColorField label="Brand primary" value={form.primary} onChange={(value) => set('primary', value)} />
+        <ColorField label="On primary" value={form.onPrimary} onChange={(value) => set('onPrimary', value)} />
+        <ColorField label="Background" value={form.background} onChange={(value) => set('background', value)} />
+        <ColorField label="Surface / card" value={form.surface} onChange={(value) => set('surface', value)} />
+        <ColorField label="Text primary" value={form.textPrimary} onChange={(value) => set('textPrimary', value)} />
+        <ColorField label="Text muted" value={form.textMuted} onChange={(value) => set('textMuted', value)} />
+        <Col xs={12} md={7}>
+          <Form.Group controlId="theme-font">
+            <Form.Label className="small">Font family</Form.Label>
+            <Form.Select
+              value={form.fontFamily}
+              onChange={(event) => set('fontFamily', event.target.value)}
+            >
+              {!FONT_OPTIONS.includes(form.fontFamily) ? (
+                <option value={form.fontFamily}>Custom: {form.fontFamily}</option>
+              ) : null}
+              {FONT_OPTIONS.map((font) => (
+                <option key={font} value={font}>{font}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+        <Col xs={6} md={2}>
+          <Form.Group controlId="theme-font-size">
+            <Form.Label className="small">Base</Form.Label>
+            <Form.Control value={form.fontSizeBase} onChange={(event) => set('fontSizeBase', event.target.value)} />
+          </Form.Group>
+        </Col>
+        <Col xs={6} md={3}>
+          <Form.Group controlId="theme-heading-size">
+            <Form.Label className="small">Heading</Form.Label>
+            <Form.Control value={form.fontSizeHeading} onChange={(event) => set('fontSizeHeading', event.target.value)} />
+          </Form.Group>
+        </Col>
+        <Col xs={6} md={3}>
+          <Form.Group controlId="theme-radius">
+            <Form.Label className="small">Radius card</Form.Label>
+            <Form.Control value={form.radius} onChange={(event) => set('radius', event.target.value)} />
+          </Form.Group>
+        </Col>
+        <ColorField label="Button background" value={form.buttonBackground} onChange={(value) => set('buttonBackground', value)} />
+        <ColorField label="Button text" value={form.buttonText} onChange={(value) => set('buttonText', value)} />
+        <Col xs={6} md={3}>
+          <Form.Group controlId="theme-button-radius">
+            <Form.Label className="small">Button radius</Form.Label>
+            <Form.Control value={form.buttonRadius} onChange={(event) => set('buttonRadius', event.target.value)} />
+          </Form.Group>
+        </Col>
+        <Col xs={6} md={3}>
+          <Form.Group controlId="theme-button-px">
+            <Form.Label className="small">Padding X</Form.Label>
+            <Form.Control value={form.buttonPaddingX} onChange={(event) => set('buttonPaddingX', event.target.value)} />
+          </Form.Group>
+        </Col>
+        <Col xs={6} md={3}>
+          <Form.Group controlId="theme-button-py">
+            <Form.Label className="small">Padding Y</Form.Label>
+            <Form.Control value={form.buttonPaddingY} onChange={(event) => set('buttonPaddingY', event.target.value)} />
+          </Form.Group>
+        </Col>
+      </Row>
+    </>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}): JSX.Element {
+  return (
+    <Col xs={12} md={4}>
+      <Form.Group>
+        <Form.Label className="small">{label}</Form.Label>
+        <div className="d-flex gap-2">
+          <Form.Control
+            type="color"
+            value={toHex(value)}
+            onChange={(event) => onChange(event.target.value)}
+            style={{ width: 48, padding: 2 }}
+            aria-label={`${label} color picker`}
+          />
+          <Form.Control value={value} onChange={(event) => onChange(event.target.value)} />
+        </div>
+      </Form.Group>
+    </Col>
+  );
+}
+
+function LayoutFormFields({
+  preset,
+  setPreset,
+  options,
+  setOptions,
+  advanced,
+  content,
+  setContent,
+}: {
+  preset: LayoutPresetId;
+  setPreset: (preset: LayoutPresetId) => void;
+  options: LayoutOptions;
+  setOptions: (options: LayoutOptions) => void;
+  advanced: boolean;
+  content: string;
+  setContent: (content: string) => void;
+}): JSX.Element {
+  return (
+    <>
+      <PresetPicker
+        items={LAYOUT_PRESETS}
+        value={preset}
+        onChange={(value) => setPreset(value as LayoutPresetId)}
+        disabled={advanced}
+      />
+      {advanced ? (
+        <Form.Group controlId="layout-html">
+          <Form.Label className="small">HTML layout (advanced)</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={18}
+            className="font-monospace small"
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+          />
+          <Form.Text className="text-muted">Wajib memuat tepat satu {'{{{body}}}'}.</Form.Text>
+        </Form.Group>
+      ) : (
+        <Row className="g-3">
+          <Col xs={12}>
+            <Form.Group controlId="layout-brand">
+              <Form.Label className="small">Nama brand</Form.Label>
+              <Form.Control
+                value={options.brandName}
+                onChange={(event) => setOptions({ ...options, brandName: event.target.value })}
+              />
+            </Form.Group>
+          </Col>
+          <Col xs={12}>
+            <Form.Group controlId="layout-logo">
+              <Form.Label className="small">Logo URL</Form.Label>
+              <Form.Control
+                value={options.logoUrl}
+                placeholder="https://..."
+                onChange={(event) => setOptions({ ...options, logoUrl: event.target.value })}
+              />
+            </Form.Group>
+          </Col>
+          <Col xs={12}>
+            <Form.Group controlId="layout-footer">
+              <Form.Label className="small">Teks footer</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={options.footerText}
+                onChange={(event) => setOptions({ ...options, footerText: event.target.value })}
+              />
+            </Form.Group>
+          </Col>
+          <Col xs={12}>
+            <Form.Group controlId="layout-unsubscribe">
+              <Form.Label className="small">URL unsubscribe</Form.Label>
+              <Form.Control
+                value={options.unsubscribeUrl}
+                placeholder="https://..."
+                onChange={(event) => setOptions({ ...options, unsubscribeUrl: event.target.value })}
+              />
+            </Form.Group>
+          </Col>
+        </Row>
+      )}
+    </>
+  );
+}
+
+function PartialFormFields({
+  preset,
+  setPreset,
+  options,
+  setOptions,
+  advanced,
+  content,
+  setContent,
+}: {
+  preset: PartialPresetId;
+  setPreset: (preset: PartialPresetId) => void;
+  options: PartialOptions;
+  setOptions: (options: PartialOptions) => void;
+  advanced: boolean;
+  content: string;
+  setContent: (content: string) => void;
+}): JSX.Element {
+  return (
+    <>
+      <PresetPicker
+        items={PARTIAL_PRESETS}
+        value={preset}
+        onChange={(value) => setPreset(value as PartialPresetId)}
+        disabled={advanced}
+      />
+      {advanced ? (
+        <Form.Group controlId="partial-html">
+          <Form.Label className="small">HTML partial (advanced)</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={16}
+            className="font-monospace small"
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+          />
+        </Form.Group>
+      ) : (
+        <Row className="g-3">
+          {preset === 'header' ? (
+            <>
+              <Col xs={12}>
+                <Form.Group controlId="partial-brand">
+                  <Form.Label className="small">Nama brand</Form.Label>
+                  <Form.Control value={options.brandName} onChange={(event) => setOptions({ ...options, brandName: event.target.value })} />
+                </Form.Group>
+              </Col>
+              <Col xs={12}>
+                <Form.Group controlId="partial-logo">
+                  <Form.Label className="small">Logo URL</Form.Label>
+                  <Form.Control value={options.logoUrl} placeholder="https://..." onChange={(event) => setOptions({ ...options, logoUrl: event.target.value })} />
+                </Form.Group>
+              </Col>
+              <Col xs={12}>
+                <Form.Group controlId="partial-tagline">
+                  <Form.Label className="small">Tagline</Form.Label>
+                  <Form.Control value={options.tagline} onChange={(event) => setOptions({ ...options, tagline: event.target.value })} />
+                </Form.Group>
+              </Col>
+            </>
+          ) : null}
+          {preset === 'footer' ? (
+            <>
+              <Col xs={12}>
+                <Form.Group controlId="partial-footer">
+                  <Form.Label className="small">Teks footer</Form.Label>
+                  <Form.Control as="textarea" rows={3} value={options.footerText} onChange={(event) => setOptions({ ...options, footerText: event.target.value })} />
+                </Form.Group>
+              </Col>
+              <Col xs={12}>
+                <Form.Group controlId="partial-unsubscribe">
+                  <Form.Label className="small">URL unsubscribe</Form.Label>
+                  <Form.Control value={options.unsubscribeUrl} placeholder="https://..." onChange={(event) => setOptions({ ...options, unsubscribeUrl: event.target.value })} />
+                </Form.Group>
+              </Col>
+            </>
+          ) : null}
+          {preset === 'cta' ? (
+            <>
+              <Col xs={12}>
+                <Form.Group controlId="partial-cta-label">
+                  <Form.Label className="small">Label tombol</Form.Label>
+                  <Form.Control value={options.ctaLabel} onChange={(event) => setOptions({ ...options, ctaLabel: event.target.value })} />
+                </Form.Group>
+              </Col>
+              <Col xs={12}>
+                <Form.Group controlId="partial-cta-url">
+                  <Form.Label className="small">URL tombol</Form.Label>
+                  <Form.Control value={options.ctaUrl} placeholder="{{cta.url}} atau https://..." onChange={(event) => setOptions({ ...options, ctaUrl: event.target.value })} />
+                </Form.Group>
+              </Col>
+            </>
+          ) : null}
+          {preset === 'signature' ? (
+            <>
+              <Col xs={12}>
+                <Form.Group controlId="partial-person-name">
+                  <Form.Label className="small">Nama</Form.Label>
+                  <Form.Control value={options.personName} onChange={(event) => setOptions({ ...options, personName: event.target.value })} />
+                </Form.Group>
+              </Col>
+              <Col xs={12}>
+                <Form.Group controlId="partial-person-role">
+                  <Form.Label className="small">Jabatan</Form.Label>
+                  <Form.Control value={options.personRole} onChange={(event) => setOptions({ ...options, personRole: event.target.value })} />
+                </Form.Group>
+              </Col>
+            </>
+          ) : null}
+        </Row>
+      )}
+    </>
+  );
+}
+
+function PresetPicker({
+  items,
+  value,
+  onChange,
+  disabled,
+}: {
+  items: Array<{ id: string; label: string; description: string }>;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}): JSX.Element {
+  return (
+    <div className="d-flex flex-wrap gap-2 mb-3">
+      {items.map((item) => (
+        <Button
+          key={item.id}
+          size="sm"
+          variant={value === item.id ? 'dark' : 'outline-secondary'}
+          onClick={() => onChange(item.id)}
+          disabled={disabled}
+          title={item.description}
+        >
+          {item.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function parseJsonRecord(value: string, label: string): Record<string, unknown> {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`${label} bukan JSON yang valid.`);
+  }
+
+  if (!isRecord(parsed)) {
+    throw new Error(`${label} harus berupa objek JSON.`);
+  }
+
+  return parsed;
+}
+
+function toHex(value: string): string {
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

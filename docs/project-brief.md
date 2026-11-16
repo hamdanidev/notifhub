@@ -68,7 +68,7 @@ Aturan kerja:
 | ApiKey table, admin auth, topics + membership, Admin API tenant-scoped | selesai & terverifikasi |
 | `@notifhub/react` (headless) + `NotifHubAdminClient` + `notifhub-console` | selesai & terverifikasi |
 | Console refresh/auto-refresh + resend failed (notification baru, audit link) | selesai & terverifikasi (tanpa browser automation) |
-| Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) | selesai & terverifikasi (E12–E19, UI manual tanpa browser automation) |
+| Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode (form theme, galeri layout, form partial) | selesai & terverifikasi (E12–E19, UI manual tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
