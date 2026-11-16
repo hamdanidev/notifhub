@@ -131,6 +131,17 @@ export function AppLayout(): JSX.Element {
             <div className="brand-name">NotifHub</div>
             <div className="brand-sub">Console</div>
           </div>
+          {!isMobile && !collapsed ? (
+            <button
+              type="button"
+              className="sidebar-collapse-toggle"
+              aria-label="Ciutkan sidebar"
+              title="Ciutkan sidebar"
+              onClick={handleSidebarToggle}
+            >
+              <Icon name="chevron-left" size={15} />
+            </button>
+          ) : null}
         </div>
 
         <nav>
@@ -144,9 +155,14 @@ export function AppLayout(): JSX.Element {
                   end={item.end}
                   title={collapsed && !isMobile ? item.label : undefined}
                   aria-label={item.label}
-                  className={({ isActive }) =>
-                    isActive ? 'app-nav-link active' : 'app-nav-link'
-                  }
+                  className={({ isActive }) => {
+                    const active =
+                      item.to === '/templates'
+                        ? isActive && !location.pathname.startsWith('/templates/assets')
+                        : isActive;
+
+                    return active ? 'app-nav-link active' : 'app-nav-link';
+                  }}
                 >
                   <Icon name={item.icon} size={16} />
                   <span className="nav-label">{item.label}</span>
@@ -196,7 +212,7 @@ export function AppLayout(): JSX.Element {
                       : 'menu'
                     : collapsed
                       ? 'chevron-right'
-                      : 'chevron-left'
+                      : 'menu'
                 }
                 size={16}
               />

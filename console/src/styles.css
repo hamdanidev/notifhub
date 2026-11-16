@@ -76,6 +76,25 @@ a:hover {
 
 .brand-text {
   line-height: 1.1;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-collapse-toggle {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.sidebar-collapse-toggle:hover {
+  color: var(--ink);
+  background: #f5f5f4;
 }
 
 .brand-name {
@@ -240,6 +259,7 @@ a:hover {
   }
 
   .app-sidebar.collapsed .brand-text,
+  .app-sidebar.collapsed .sidebar-collapse-toggle,
   .app-sidebar.collapsed .nav-section-title,
   .app-sidebar.collapsed .nav-label,
   .app-sidebar.collapsed .app-sidebar-footer {
@@ -842,6 +862,10 @@ a:hover {
 @media (max-width: 959.98px) {
   .app-menu-toggle {
     display: grid;
+  }
+
+  .sidebar-collapse-toggle {
+    display: none;
   }
 
   .app-sidebar {
