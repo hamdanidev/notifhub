@@ -1,0 +1,239 @@
+// Prisma schema for NotifHub.
+// Phase 1: schema only for most models. Workers, providers, admin API and topics API are later phases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Channel {
+  inapp
+  email
+  whatsapp
+  sms
+}
+
+enum Status {
+  pending
+  sent
+  failed
+  read
+  skipped
+}
+
+enum OverallStatus {
+  pending
+  partial
+  sent
+  failed
+}
+
+model Notification {
+  id                   String       @id @default(uuid())
+  idempotencyKey       String       @unique
+  idempotencyExpiresAt DateTime
+  tenantId             String       @default("default")
+  templateKey          String
+  payload              Json
+  priority             Int          @default(3)
+  overallStatus        OverallStatus @default(pending)
+  targetType           String       @default("recipients")
+  targetSnapshot       Json?
+  groupAckRequired     Boolean      @default(false)
+  groupAckDeadline     DateTime?    @db.Timestamptz
+  groupAcknowledgedAt  DateTime?    @db.Timestamptz
+  groupAcknowledgedBy  String?
+  createdAt            DateTime     @default(now()) @db.Timestamptz
+  updatedAt            DateTime     @updatedAt @db.Timestamptz
+  deletedAt            DateTime?    @db.Timestamptz
+
+  recipients       NotificationRecipient[]
+  billingEvents    BillingEvent[]
+  deliveryAttempts DeliveryAttempt[]
+
+  @@index([createdAt])
+  @@index([tenantId, createdAt])
+  @@index([overallStatus])
+  @@index([idempotencyExpiresAt])
+  @@index([priority, overallStatus])
+}
+
+model NotificationRecipient {
+  id                BigInt   @id @default(autoincrement())
+  notificationId    String
+  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  recipientId       String
+  channel           Channel
+  status            Status   @default(pending)
+  attempts          Int      @default(0)
+  lastError         String?
+  providerName      String?
+  providerMessageId String?
+  sentAt            DateTime? @db.Timestamptz
+  deliveredAt       DateTime? @db.Timestamptz
+  readAt            DateTime? @db.Timestamptz
+  acknowledgedAt    DateTime? @db.Timestamptz
+
+  @@unique([notificationId, recipientId, channel])
+  @@index([recipientId, status])
+  @@index([status])
+}
+
+model NotificationTemplate {
+  id               String   @id @default(uuid())
+  tenantId         String   @default("default")
+  key              String
+  channel          Channel
+  locale           String   @default("id")
+  subject          String?
+  body             String
+  version          Int      @default(1)
+  active           Boolean  @default(true)
+  fallbackProvider String?
+  fallbackChannel  Channel?
+  createdAt        DateTime @default(now()) @db.Timestamptz
+  updatedAt        DateTime @updatedAt @db.Timestamptz
+
+  @@unique([tenantId, key, channel, locale, version])
+  @@index([tenantId, key, channel, locale, active])
+}
+
+model NotificationPreference {
+  id              String   @id @default(uuid())
+  tenantId        String   @default("default")
+  recipientId     String
+  channel         Channel
+  enabled         Boolean  @default(true)
+  quietHoursStart String?
+  quietHoursEnd   String?
+  timezone        String   @default("Asia/Jakarta")
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  @@unique([tenantId, recipientId, channel])
+}
+
+model DeliveryEvent {
+  id             BigInt   @id @default(autoincrement())
+  notificationId String
+  recipientId    String
+  channel        Channel
+  providerName   String
+  eventType      String
+  rawPayload     Json
+  occurredAt     DateTime @default(now()) @db.Timestamptz
+
+  @@index([notificationId])
+  @@index([providerName, occurredAt])
+}
+
+model DeliveryAttempt {
+  id             BigInt   @id @default(autoincrement())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  recipientId    String
+  channel        Channel
+  attemptNumber  Int
+  providerName   String
+  status         String
+  errorName      String?
+  errorMessage   String?
+  errorStack     String?
+  durationMs     Int
+  occurredAt     DateTime @default(now()) @db.Timestamptz
+
+  @@index([notificationId])
+  @@index([status, occurredAt])
+  @@index([providerName, occurredAt])
+}
+
+model BillingEvent {
+  id             BigInt   @id @default(autoincrement())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  tenantId       String   @default("default")
+  eventType      String
+  occurredAt     DateTime @default(now()) @db.Timestamptz
+
+  @@index([tenantId, occurredAt])
+  @@index([notificationId])
+}
+
+model Subscriber {
+  id         String   @id @default(uuid())
+  tenantId   String   @default("default")
+  externalId String
+  email      String?
+  phone      String?
+  locale     String?
+  timezone   String   @default("Asia/Jakarta")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId, email])
+  @@index([tenantId, phone])
+}
+
+model Topic {
+  id          String   @id @default(uuid())
+  key         String
+  tenantId    String   @default("default")
+  displayName String?
+  mode        String   @default("push")
+  isTimeBound Boolean  @default(false)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  subscribers TopicSubscriber[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, createdAt])
+}
+
+model TopicSubscriber {
+  id          String    @id @default(uuid())
+  topicId     String
+  topic       Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  recipientId String
+  addedAt     DateTime  @default(now()) @db.Timestamptz
+  expiresAt   DateTime? @db.Timestamptz
+
+  @@unique([topicId, recipientId])
+  @@index([expiresAt])
+}
+
+model ApiKey {
+  id                  String    @id @default(uuid())
+  name                String
+  keyHash             String    @unique
+  tenantId            String    @default("default")
+  allowedOrigins      String[]  @default([])
+  subscriberJwtSecret String?
+  active              Boolean   @default(true)
+  lastUsedAt          DateTime? @db.Timestamptz
+  createdAt           DateTime  @default(now()) @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @db.Timestamptz
+
+  @@index([tenantId])
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         String    @default("tenant_admin")
+  tenantId     String    @default("default")
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  @@index([tenantId])
+}

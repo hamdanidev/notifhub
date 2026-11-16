@@ -1,0 +1,40 @@
+# Development infrastructure for NotifHub.
+# ONLY PostgreSQL and Redis run in Docker. The NotifHub backend runs natively on the host.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: notifhub-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: notifhub
+      POSTGRES_PASSWORD: notifhub_pass
+      POSTGRES_DB: notifhub_dev
+    volumes:
+      - notifhub_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notifhub -d notifhub_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: notifhub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - notifhub_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  notifhub_pgdata:
+  notifhub_redisdata:

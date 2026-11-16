@@ -1,0 +1,236 @@
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
+import { Channel } from '@prisma/client';
+import { Job, UnrecoverableError } from 'bullmq';
+import { PinoLogger } from 'nestjs-pino';
+import { ReadinessService } from '../common/readiness.service';
+import type { DeliveryJobData } from '../ingest/ingest.service';
+import { MetricsService } from '../metrics/metrics.service';
+import { ProviderExecutor } from '../providers/provider-executor.service';
+import { ProviderRegistry } from '../providers/provider-registry.service';
+import { QUEUE_NAME_EMAIL } from '../queues/queues.module';
+import { TemplateService } from '../templates/template.service';
+import {
+  DeliveryAttemptsService,
+  DeliveryContextService,
+  PreferenceEnforcementService,
+  isTerminalStatus,
+  toDeliveryFailure,
+  type DeliveryResult,
+} from './delivery-worker.support';
+
+/**
+ * Email delivery worker.
+ *
+ * resolve template -> preferences -> resolve address -> render -> provider (circuit breaker)
+ * -> status + delivery_attempts. No real SMTP traffic happens in development (log-only).
+ */
+@Processor(QUEUE_NAME_EMAIL)
+@Injectable()
+export class EmailProcessor extends WorkerHost {
+  constructor(
+    private readonly readiness: ReadinessService,
+    private readonly contexts: DeliveryContextService,
+    private readonly templates: TemplateService,
+    private readonly enforcement: PreferenceEnforcementService,
+    private readonly attempts: DeliveryAttemptsService,
+    private readonly providers: ProviderRegistry,
+    private readonly executor: ProviderExecutor,
+    private readonly metrics: MetricsService,
+    private readonly logger: PinoLogger,
+  ) {
+    super();
+    this.logger.setContext(EmailProcessor.name);
+  }
+
+  async process(job: Job<DeliveryJobData>): Promise<DeliveryResult> {
+    await this.readiness.untilReady();
+
+    const startedAt = Date.now();
+    const data = job.data;
+    const context = await this.contexts.load(data);
+
+    if (context === null) {
+      this.logger.error(
+        {
+          event: 'delivery.failed',
+          requestId: data.requestId,
+          notification_id: data.notificationId,
+          recipient_id: data.recipientId,
+          channel: Channel.email,
+          reason: 'recipient_row_missing',
+        },
+        'email recipient row not found',
+      );
+      throw new UnrecoverableError('email recipient row not found');
+    }
+
+    if (context.deletedAt !== null) {
+      throw new UnrecoverableError('notification is soft deleted');
+    }
+
+    if (isTerminalStatus(context.recipient.status)) {
+      return this.skipDuplicate(job, context.recipient.status);
+    }
+
+    const subscriber = await this.contexts.loadSubscriber(context.tenantId, data.recipientId);
+    const locale = data.recipientOverride?.locale ?? subscriber?.locale ?? undefined;
+    const attemptNumber = context.recipient.attempts + 1;
+    const provider = this.providers.getOrThrow(Channel.email);
+
+    try {
+      const template = await this.templates.resolve(
+        context.tenantId,
+        data.templateKey,
+        Channel.email,
+        locale,
+      );
+
+      if (template === null) {
+        throw new UnrecoverableError(`template not found: ${data.templateKey}`);
+      }
+
+      const decision = await this.enforcement.evaluate(job, context.tenantId, subscriber?.timezone ?? null);
+
+      if (decision.action === 'skip') {
+        const outcome = await this.enforcement.applySkip({
+          job,
+          recipientRowId: context.recipient.id,
+          fallbackChannel: template.fallbackChannel,
+        });
+
+        return outcome === 'fallback_enqueued'
+          ? { status: 'fallback', reason: 'preference_disabled' }
+          : { status: 'skipped', reason: 'preference_disabled' };
+      }
+
+      if (decision.action === 'defer') {
+        const deferred = await this.enforcement.defer(job, decision);
+
+        if (deferred === 'deferred') {
+          return { status: 'deferred', reason: 'quiet_hours' };
+        }
+      }
+
+      const to = data.recipientOverride?.email ?? subscriber?.email ?? null;
+
+      if (to === null || to.length === 0) {
+        await this.attempts.markSkipped(context.recipient.id, 'no_address');
+
+        this.logger.info(
+          {
+            event: 'delivery.skipped',
+            requestId: data.requestId,
+            notification_id: data.notificationId,
+            recipient_id: data.recipientId,
+            channel: Channel.email,
+            reason: 'no_address',
+          },
+          'no email address available for this recipient, skipped without failing the request',
+        );
+
+        return { status: 'skipped', reason: 'no_address' };
+      }
+
+      const rendered = this.templates.render(template, data.data);
+
+      const result = await this.executor.execute(provider, {
+        notificationId: data.notificationId,
+        recipientId: data.recipientId,
+        tenantId: context.tenantId,
+        priority: data.priority,
+        templateKey: data.templateKey,
+        subject: rendered.subject,
+        body: rendered.body,
+        data: data.data,
+        to,
+      });
+
+      const durationMs = Date.now() - startedAt;
+
+      await this.attempts.recordSuccess({
+        recipientRowId: context.recipient.id,
+        notificationId: data.notificationId,
+        recipientId: data.recipientId,
+        channel: Channel.email,
+        attemptNumber,
+        providerName: provider.name,
+        providerMessageId: result.providerMessageId,
+        durationMs,
+      });
+
+      this.metrics.deliveryLatencySeconds.observe(
+        { provider: provider.name, channel: Channel.email },
+        durationMs / 1000,
+      );
+
+      this.logger.info(
+        {
+          event: 'delivery.attempted',
+          requestId: data.requestId,
+          notification_id: data.notificationId,
+          recipient_id: data.recipientId,
+          channel: Channel.email,
+          provider: provider.name,
+          attempt: attemptNumber,
+          duration_ms: durationMs,
+          provider_message_id: result.providerMessageId,
+        },
+        'email delivered to the provider',
+      );
+
+      return { status: 'sent', providerMessageId: result.providerMessageId };
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      const failure = toDeliveryFailure(error);
+
+      await this.attempts.recordFailure({
+        recipientRowId: context.recipient.id,
+        notificationId: data.notificationId,
+        recipientId: data.recipientId,
+        channel: Channel.email,
+        attemptNumber,
+        providerName: provider.name,
+        durationMs,
+        failure,
+      });
+
+      this.metrics.providerErrorsTotal.inc({ provider: provider.name, channel: Channel.email });
+
+      this.logger.error(
+        {
+          event: 'delivery.failed',
+          requestId: data.requestId,
+          notification_id: data.notificationId,
+          recipient_id: data.recipientId,
+          channel: Channel.email,
+          provider: provider.name,
+          attempt: attemptNumber,
+          error_name: failure.errorName,
+          error_message: failure.errorMessage,
+          duration_ms: durationMs,
+          unrecoverable: error instanceof UnrecoverableError,
+        },
+        'email delivery failed',
+      );
+
+      throw error;
+    }
+  }
+
+  private skipDuplicate(job: Job<DeliveryJobData>, status: string): DeliveryResult {
+    this.logger.info(
+      {
+        event: 'delivery.skipped_duplicate',
+        requestId: job.data.requestId,
+        notification_id: job.data.notificationId,
+        recipient_id: job.data.recipientId,
+        channel: Channel.email,
+        status,
+      },
+      'email recipient already handled, skipping duplicate delivery',
+    );
+
+    return { status: 'skipped', reason: status };
+  }
+}

@@ -1,0 +1,2 @@
+# Normalize all text files to LF so Windows checkouts match CI and container builds.
+* text=auto eol=lf

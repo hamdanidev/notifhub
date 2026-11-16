@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+  TEST_DATABASE_URL: postgresql://notifhub:notifhub_pass@localhost:5432/notifhub_test
+  TEST_REDIS_URL: redis://localhost:6379/15
+
+jobs:
+  backend:
+    name: Backend (typecheck, build, e2e)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: notifhub
+          POSTGRES_PASSWORD: notifhub_pass
+          POSTGRES_DB: notifhub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U notifhub -d notifhub_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: CI backend (typecheck, build, e2e, migrate status)
+        run: npm run ci
+
+      - name: OpenAPI drift check
+        run: |
+          cp .env.example .env
+          export DATABASE_URL="$TEST_DATABASE_URL"
+          export REDIS_URL="$TEST_REDIS_URL"
+          node dist/main &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health/live > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://localhost:3000/health/live > /dev/null
+          npm run openapi:export
+          git diff --exit-code openapi/notifhub.json
+
+  packages:
+    name: Packages (JS SDK, React, console)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: JS SDK
+        run: |
+          npm run sdk:build
+          npm run sdk:typecheck
+          npm run sdk:test
+
+      - name: React bindings
+        run: |
+          npm run react:typecheck
+          npm run react:test
+          npm run react:build
+
+      - name: Console
+        run: |
+          npm --prefix console ci
+          npm run console:typecheck
+          npm run console:build
+
+  go:
+    name: Go SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/go
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: sdk/go/go.sum
+
+      - name: Format check
+        run: test -z "$(gofmt -l .)"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image (runner)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          push: false
+          tags: notifhub-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build console image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: console/Dockerfile
+          push: false
+          tags: notifhub-console:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

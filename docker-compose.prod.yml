@@ -1,0 +1,86 @@
+# Production-like smoke stack for NotifHub.
+#
+#   cp .env.prod.example .env.prod     # isi semua CHANGE_ME
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml down -v
+#
+# Bukan pengganti deployment sungguhan (tanpa TLS / secret manager), hanya untuk membuktikan
+# image backend + console + migrasi berjalan bersama.
+
+name: notifhub-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-notifhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi di .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-notifhub}
+    volumes:
+      - notifhub_prod_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-notifhub} -d ${POSTGRES_DB:-notifhub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - notifhub_prod_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot migration job; backend waits for it to finish successfully.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-notifhub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi di .env.prod}@postgres:5432/${POSTGRES_DB:-notifhub}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      target: runner
+    env_file:
+      - .env.prod
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-notifhub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi di .env.prod}@postgres:5432/${POSTGRES_DB:-notifhub}
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  console:
+    build:
+      context: .
+      dockerfile: console/Dockerfile
+      args:
+        VITE_NOTIFHUB_API_URL: ${CONSOLE_API_URL:-http://localhost:3000}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  notifhub_prod_pgdata:
+  notifhub_prod_redisdata:

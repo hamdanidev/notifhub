@@ -1,0 +1,717 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "NotifHub Public API",
+    "description": "Consumer API for NotifHub: ingest notifications, sync subscribers and manage topic membership.",
+    "version": "0.8.0"
+  },
+  "paths": {
+    "/api/v1/notify": {
+      "post": {
+        "description": "Validates the request, checks idempotency, persists the notification and enqueues one BullMQ job per (recipient x channel). Providers are never called inline.",
+        "operationId": "IngestController_notify",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "description": "Service-to-service API key from the ApiKey table.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Notification accepted for asynchronous delivery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "notification_id",
+                    "status"
+                  ],
+                  "properties": {
+                    "notification_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "accepted"
+                      ],
+                      "example": "accepted"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload or missing topics/recipients"
+          },
+          "401": {
+            "description": "Missing or invalid X-API-Key"
+          },
+          "413": {
+            "description": "Payload exceeds INGEST_MAX_PAYLOAD_BYTES (64 KB by default)"
+          },
+          "429": {
+            "description": "Per-key ingest rate limit exceeded"
+          },
+          "503": {
+            "description": "Queue backend (Redis) unavailable"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Trigger a notification",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/api/v1/subscribers/{externalId}": {
+      "put": {
+        "description": "Idempotent upsert on (tenantId, externalId). Fields omitted from the body are cleared (full replacement); timezone falls back to Asia/Jakarta.",
+        "operationId": "SubscribersController_upsert",
+        "parameters": [
+          {
+            "name": "externalId",
+            "required": true,
+            "in": "path",
+            "description": "Consumer-defined recipient identifier",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertSubscriberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriberResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid externalId or body fields"
+          },
+          "401": {
+            "description": "Missing or invalid X-API-Key"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Push-sync a subscriber snapshot",
+        "tags": [
+          "subscribers"
+        ]
+      },
+      "get": {
+        "description": "Reads data that was previously pushed by the consumer. NotifHub never pulls subscriber data from consumer systems.",
+        "operationId": "SubscribersController_get",
+        "parameters": [
+          {
+            "name": "externalId",
+            "required": true,
+            "in": "path",
+            "description": "Consumer-defined recipient identifier",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriberResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-API-Key"
+          },
+          "404": {
+            "description": "Subscriber not found for the current tenant"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Read the stored subscriber snapshot",
+        "tags": [
+          "subscribers"
+        ]
+      }
+    },
+    "/api/v1/topics/{key}/members": {
+      "put": {
+        "description": "Creates the topic on first push. Replaces the entire membership; members not present in the body are removed. Requires expiresAt for every member when the topic is time-bound.",
+        "operationId": "TopicsController_replaceMembers",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "shift:gudang",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicMembersBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicMutationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key, body or missing expiresAt"
+          },
+          "401": {
+            "description": "Missing or invalid X-API-Key"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Replace topic membership",
+        "tags": [
+          "topics"
+        ]
+      },
+      "post": {
+        "description": "Creates the topic on first push. Members not present in the body are kept.",
+        "operationId": "TopicsController_addMembers",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "shift:gudang",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicMembersBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicMutationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key, body or missing expiresAt"
+          },
+          "401": {
+            "description": "Missing or invalid X-API-Key"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Add or update topic members",
+        "tags": [
+          "topics"
+        ]
+      },
+      "get": {
+        "operationId": "TopicsController_getMembers",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "shift:gudang",
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeExpired",
+            "required": false,
+            "in": "query",
+            "description": "Include expired members",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicMembersResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-API-Key"
+          },
+          "404": {
+            "description": "Topic not found for this tenant"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "List topic members (expired members excluded by default)",
+        "tags": [
+          "topics"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TopicMembersResponseDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "$ref": "#/components/schemas/TopicViewDto"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopicMemberViewDto"
+            }
+          },
+          "expiredCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topic",
+          "members",
+          "expiredCount"
+        ]
+      },
+      "TopicMemberViewDto": {
+        "type": "object",
+        "properties": {
+          "recipientId": {
+            "type": "string"
+          },
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "recipientId",
+          "addedAt",
+          "expiresAt"
+        ]
+      },
+      "TopicViewDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "isTimeBound": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "push",
+              "self-service"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "isTimeBound",
+          "mode"
+        ]
+      },
+      "TopicMutationResponseDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "$ref": "#/components/schemas/TopicViewDto"
+          },
+          "memberCount": {
+            "type": "number"
+          },
+          "removed": {
+            "type": "number"
+          },
+          "added": {
+            "type": "number"
+          },
+          "updated": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topic",
+          "memberCount"
+        ]
+      },
+      "TopicMembersBodyDto": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopicMemberDto"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Default expiry applied to members that do not set their own"
+          },
+          "isTimeBound": {
+            "type": "boolean",
+            "description": "Only honoured when the topic is created by this request"
+          }
+        },
+        "required": [
+          "members"
+        ]
+      },
+      "TopicMemberDto": {
+        "type": "object",
+        "properties": {
+          "recipientId": {
+            "type": "string",
+            "maxLength": 128,
+            "example": "user-123"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "recipientId"
+        ]
+      },
+      "SubscriberResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "default"
+          },
+          "externalId": {
+            "type": "string",
+            "example": "user-123"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "locale": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Jakarta"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "externalId",
+          "email",
+          "phone",
+          "locale",
+          "timezone",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpsertSubscriberDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 320,
+            "example": "user@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 32,
+            "example": "+628123456789"
+          },
+          "locale": {
+            "type": "string",
+            "maxLength": 16,
+            "example": "id"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "example": "Asia/Jakarta"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "plan": "pro"
+            }
+          }
+        }
+      },
+      "NotifyDto": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "description": "Idempotency key scoped to the caller. Repeating a request with the same key within IDEMPOTENCY_TTL_DAYS returns the original notification id.",
+            "maxLength": 128,
+            "example": "order-1234-created"
+          },
+          "template_key": {
+            "type": "string",
+            "description": "Template key resolved per channel and locale",
+            "maxLength": 128,
+            "example": "test.notification"
+          },
+          "recipients": {
+            "description": "Recipient identifiers, or inline recipient objects. Strings are normalized to { id }. Duplicates are removed by id. Optional when topics are provided.",
+            "minItems": 1,
+            "maxItems": 1000,
+            "example": [
+              "user-1",
+              {
+                "id": "user-2",
+                "email": "user2@example.com",
+                "locale": "id"
+              }
+            ],
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "topics": {
+            "description": "Topic keys to fan out to. Topics are created by the membership push API; unknown keys are rejected with 400.",
+            "maxItems": 50,
+            "example": [
+              "shift:gudang"
+            ],
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "data": {
+            "type": "object",
+            "description": "Template data. Stored with the notification and passed to the renderer.",
+            "additionalProperties": true,
+            "example": {
+              "nama": "Budi"
+            }
+          },
+          "channels": {
+            "type": "array",
+            "description": "Channels to deliver on. Defaults to [\"inapp\"].",
+            "example": [
+              "inapp"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "inapp",
+                "email",
+                "whatsapp",
+                "sms"
+              ]
+            }
+          },
+          "priority": {
+            "type": "string",
+            "description": "Delivery priority. Maps to BullMQ priority 1 (critical) .. 4 (low).",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ],
+            "default": "normal",
+            "example": "normal"
+          },
+          "scheduled_at": {
+            "type": "string",
+            "description": "ISO 8601 timestamp. Accepted and stored in the payload, but NOT scheduled or processed in Phase 1.",
+            "format": "date-time",
+            "example": "2026-01-01T10:00:00.000Z"
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Deprecated. The tenant is taken from the API key; a value must match it when provided.",
+            "maxLength": 64,
+            "example": "default",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "template_key",
+          "data"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "api-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Service-to-service API key"
+      }
+    }
+  }
+}
