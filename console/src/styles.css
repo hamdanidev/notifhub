@@ -511,14 +511,27 @@ a:hover {
   color: #44403c;
 }
 
-.form-control,
-.form-select {
+.form-control {
   border: 1px solid #dedbd8;
   border-radius: 8px;
-  background: #fff;
+  background-color: #fff;
   color: var(--ink);
   font-size: 13px;
   padding: 7px 10px;
+}
+
+.form-select {
+  border: 1px solid #dedbd8;
+  border-radius: 8px;
+  /* Keep Bootstrap's arrow: use background-color, not the background shorthand. */
+  background-color: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  padding: 7px 2.25rem 7px 10px;
+}
+
+.form-select-sm {
+  padding: 4px 2rem 4px 8px;
 }
 
 .form-control::placeholder {
