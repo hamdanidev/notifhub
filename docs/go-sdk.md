@@ -189,12 +189,12 @@ if errors.As(err, &apiErr) {
 | D1 | Cakupan Go SDK hanya endpoint consumer publik (notify, subscriber, topic membership) | Ya |
 | D2 | Generator: `oapi-codegen` v2 (Go-native, tanpa Java), versi dipin di `generate.go` | Ya |
 | D3 | Spec publik diekspor dari `/api/docs-json`, difilter, lalu **di-commit** di `openapi/notifhub.json` | Ya |
-| D4 | Module path `github.com/notifhub/notifhub-go` (dapat diganti saat repo publik tersedia) | Ya |
+| D4 | Module path `github.com/hamdanidev/notifhub-go`, dipublikasikan dari repo mirror `notifhub-go` | Ya |
 | D5 | Wrapper memakai tipe generated + alias, tanpa menduplikasi model | Ya |
 | D6 | Retry default mati; opt-in, hanya operasi idempoten dan notify ber-idempotency-key | Ya |
 | D7 | Auth hanya `X-API-Key`; subscriber JWT/admin tidak masuk SDK | Ya |
-| D8 | Tanpa perubahan backend/schema; versi root `0.8.0` | Ya |
-| D9 | Tanpa CI/publikasi registry; distribusi lewat modul Git/`replace` | Ya |
+| D8 | Tanpa perubahan backend/schema; versi root mengikuti rilis service (`0.10.0`) | Ya |
+| D9 | Distribusi lewat repo mirror `hamdanidev/notifhub-go` + tag `vX.Y.Z`; bukan registry npm | Ya |
 | D10 | Test unit + integrasi lokal; contoh program di `examples/send` | Ya |
 
 ---
@@ -216,4 +216,56 @@ if errors.As(err, &apiErr) {
 6. **Verifikasi:** `go vet`, `gofmt`, `go build`, dan `go test` lulus (7 test). Contoh
    `examples/send` berhasil: subscriber upsert, topic `go:example` (1 member), notify diterima
    (`202`) dan recipient berstatus `sent`; API key salah menghasilkan `APIError` 401.
-7. **Tanpa perubahan backend/schema**; versi root `0.8.0`.
+7. **Tanpa perubahan backend/schema**; versi root mengikuti rilis service.
+
+---
+
+## 10. Rilis dan distribusi
+
+`notifhub-go` adalah **repo mirror**: sumber kebenaran tetap `sdk/go` di repo utama, dan setiap
+rilis menyalin snapshot-nya ke root repo mirror. Alasannya: `go.mod` mendeklarasikan
+`github.com/hamdanidev/notifhub-go`, sehingga Go memetakan module ke **root repo** bernama
+`notifhub-go`; tag `vX.Y.Z` hanya berlaku jika `go.mod` berada di root repo tersebut.
+
+### Langkah rilis
+
+```bash
+# 0. Prasyarat: CI hijau dan tidak ada drift
+npm run ci
+npm run openapi:export            # backend harus berjalan
+npm run sdk:go:generate
+npm run sdk:go:test
+
+# 1. Commit + tag di repo utama (menandai rilis service)
+git tag -a v0.10.0 -m "release: v0.10.0"
+git push origin main --tags
+
+# 2. Snapshot ke repo mirror
+git clone https://github.com/hamdanidev/notifhub-go ../notifhub-go
+robocopy sdk\go ..\notifhub-go /MIR /XD .git   # PowerShell: pakai robocopy atau Copy-Item
+cd ../notifhub-go
+git add -A
+git commit -m "release: v0.10.0 (from hamdanidev/notifhub@<sha>)"
+git tag v0.10.0
+git push origin main --tags
+```
+
+### Aturan
+
+- **Jangan pernah mengedit repo mirror.** Semua perubahan masuk ke `sdk/go` di repo utama, lalu
+  dirilis ulang lewat snapshot. Ini mencegah dua sumber kebenaran.
+- Tag di mirror adalah `vX.Y.Z` (root module), bukan `sdk/go/vX.Y.Z`.
+- Nomor versi SDK mengikuti versi service pada saat snapshot.
+- `generate.go` dan bagian "Regenerating the client" pada README memakai path monorepo; regenerasi
+  dilakukan di repo utama, bukan di mirror. Snapshot boleh memuat file itu apa adanya.
+- Go proxy publik (`proxy.golang.org`) butuh waktu untuk mengindeks tag baru. Untuk verifikasi
+  langsung, pakai `GOPROXY=direct`:
+
+  ```bash
+  mkdir /tmp/sdk-check && cd /tmp/sdk-check
+  go mod init example.com/sdk-check
+  GOPROXY=direct go get github.com/hamdanidev/notifhub-go@v0.10.0
+  ```
+
+- Belum ada automated publish; langkah snapshot masih manual sampai ada kebutuhan otomatisasi
+  (mis. workflow lintas repo).
