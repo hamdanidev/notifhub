@@ -7,11 +7,15 @@ import {
 } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { AdminTokenService } from './admin-token.service';
-import { TENANT_ADMIN_ROLE, type AdminPrincipal, type RequestWithAdmin } from './admin.types';
+import {
+  TENANT_ADMIN_ROLE,
+  type AdminTokenClaims,
+  type RequestWithAdmin,
+} from './admin.types';
 
 /**
- * Guards tenant admin endpoints. Requires a valid admin JWT with role tenant_admin;
- * platform_admin is reserved for cross-tenant operations and is rejected today.
+ * Guards tenant admin endpoints. Requires a valid admin JWT with role tenant_admin and a tenant
+ * claim; platform admins (no tenant) use the platform lane instead.
  */
 @Injectable()
 export class AdminJwtGuard implements CanActivate {
@@ -40,7 +44,7 @@ export class AdminJwtGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or missing admin token');
     }
 
-    let principal: AdminPrincipal;
+    let principal: AdminTokenClaims;
 
     try {
       principal = this.tokens.verify(token);
@@ -58,20 +62,25 @@ export class AdminJwtGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or missing admin token');
     }
 
-    if (principal.role !== TENANT_ADMIN_ROLE) {
+    if (principal.role !== TENANT_ADMIN_ROLE || principal.tenantId === undefined) {
       this.logger.warn(
         {
           event: 'auth.admin_token.rejected',
-          reason: 'unsupported_role',
+          reason: principal.tenantId === undefined ? 'missing_tenant' : 'unsupported_role',
           role: principal.role,
           admin_id: principal.adminId,
         },
-        'admin token role is not permitted yet',
+        'admin token is not valid for the tenant lane',
       );
       throw new ForbiddenException('Admin role is not permitted');
     }
 
-    request.admin = principal;
+    request.admin = {
+      adminId: principal.adminId,
+      email: principal.email,
+      role: principal.role,
+      tenantId: principal.tenantId,
+    };
 
     return true;
   }

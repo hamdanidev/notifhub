@@ -46,8 +46,9 @@ Aturan kerja:
   - admin: JWT `ADMIN_JWT_SECRET` (role `tenant_admin`; `platform_admin` ditolak),
   - subscriber/in-app: JWT `SUBSCRIBER_JWT_SECRET`, ditandatangani dengan secret API key tenant
     bila tenant punya (fallback ke env).
-  - Tenant untuk ingest/admin berasal dari API key/token, bukan dari body. `tenant_id` di ingest
-    hanya boleh sama.
+  - platform (baru, auth saja): JWT `ADMIN_JWT_SECRET` dengan role `platform_admin`, tanpa klaim
+    tenant, di `/api/v1/platform/*`. Tenant untuk ingest/admin berasal dari API key/token, bukan
+    dari body. `tenant_id` di ingest hanya boleh sama.
 - Channel:
   - in-app: SSE + Redis Stream replay + Pub/Sub, catch-up/read API.
   - email: SMTP; development log-only; staging catch-all.
@@ -85,7 +86,7 @@ Aturan kerja:
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
-| Multi-tenant F1: entitas `Tenant` + FK, migrasi/backfill, idempotency per tenant | selesai & terverifikasi (e2e E30); F2–F5 belum |
+| Multi-tenant F1–F2: entitas `Tenant` + FK, migrasi/backfill, idempotency per tenant, lane auth platform (`/platform/auth/*`) | selesai & terverifikasi (e2e E30–E31); F3–F5 belum |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -170,8 +171,9 @@ npx prisma migrate status
 
 - WhatsApp hanya mengirim teks (`type: "text"`), belum approved-template Meta; inbound reply tidak
   ditangani.
-- `platform_admin` ditolak di Admin API (role tenant_admin saja); belum ada RBAC. Lane platform
-  baru dikerjakan sampai F2–F3 di `docs/design/multi-tenant-platform-admin.md`.
+- `platform_admin` sudah punya lane sendiri (`/api/v1/platform/auth/login` + `/me`, F2), tetapi
+  provisioning tenant dan audit belum ada (F3). Di lane tenant, `platform_admin` tetap ditolak;
+  belum ada RBAC granular. Desain: `docs/design/multi-tenant-platform-admin.md`.
 - Entitas `Tenant` + FK sudah ada, tetapi belum ada provisioning/status tenant di API: tenant baru
   masih lewat seed/DB sampai F2–F3. Lanjutan desain: `docs/design/multi-tenant-platform-admin.md`.
 - Idempotency notifikasi kini unik per tenant (`@@unique([tenantId, idempotencyKey])`, migrasi
@@ -230,8 +232,8 @@ npx prisma migrate status
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
 3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log). Disetujui
-   2026-11-19; F1 (entitas tenant, FK, migrasi, idempotency per tenant) selesai. Lanjut F2–F5 di
-   `docs/design/multi-tenant-platform-admin.md`.
+   2026-11-19; F1 (entitas tenant, FK, migrasi, idempotency per tenant) dan F2 (lane auth platform)
+   selesai. Lanjut F3–F5 di `docs/design/multi-tenant-platform-admin.md`.
 4. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
 5. Penegakan `allowedOrigins`/CORS per tenant, session/revocation token subscriber, dan upgrade
    dependensi untuk menutup temuan `npm audit`.

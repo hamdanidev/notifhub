@@ -2,7 +2,6 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Channel } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/bootstrap';
@@ -10,6 +9,8 @@ import { CleanupService } from '../src/cleanup/cleanup.service';
 import {
   TEST_ADMIN_EMAIL,
   TEST_ADMIN_PASSWORD,
+  TEST_PLATFORM_ADMIN_EMAIL,
+  TEST_PLATFORM_ADMIN_PASSWORD,
   TEST_SERVICE_API_KEY,
   TEST_TENANT_B,
 } from './env';
@@ -158,21 +159,55 @@ describe('NotifHub e2e', () => {
       .send({ email: TEST_ADMIN_EMAIL, password: 'wrong-password' });
     expect(wrongPassword.status).toBe(401);
 
-    await prisma.adminUser.create({
-      data: {
-        email: 'platform@test.local',
-        passwordHash: bcrypt.hashSync('Platform123!', 4),
-        role: 'platform_admin',
-        tenantId: null,
-        active: true,
-      },
-    });
-
-    // Platform admins have no tenant claim; the tenant login lane refuses them.
+    // The bootstrap created this platform admin; the tenant login lane must refuse it.
     const platformLogin = await request(server)
       .post('/api/v1/admin/auth/login')
-      .send({ email: 'platform@test.local', password: 'Platform123!' });
+      .send({ email: TEST_PLATFORM_ADMIN_EMAIL, password: TEST_PLATFORM_ADMIN_PASSWORD });
     expect(platformLogin.status).toBe(403);
+  });
+
+  it('E31 platform admin login + me, dan tiap lane menolak token lane lain', async () => {
+    const login = await request(server)
+      .post('/api/v1/platform/auth/login')
+      .send({ email: TEST_PLATFORM_ADMIN_EMAIL, password: TEST_PLATFORM_ADMIN_PASSWORD });
+
+    expect(login.status).toBe(200);
+    expect(login.body.admin).toMatchObject({
+      email: TEST_PLATFORM_ADMIN_EMAIL,
+      role: 'platform_admin',
+    });
+    expect(login.body.admin.tenantId).toBeUndefined();
+
+    const platformToken = login.body.accessToken as string;
+    const claims = jwt.decode(platformToken) as Record<string, unknown>;
+    expect(claims.role).toBe('platform_admin');
+    expect(claims.tenant).toBeUndefined();
+
+    const me = await request(server)
+      .get('/api/v1/platform/auth/me')
+      .set('Authorization', bearer(platformToken));
+    expect(me.status).toBe(200);
+    expect(me.body).toMatchObject({ email: TEST_PLATFORM_ADMIN_EMAIL, role: 'platform_admin' });
+
+    const tenantOnPlatform = await request(server)
+      .get('/api/v1/platform/auth/me')
+      .set('Authorization', bearer(adminToken));
+    expect(tenantOnPlatform.status).toBe(403);
+
+    const platformOnTenant = await request(server)
+      .get('/api/v1/admin/auth/me')
+      .set('Authorization', bearer(platformToken));
+    expect(platformOnTenant.status).toBe(403);
+
+    const wrongPassword = await request(server)
+      .post('/api/v1/platform/auth/login')
+      .send({ email: TEST_PLATFORM_ADMIN_EMAIL, password: 'wrong-password' });
+    expect(wrongPassword.status).toBe(401);
+
+    const tenantOnPlatformLogin = await request(server)
+      .post('/api/v1/platform/auth/login')
+      .send({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD });
+    expect(tenantOnPlatformLogin.status).toBe(403);
   });
 
   it('E7 admin tenant A tidak bisa membaca data tenant B', async () => {

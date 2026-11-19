@@ -19,6 +19,7 @@ import { InAppModule } from './in-app/in-app.module';
 import { IngestModule } from './ingest/ingest.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PlatformModule } from './platform/platform.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProvidersModule } from './providers/providers.module';
@@ -117,6 +118,7 @@ function resolveHeaderRequestId(request: IncomingMessage): string {
     CleanupModule,
     TemplateImagesModule,
     AdminModule,
+    PlatformModule,
     WorkersModule,
     IngestModule,
     MetricsModule,

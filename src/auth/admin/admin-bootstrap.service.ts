@@ -3,13 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ensureTenant } from '../../tenants/ensure-tenant';
-import { TENANT_ADMIN_ROLE } from './admin.types';
+import { PLATFORM_ADMIN_ROLE, TENANT_ADMIN_ROLE } from './admin.types';
 
 /**
- * Bootstraps the single tenant admin from ADMIN_EMAIL / ADMIN_PASSWORD_HASH (PART 1 rule 47).
+ * Bootstraps the accounts that come from the environment:
  *
- * Multi-admin management is not implemented yet; the environment is the source of truth for
- * this account, so a changed hash or tenant is applied on startup.
+ * - the default tenant (needed by the FK on every tenant-owned table),
+ * - one tenant admin from ADMIN_EMAIL / ADMIN_PASSWORD_HASH (upsert; env is the source of truth),
+ * - optionally one platform admin from PLATFORM_ADMIN_EMAIL / PLATFORM_ADMIN_PASSWORD_HASH.
+ *
+ * Without a platform admin the service still boots: the platform API is simply unavailable, and a
+ * warning is logged. An env email that already belongs to a tenant admin fails fast instead of
+ * silently moving that account across lanes.
  */
 @Injectable()
 export class AdminBootstrapService implements OnApplicationBootstrap {
@@ -22,8 +27,6 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
-    const email = this.config.getOrThrow<string>('ADMIN_EMAIL').trim().toLowerCase();
-    const passwordHash = this.config.getOrThrow<string>('ADMIN_PASSWORD_HASH');
     const tenantId = this.config.getOrThrow<string>('DEFAULT_TENANT_ID');
 
     const tenantState = await ensureTenant(this.prisma, tenantId);
@@ -34,6 +37,14 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
         'bootstrap tenant created',
       );
     }
+
+    await this.bootstrapTenantAdmin(tenantId);
+    await this.bootstrapPlatformAdmin();
+  }
+
+  private async bootstrapTenantAdmin(tenantId: string): Promise<void> {
+    const email = this.config.getOrThrow<string>('ADMIN_EMAIL').trim().toLowerCase();
+    const passwordHash = this.config.getOrThrow<string>('ADMIN_PASSWORD_HASH');
 
     const existing = await this.prisma.adminUser.findUnique({ where: { email } });
 
@@ -83,6 +94,74 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
     this.logger.info(
       { event: 'admin.bootstrap.ready', admin_id: existing.id, tenant_id: tenantId },
       'bootstrap admin user is up to date',
+    );
+  }
+
+  private async bootstrapPlatformAdmin(): Promise<void> {
+    const rawEmail = this.config.get<string>('PLATFORM_ADMIN_EMAIL');
+    const passwordHash = this.config.get<string>('PLATFORM_ADMIN_PASSWORD_HASH');
+
+    if (rawEmail === undefined || passwordHash === undefined) {
+      const platformAdminCount = await this.prisma.adminUser.count({
+        where: { role: PLATFORM_ADMIN_ROLE, tenantId: null },
+      });
+
+      if (platformAdminCount === 0) {
+        this.logger.warn(
+          { event: 'platform.admin.bootstrap.missing' },
+          'no platform admin configured; the platform API is unavailable',
+        );
+      }
+
+      return;
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+    const existing = await this.prisma.adminUser.findUnique({ where: { email } });
+
+    if (existing === null) {
+      await this.prisma.adminUser.create({
+        data: {
+          email,
+          passwordHash,
+          role: PLATFORM_ADMIN_ROLE,
+          tenantId: null,
+          active: true,
+        },
+      });
+
+      this.logger.info(
+        { event: 'platform.admin.bootstrap.created', email },
+        'bootstrap platform admin created',
+      );
+
+      return;
+    }
+
+    if (existing.role !== PLATFORM_ADMIN_ROLE || existing.tenantId !== null) {
+      throw new Error(
+        `PLATFORM_ADMIN_EMAIL (${email}) is already used by a tenant admin; ` +
+          'pick another email or move that account first',
+      );
+    }
+
+    if (existing.passwordHash !== passwordHash || !existing.active) {
+      await this.prisma.adminUser.update({
+        where: { id: existing.id },
+        data: { passwordHash, active: true },
+      });
+
+      this.logger.info(
+        { event: 'platform.admin.bootstrap.updated', admin_id: existing.id },
+        'bootstrap platform admin updated from environment',
+      );
+
+      return;
+    }
+
+    this.logger.info(
+      { event: 'platform.admin.bootstrap.ready', admin_id: existing.id },
+      'bootstrap platform admin is up to date',
     );
   }
 }

@@ -34,6 +34,8 @@ Kolom **Default** di bawah adalah default di schema (bukan selalu nilai di `.env
 | `ADMIN_PASSWORD_HASH` | — | Hash bcrypt, wajib diawali `$2`; pertahankan kutip tunggal di `.env` |
 | `ADMIN_JWT_SECRET` | — | Minimal 32 karakter |
 | `ADMIN_JWT_EXPIRES_IN` | `1h` | Format `30m`, `1h`, `7d` (`^\d+[smhd]$`) |
+| `PLATFORM_ADMIN_EMAIL` | — | Opsional; platform admin awal (lane `/platform/*`). Harus berpasangan dengan hash-nya dan **tidak boleh** sama dengan `ADMIN_EMAIL` |
+| `PLATFORM_ADMIN_PASSWORD_HASH` | — | Opsional; bcrypt (`$2…`), berpasangan dengan `PLATFORM_ADMIN_EMAIL` |
 | `SUBSCRIBER_JWT_SECRET` | — | Minimal 32 karakter; **fallback** untuk tenant yang belum punya secret API key sendiri |
 | `WEBHOOK_SIGNING_SECRET` | — | Minimal 32 karakter; HMAC webhook provider generik |
 | `CORS_ORIGINS` | `*` | `*` atau daftar origin dipisah koma; daftarkan origin console di luar development |

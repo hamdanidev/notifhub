@@ -22,6 +22,16 @@ const optionalUrl = z.preprocess(
   z.url().optional(),
 );
 
+const optionalEmail = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.email().optional(),
+);
+
+const optionalBcryptHash = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().startsWith('$2').optional(),
+);
+
 const optionalPositiveInt = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
   z.coerce.number().int().positive().optional(),
@@ -65,6 +75,8 @@ export const envSchema = z
       .string()
       .regex(/^\d+[smhd]$/, 'ADMIN_JWT_EXPIRES_IN must look like 30m, 1h or 7d')
       .default('1h'),
+    PLATFORM_ADMIN_EMAIL: optionalEmail,
+    PLATFORM_ADMIN_PASSWORD_HASH: optionalBcryptHash,
     WEBHOOK_SIGNING_SECRET: z.string().min(32),
     CATCH_ALL_RECIPIENT: optionalString,
     SMTP_HOST: optionalString,
@@ -86,6 +98,17 @@ export const envSchema = z
     SWAGGER_BASIC_AUTH_PASS: optionalString,
   })
   .superRefine((env, ctx) => {
+    const hasPlatformEmail = env.PLATFORM_ADMIN_EMAIL !== undefined;
+    const hasPlatformHash = env.PLATFORM_ADMIN_PASSWORD_HASH !== undefined;
+
+    if (hasPlatformEmail !== hasPlatformHash) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PLATFORM_ADMIN_PASSWORD_HASH'],
+        message: 'PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_PASSWORD_HASH must be set together',
+      });
+    }
+
     if (env.NOTIFHUB_MODE === 'staging' && env.CATCH_ALL_RECIPIENT === undefined) {
       ctx.addIssue({
         code: 'custom',

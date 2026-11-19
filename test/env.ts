@@ -13,6 +13,8 @@ import bcrypt from 'bcrypt';
 
 export const TEST_ADMIN_EMAIL = 'admin@test.local';
 export const TEST_ADMIN_PASSWORD = 'TestAdmin123!';
+export const TEST_PLATFORM_ADMIN_EMAIL = 'platform@test.local';
+export const TEST_PLATFORM_ADMIN_PASSWORD = 'Platform123!';
 export const TEST_SERVICE_API_KEY = 'test-service-api-key-0123456789';
 export const TEST_TENANT_B = 'tenant-b';
 
@@ -46,6 +48,8 @@ const env: Record<string, string> = {
   ADMIN_PASSWORD_HASH: bcrypt.hashSync(TEST_ADMIN_PASSWORD, 4),
   ADMIN_JWT_SECRET: 'test-admin-jwt-secret-32-chars-minimum',
   ADMIN_JWT_EXPIRES_IN: '1h',
+  PLATFORM_ADMIN_EMAIL: TEST_PLATFORM_ADMIN_EMAIL,
+  PLATFORM_ADMIN_PASSWORD_HASH: bcrypt.hashSync(TEST_PLATFORM_ADMIN_PASSWORD, 4),
   WEBHOOK_SIGNING_SECRET: 'test-webhook-signing-secret-32-chars',
 };
 

@@ -89,7 +89,7 @@ Nilai status yang dipakai:
 | `Notification.overallStatus` | `pending`, `partial`, `sent`, `failed` |
 | Template | `draft`, `published`; format `text`, `html`, `markdown` |
 
-## Tiga lane autentikasi
+## Lane autentikasi
 
 Kredensial **tidak bisa ditukar** antar lane, dan tenant selalu diturunkan dari kredensial — bukan
 dari body request.
@@ -99,6 +99,7 @@ dari body request.
 | Consumer (ingest) | `X-API-Key: nhk_...` (tabel `ApiKey`, hash SHA-256) | `/notify`, subscribers, topics | API key |
 | Admin (tenant) | `Authorization: Bearer <admin JWT>` (`ADMIN_JWT_SECRET`, role `tenant_admin`) | `/admin/*` | klaim token |
 | Subscriber (end-user) | `Authorization: Bearer <subscriber JWT>` (secret per tenant) | in-app, SSE, preference center | klaim token |
+| Platform | `Authorization: Bearer <platform admin JWT>` (role `platform_admin`, **tanpa** klaim tenant) | `/platform/auth/*` (provisioning tenant menyusul) | — |
 
 Konsekuensi yang sering menjadi sumber bug:
 
@@ -106,7 +107,8 @@ Konsekuensi yang sering menjadi sumber bug:
   (`400` bila berbeda).
 - Token subscriber ditandatangani dengan secret API key tenant; `SUBSCRIBER_JWT_SECRET` hanya
   fallback bila tenant belum punya secret sendiri.
-- `platform_admin` ditolak di Admin API — belum ada RBAC lintas tenant.
+- `platform_admin` memakai lane platform (`/platform/*`), bukan Admin API; RBAC granular dan
+  provisioning tenant belum ada (F3).
 - Token di query string ditolak; hanya header `Authorization` yang diterima.
 
 Detail keputusan: [admin-api §2](../design/admin-api.md#2-tiga-jalur-autentikasi-tidak-boleh-tercampur)
@@ -169,6 +171,7 @@ Prefix global `api/v1`; path berikut dikecualikan dari prefix:
 | Preferensi end-user | `GET /api/v1/subscriber/preferences`, `PUT /api/v1/subscriber/preferences/:channel` | Subscriber JWT |
 | Admin auth | `POST /api/v1/admin/auth/login`, `GET /api/v1/admin/auth/me` | publik / admin JWT |
 | Admin data | `/api/v1/admin/{api-keys,templates,template-assets,subscribers,topics,notifications}` | Admin JWT |
+| Platform auth | `POST /api/v1/platform/auth/login`, `GET /api/v1/platform/auth/me` | publik / platform JWT |
 | Webhook provider | `POST /api/v1/webhooks/:provider` | HMAC `WEBHOOK_SIGNING_SECRET` |
 | Webhook WhatsApp | `GET`, `POST /api/v1/webhooks/whatsapp/events` | `X-Hub-Signature-256` |
 | Health | `GET /health/live`, `GET /health/ready` | publik |

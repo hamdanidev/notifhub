@@ -1,8 +1,8 @@
 # Desain multi-tenant: entitas tenant, platform admin, dan provisioning
 
-Status: **F1 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill, dan
-idempotency per tenant) pada 2026-11-19; F2–F5 belum. Draf disetujui 2026-11-19. Lihat §19 untuk
-catatan implementasi F1.
+Status: **F1–F2 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill,
+idempotency per tenant, lane auth platform) pada 2026-11-19; F3–F5 belum. Draf disetujui
+2026-11-19. Lihat §19 untuk catatan implementasi.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `docs/architecture/project-brief.md`, `docs/design/admin-api.md` (terutama §2 dan D6),
@@ -318,7 +318,7 @@ data idempotency. FK dan CHECK bisa di-drop tanpa kehilangan data.
 - `test/setup/database.ts`: `Tenant` ditambahkan ke daftar `TRUNCATE` (paling akhir).
 - `test/setup/fixtures.ts`: membuat `Tenant` `default` + tenant B, template in-app tenant B, dan
   API key tenant B dengan raw key yang diketahui agar ingest lintas tenant bisa diuji.
-- `test/env.ts`: env platform admin ditambahkan saat F2 (§7.6).
+- `test/env.ts`: env platform admin (`PLATFORM_ADMIN_EMAIL`/`PASSWORD_HASH`) untuk test (F2, §7.6).
 
 ## 7. Auth dan otorisasi
 
@@ -609,8 +609,8 @@ Perubahan teknis:
 | Fase | Isi | Verifikasi |
 |---|---|---|
 | **F1 (selesai)** | Schema `Tenant`, FK, CHECK, migrasi + backfill, seed, bootstrap tenant, perbaikan idempotency (D16) | `npm run test:e2e` (E1–E29 + E30 hijau), typecheck, unit |
-| F2 | Klaim JWT opsional, `PlatformAdminGuard`, endpoint platform auth, env bootstrap platform admin | Unit guard + e2e login platform |
-| F3 | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E31–E36 |
+| **F2 (selesai)** | Klaim JWT opsional, `PlatformAdminGuard`, endpoint platform auth, env bootstrap platform admin | `npm run test:unit` (28 test) + e2e E31 |
+| F3 | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E32–E37 |
 | F4 | Console platform (login, tenant, admin, audit) | `console:typecheck`, `console:build`, verifikasi manual |
 | F5 | Dokumentasi (dokumen ini → status terimplementasi, indeks, project-brief, overview, usage, configuration) + e2e lengkap | `npm run ci`, `npm run docs:check` |
 
@@ -624,8 +624,8 @@ terhadap suite yang ada.
 | # | Skenario | Ekspektasi |
 |---|---|---|
 | E30 | **Sudah ada (F1).** Idempotency key sama di dua tenant (regresi G8) | Dua notifikasi berbeda, masing-masing hanya terlihat pemiliknya |
-| E31 | Platform admin membuat tenant + admin, lalu admin tenant login dan memakai datanya | `201`/`200`; data tenant baru tidak terlihat dari tenant `default` |
-| E32 | Batas role: tenant admin → `/platform/*`, platform admin → `/admin/*` | `403 role_not_allowed` keduanya |
+| E31 | **Sudah ada (F2).** Platform login + `/platform/auth/me`, dan tiap lane menolak token lane lain | `200` + token tanpa `tenant`; tenant admin di platform `403`; platform admin di lane tenant `403`; password salah `401` |
+| E32 | Platform admin membuat tenant + admin, lalu admin tenant login dan memakai datanya | `201`/`200`; data tenant baru tidak terlihat dari tenant `default` |
 | E33 | Suspend tenant: ingest, subscriber, login tenant admin | `403 tenant_suspended`; platform tetap bisa; `resume` memulihkan |
 | E34 | `allowedOrigins`: key dengan daftar origin | `403 origin_not_allowed` untuk origin lain; `200` untuk origin terdaftar; daftar kosong = semua |
 | E35 | Audit: create/suspend/resume/admin dibuat | Baris audit muncul dengan actor, action, tenantId; filter bekerja |
@@ -658,6 +658,7 @@ terhadap suite yang ada.
 | `prisma/migrations/<baru>_platform_tenants/migration.sql` | Tabel, backfill, FK, index, CHECK |
 | `prisma/seed.ts` | Upsert `Tenant(DEFAULT_TENANT_ID)` sebelum data lain |
 | `src/config/env.schema.ts` | `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD_HASH` (opsional, berpasangan) |
+| `.env.example`, `.env.prod.example` | Placeholder platform admin (kosong secara default) |
 | `src/platform/` (baru) | Module, controller auth/tenant/admin/audit, service, DTO |
 | `src/auth/admin/admin.types.ts`, `admin-token.service.ts`, `admin-jwt.guard.ts` | `tenantId` opsional, guard tenant cek DB + status tenant |
 | `src/auth/admin/platform-admin.guard.ts` (baru) | Guard lane platform |
@@ -686,10 +687,11 @@ terhadap suite yang ada.
 
 | File | Perubahan |
 |---|---|
-| `test/app.e2e-spec.ts` | E30 (F1) dan E31–E37 (F3) |
+| `test/app.e2e-spec.ts` | E30 (F1), E31 (F2), E32–E37 (F3) |
 | `test/setup/database.ts` | `Tenant` di daftar `TRUNCATE` |
 | `test/setup/fixtures.ts` | Baris `Tenant` untuk `default` dan tenant B |
-| `test/env.ts` | Env platform admin untuk test |
+| `test/env.ts` | Env platform admin untuk test (sudah diisi di F2) |
+| `test/platform-auth.unit-spec.ts` | Klaim token platform + matriks penolakan `PlatformAdminGuard` |
 | `docs/design/multi-tenant-platform-admin.md` | Dokumen ini (status → terimplementasi saat selesai) |
 | `docs/design/README.md`, `docs/README.md` | Indeks |
 | `docs/architecture/project-brief.md` | §3 kapabilitas, §6 batasan, §7 kandidat |
@@ -715,7 +717,7 @@ terhadap suite yang ada.
 
 - [x] Migrasi berhasil pada database development dan database test; backfill tenant benar.
 - [x] Tenant `default` dan bootstrap admin/API key tetap berjalan setelah restart (idempoten).
-- [ ] `platform_admin` hanya bisa di lane platform; tenant admin hanya di lane tenant (e2e E32).
+- [x] `platform_admin` hanya bisa di lane platform; tenant admin hanya di lane tenant (e2e E31).
 - [ ] Suspend/resume berlaku di ingest, admin tenant, dan subscriber (e2e E33).
 - [x] Idempotency per tenant teruji (e2e E30) dan tidak ada lookup idempotency tanpa tenant.
 - [ ] `allowedOrigins` ditegakkan (e2e E34).
@@ -778,10 +780,45 @@ Deviasi dan catatan:
    Di environment lain, bersihkan baris semacam itu sebelum migrasi.
 5. **Bootstrap API key** juga memanggil `ensureTenant`; tanpa itu `ApiKey` gagal FK pada database
    kosong.
-6. **`tenant_id` di body** tetap deprecated dan tidak berubah; belum ada endpoint platform (F2–F3).
-7. **`admin-api.md` D6 belum diubah.** `platform_admin` masih ditolak di lane tenant; surface
-   platform baru muncul di F2.
+6. **`tenant_id` di body** tetap deprecated dan tidak berubah; provisioning tenant baru ada di F3.
+7. **`admin-api.md` D6 belum diubah.** `platform_admin` tetap ditolak di lane tenant; lane platform
+   (auth) ditambahkan di F2 dan tidak mengubah kontrak `/admin/*`.
 
-Belum dikerjakan (F2–F5): lane auth platform, provisioning tenant, suspend enforcement, audit,
-`allowedOrigins`, dan console platform.
+Belum dikerjakan (F3–F5): provisioning tenant, suspend enforcement, audit, `allowedOrigins`, dan
+console platform.
+
+### 19.2 F2 (2026-11-19)
+
+Yang sudah berjalan:
+
+- `AdminTokenService` menandatangani token tanpa klaim `tenant` untuk platform admin; `verify`
+  mengembalikan `tenantId` opsional (`AdminTokenClaims`). `AdminJwtGuard` membangun principal
+  tenant dan menolak token tanpa tenant.
+- `PlatformAdminGuard` baru: token harus `platform_admin`, akun harus `active` dan masih
+  `platform_admin` dengan `tenantId = NULL` di database (token yang sudah terbit tidak cukup).
+- `src/platform/` (baru): `PlatformModule`, `PlatformAuthController`
+  (`POST /platform/auth/login`, `GET /platform/auth/me`), `PlatformAuthService`, DTO profil
+  platform (tanpa `tenantId`), dan decorator `CurrentPlatformAdmin`.
+- Login platform memakai Throttler 5/menit/IP dan pesan error yang sama dengan lane tenant
+  (`invalid_credentials`, `401`).
+- Env opsional `PLATFORM_ADMIN_EMAIL` + `PLATFORM_ADMIN_PASSWORD_HASH` (harus berpasangan).
+  Bootstrap membuat/memperbarui platform admin dari env; bila env kosong dan belum ada platform
+  admin, startup hanya mencatat `platform.admin.bootstrap.missing`. Email yang sudah dipakai
+  tenant admin membuat startup **gagal cepat**.
+- Kontrak `/admin/auth/*` dan `AdminProfileDto` tidak berubah; SDK terbit tidak tersentuh.
+
+Verifikasi:
+
+- `npm run typecheck`; `npm run test:unit` (28 test, termasuk 6 test baru untuk klaim token dan
+  guard); `npm run test:e2e` (31 test, E31 baru); `npm run ci`.
+- E31 membuktikan: token platform tidak membawa `tenant`; `/platform/auth/me` `200`; token tenant
+  di lane platform `403`; token platform di lane tenant `403`; password salah `401`; kredensial
+  tenant admin di login platform `403`.
+
+Catatan:
+
+- E6 tidak lagi membuat baris `platform_admin` manual (bootstrap yang membuatnya), sehingga tidak
+  ada bentrok email.
+- `admin-api.md` D6 tetap historis; lane tenant masih menolak `platform_admin`, hanya saja akun
+  platform sekarang punya jalan masuk sendiri lewat `/platform/auth/login`.
 

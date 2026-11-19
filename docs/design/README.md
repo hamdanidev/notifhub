@@ -35,7 +35,7 @@ selesai · **rencana** = belum dikerjakan.
 | [templates/email-authoring-ui-design.md](templates/email-authoring-ui-design.md) | Bagaimana admin non-teknis mengubah theme dan layout tanpa menulis JSON/HTML? | terimplementasi | §2 keputusan, §3 UX, §5 batasan |
 | [templates/email-block-builder-design.md](templates/email-block-builder-design.md) | Bagaimana body email disusun dari block, dan bagaimana `builderData` divalidasi? | terimplementasi | §3 model data, §4 UX, §7 verifikasi |
 | [templates/template-limitations-roadmap.md](templates/template-limitations-roadmap.md) | Batasan template mana yang paling berisiko, dan apa prioritas serta statusnya? | P0, P1, sebagian P2 selesai | §2 tabel batasan, §3 prioritas, §11–§14 hasil |
-| [multi-tenant-platform-admin.md](multi-tenant-platform-admin.md) | Bagaimana tenant dikelola sebagai entitas: provisioning, platform admin, suspend, audit, dan isolasi antar tenant? | F1 selesai; F2–F5 belum | §3 gap, §5 keputusan, §6 migrasi, §8 API, §19 catatan F1 |
+| [multi-tenant-platform-admin.md](multi-tenant-platform-admin.md) | Bagaimana tenant dikelola sebagai entitas: provisioning, platform admin, suspend, audit, dan isolasi antar tenant? | F1–F2 selesai; F3–F5 belum | §3 gap, §5 keputusan, §6 migrasi, §8 API, §19 catatan F1–F2 |
 
 ## Arah baca menurut pekerjaan
 

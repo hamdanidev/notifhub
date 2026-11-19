@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import jwt from 'jsonwebtoken';
 import { PinoLogger } from 'nestjs-pino';
-import type { AdminPrincipal } from './admin.types';
+import type { AdminTokenClaims } from './admin.types';
 
 interface AdminJwtPayload extends jwt.JwtPayload {
   email?: unknown;
@@ -18,7 +18,8 @@ export interface SignedAdminToken {
 /**
  * Admin JWT signing/verification (PART 1 rule 47).
  *
- * Separate secret from subscriber and ingest auth. Claims: sub, email, role, tenant, exp, iat.
+ * Separate secret from subscriber and ingest auth. Claims for tenant admins: sub, email, role,
+ * tenant, exp, iat. Platform admins get the same token without a `tenant` claim.
  */
 @Injectable()
 export class AdminTokenService {
@@ -38,26 +39,27 @@ export class AdminTokenService {
     id: string;
     email: string;
     role: string;
-    tenantId: string;
+    tenantId?: string;
   }): SignedAdminToken {
-    const token = jwt.sign(
-      {
-        sub: admin.id,
-        email: admin.email,
-        role: admin.role,
-        tenant: admin.tenantId,
-      },
-      this.secret,
-      {
-        algorithm: 'HS256',
-        expiresIn: this.expiresIn as jwt.SignOptions['expiresIn'],
-      },
-    );
+    const payload: Record<string, unknown> = {
+      sub: admin.id,
+      email: admin.email,
+      role: admin.role,
+    };
+
+    if (admin.tenantId !== undefined) {
+      payload.tenant = admin.tenantId;
+    }
+
+    const token = jwt.sign(payload, this.secret, {
+      algorithm: 'HS256',
+      expiresIn: this.expiresIn as jwt.SignOptions['expiresIn'],
+    });
 
     return { token, expiresInSeconds: ttlToSeconds(this.expiresIn) };
   }
 
-  verify(token: string): AdminPrincipal {
+  verify(token: string): AdminTokenClaims {
     let payload: string | AdminJwtPayload;
 
     try {
@@ -83,19 +85,21 @@ export class AdminTokenService {
     const adminId = typeof payload.sub === 'string' ? payload.sub : '';
     const email = typeof payload.email === 'string' ? payload.email : '';
     const role = typeof payload.role === 'string' ? payload.role : '';
-    const tenantId = typeof payload.tenant === 'string' ? payload.tenant : '';
+    const tenantId =
+      typeof payload.tenant === 'string' && payload.tenant.length > 0 ? payload.tenant : undefined;
 
     if (
       adminId.length === 0 ||
       email.length === 0 ||
       role.length === 0 ||
-      tenantId.length === 0 ||
       typeof payload.exp !== 'number'
     ) {
       throw new Error('admin token is missing required claims');
     }
 
-    return { adminId, email, role, tenantId };
+    return tenantId === undefined
+      ? { adminId, email, role }
+      : { adminId, email, role, tenantId };
   }
 }
 
