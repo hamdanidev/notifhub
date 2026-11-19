@@ -77,7 +77,8 @@ order per role.
 - **Usage guide:** [concepts and quickstart](docs/usage/README.md) ·
   [consumer integration](docs/usage/integration.md) ·
   [end-user: in-app/SSE/preference center](docs/usage/end-user.md) ·
-  [admin and operations](docs/usage/admin-and-operations.md)
+  [admin and operations](docs/usage/admin-and-operations.md) ·
+  [platform admin](docs/usage/platform-admin.md)
 - **Design docs:** [index](docs/design/README.md) — in-app, email and preferences, preference
   center, webhooks, WhatsApp, admin API, React and console, console needs analysis, in-app sample;
   templates: [system design](docs/design/templates/template-system-design.md),

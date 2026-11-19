@@ -86,7 +86,7 @@ Aturan kerja:
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
-| Multi-tenant F1–F4: entitas `Tenant` + FK, idempotency per tenant, lane platform, provisioning tenant/admin, suspend, audit, `allowedOrigins`, console platform | selesai & terverifikasi (e2e E30–E37, console build + verifikasi manual); F5 (docs akhir) belum |
+| Multi-tenant F1–F5: entitas `Tenant` + FK, idempotency per tenant, lane platform, provisioning tenant/admin, suspend, audit, `allowedOrigins`, console platform | selesai & terverifikasi (e2e E30–E37, console build + verifikasi manual, docs:check) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -175,8 +175,8 @@ npx prisma migrate status
   audit) dan console platform (`/platform/*` di `console/`); tenant yang di-suspend ditolak
   `403 tenant_suspended` di tiga lane. Yang belum: RBAC granular dan pengelolaan akun platform
   admin dari API. Desain: `docs/design/multi-tenant-platform-admin.md`.
-- Entitas `Tenant` + FK sudah ada, tetapi belum ada provisioning/status tenant di API: tenant baru
-  masih lewat seed/DB sampai F2–F3. Lanjutan desain: `docs/design/multi-tenant-platform-admin.md`.
+- Entitas `Tenant` + status + provisioning lewat lane platform sudah ada (F1–F3); tenant `default`
+  tetap dibuat oleh bootstrap/seed. Desain: `docs/design/multi-tenant-platform-admin.md`.
 - Idempotency notifikasi kini unik per tenant (`@@unique([tenantId, idempotencyKey])`, migrasi
   `20261119131500_platform_tenants`); lookup ingest/resend memakai tenant. E2E E30 menguji dua
   tenant dengan key yang sama.
@@ -234,10 +234,6 @@ npx prisma migrate status
    GitHub Actions hijau di setiap PR.
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
-3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log). Disetujui
-   2026-11-19; F1–F4 selesai (tenant + FK, idempotency per tenant, lane platform, provisioning,
-   suspend, audit, `allowedOrigins`, console platform). Sisa F5 (dokumentasi akhir + regresi
-   penuh) di `docs/design/multi-tenant-platform-admin.md`.
-4. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
-5. Penegakan `allowedOrigins`/CORS per tenant, session/revocation token subscriber, dan upgrade
-   dependensi untuk menutup temuan `npm audit`.
+3. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
+4. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
+   (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.

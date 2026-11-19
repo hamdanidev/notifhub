@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { Alert, Button, Form, Spinner } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { loginSchema, type LoginValues } from '../forms/schemas';
 import { describeError } from '../lib/format';
@@ -92,10 +92,6 @@ export function LoginPage(): JSX.Element {
         <p className="login-footnote">
           Login dibatasi 5 percobaan per menit. Sesi mengikuti nilai{' '}
           {'ADMIN_JWT_EXPIRES_IN'}.
-        </p>
-
-        <p className="login-footnote mb-0">
-          <Link to="/platform/login">Login platform admin</Link>
         </p>
       </div>
     </div>

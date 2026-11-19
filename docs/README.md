@@ -16,6 +16,7 @@ lalu ikuti tautannya; setiap dokumen bisa dibaca berdiri sendiri.
 | Mengirim notifikasi dari aplikasi saya | [usage: konsep](usage/README.md) → [integration](usage/integration.md) → [admin API](design/admin-api.md) §5–§6 |
 | Menampilkan in-app / preference center | [end-user](usage/end-user.md) → [in-app](design/in-app.md) → [preference center](design/preference-center.md) |
 | Mengelola tenant lewat console / admin API | [admin dan operasi](usage/admin-and-operations.md) → [React dan console](design/react-and-console.md) |
+| Mengelola tenant lintas tenant (provisioning, suspend, audit) | [platform admin](usage/platform-admin.md) → [desain multi-tenant](design/multi-tenant-platform-admin.md) |
 | Deploy, CI, dan observability | [production readiness](operations/production-readiness.md) → [local setup: Docker smoke stack](getting-started/local-setup.md#run-the-docker-smoke-stack) |
 | Mengubah template email | [sistem template](design/templates/template-system-design.md) → [block builder](design/templates/email-block-builder-design.md) → [roadmap batasan](design/templates/template-limitations-roadmap.md) |
 | Merilis SDK | [publikasi npm](sdk/npm-publishing.md) · [Go SDK](sdk/go-sdk.md) |
@@ -69,7 +70,7 @@ tanggal di dalamnya bukan urutan baca. Semua desain terindeks di [design/README.
 | [templates/email-authoring-ui-design.md](design/templates/email-authoring-ui-design.md) | Form theme dan galeri layout untuk admin non-teknis | terimplementasi |
 | [templates/email-block-builder-design.md](design/templates/email-block-builder-design.md) | Block builder body email dan model `builderData` | terimplementasi |
 | [templates/template-limitations-roadmap.md](design/templates/template-limitations-roadmap.md) | 13 batasan template, prioritas P0/P1/P2, migrasi, keamanan, regresi | P0, P1, sebagian P2 selesai |
-| [multi-tenant-platform-admin.md](design/multi-tenant-platform-admin.md) | Entitas tenant, provisioning, platform admin, suspend, audit, isolasi antar tenant | F1–F4 selesai (backend + console platform); F5 belum |
+| [multi-tenant-platform-admin.md](design/multi-tenant-platform-admin.md) | Entitas tenant, provisioning, platform admin, suspend, audit, isolasi antar tenant | terimplementasi penuh (F1–F5) |
 
 Indeks desain yang lebih rinci (pertanyaan yang dijawab dan arah baca) ada di
 [design/README.md](design/README.md).
@@ -83,6 +84,7 @@ Indeks desain yang lebih rinci (pertanyaan yang dijawab dan arah baca) ada di
 | [usage/integration.md](usage/integration.md) | Kirim notifikasi, push-sync subscriber, topik, webhook provider, Go SDK |
 | [usage/end-user.md](usage/end-user.md) | Token subscriber, catch-up, SSE, preference center, SDK JS/React |
 | [usage/admin-and-operations.md](usage/admin-and-operations.md) | Login admin, API key, template, subscriber, topik, notifikasi, console, operasional |
+| [usage/platform-admin.md](usage/platform-admin.md) | Login platform, provisioning tenant, admin tenant, suspend/resume, audit, batasan v1 |
 
 ### SDK
 

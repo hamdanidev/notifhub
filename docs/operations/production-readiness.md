@@ -61,7 +61,8 @@ diverifikasi oleh pipeline — tanpa menambah fitur produk.
 
 ### 2.2 Tidak termasuk
 
-- Fitur produk baru (platform admin, self-service topik, SDK bahasa lain).
+- Fitur produk baru (self-service topik, SDK bahasa lain). Platform admin/multi-tenant sudah
+  dikerjakan terpisah di `docs/design/multi-tenant-platform-admin.md`.
 - Perubahan schema/migrasi.
 - Deploy sungguhan ke server/Kubernetes, registry push, environment staging.
 - Test SSE jangka panjang di Jest (lihat §10).

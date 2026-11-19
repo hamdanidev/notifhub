@@ -107,8 +107,8 @@ Konsekuensi yang sering menjadi sumber bug:
   (`400` bila berbeda).
 - Token subscriber ditandatangani dengan secret API key tenant; `SUBSCRIBER_JWT_SECRET` hanya
   fallback bila tenant belum punya secret sendiri.
-- `platform_admin` memakai lane platform (`/platform/*`), bukan Admin API; RBAC granular dan
-  provisioning tenant belum ada (F3).
+- `platform_admin` memakai lane platform (`/platform/*`), bukan Admin API; provisioning tenant,
+  suspend, dan audit sudah berjalan. RBAC granular belum ada.
 - Token di query string ditolak; hanya header `Authorization` yang diterima.
 
 Detail keputusan: [admin-api §2](../design/admin-api.md#2-tiga-jalur-autentikasi-tidak-boleh-tercampur)
@@ -238,4 +238,4 @@ Batasan yang masih terbuka (WhatsApp text-only, RBAC belum ada, dan seterusnya) 
 - Desain per fitur: [design/README.md](../design/README.md)
 - Panduan pemakaian API: [usage/README.md](../usage/README.md)
 - Test, image Docker, dan CI: [production readiness](../operations/production-readiness.md)
-- Rencana multi-tenant (belum diimplementasikan): [draf desain platform admin](../design/multi-tenant-platform-admin.md)
+- Multi-tenant (terimplementasi): [desain platform admin](../design/multi-tenant-platform-admin.md) · [panduan platform admin](../usage/platform-admin.md)

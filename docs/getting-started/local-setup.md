@@ -19,6 +19,7 @@ Related: [configuration](configuration.md) for every environment variable, and
 - [Verify the admin API, API keys, and topics](#verify-the-admin-api-api-keys-and-topics)
 - [Verify the React bindings and the console](#verify-the-react-bindings-and-the-console)
 - [Verify WhatsApp](#verify-whatsapp)
+- [Verify the platform lane](#verify-the-platform-lane)
 - [Verify the Go SDK](#verify-the-go-sdk)
 - [Run the Docker smoke stack](#run-the-docker-smoke-stack)
 - [Notes](#notes)
@@ -413,6 +414,63 @@ WHATSAPP_CATCH_ALL_RECIPIENT=+628999999999   # staging only
 - `NOTIFHUB_MODE=staging` redirects to the catch-all number; `production` uses the real recipient.
 - WhatsApp text messages are only valid inside Meta's 24-hour service window. Approved template
   messages are not implemented yet.
+
+## Verify the platform lane
+
+Platform admin accounts come from the environment (there is no default credential). Add both
+variables to `.env`, then restart the backend:
+
+```bash
+npm run admin:hash-password "Platform123!"   # copy the hash
+
+# .env
+PLATFORM_ADMIN_EMAIL=platform@notifhub.local
+PLATFORM_ADMIN_PASSWORD_HASH='$2b$10$...'
+```
+
+The email must differ from `ADMIN_EMAIL`; startup fails fast otherwise. When both variables are
+empty, the backend still boots but logs `platform.admin.bootstrap.missing`.
+
+```bash
+# 1. Login (token has no tenant claim), 5 attempts per minute per IP
+TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/platform/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"platform@notifhub.local","password":"Platform123!"}' \
+  | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(JSON.parse(d).accessToken))")
+
+# 2. List tenants
+curl -s -H "Authorization: Bearer $TOKEN" 'http://localhost:3000/api/v1/platform/tenants?limit=20'
+
+# 3. Create a tenant, then its first admin (id is immutable)
+curl -i -X POST http://localhost:3000/api/v1/platform/tenants \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"id":"acme","name":"Acme Corp"}'
+
+curl -i -X POST http://localhost:3000/api/v1/platform/tenants/acme/admins \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"email":"acme-admin@example.com","password":"AcmeAdmin123!"}'
+
+# 4. Suspend/resume (idempotent). While suspended, tenant requests get 403 tenant_suspended.
+curl -i -X POST http://localhost:3000/api/v1/platform/tenants/acme/suspend \
+  -H "Authorization: Bearer $TOKEN"
+curl -i -X POST http://localhost:3000/api/v1/platform/tenants/acme/resume \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. Audit trail for that tenant
+curl -s -H "Authorization: Bearer $TOKEN" \
+  'http://localhost:3000/api/v1/platform/audit?tenantId=acme'
+
+# 6. Delete only works for an empty tenant (default tenant is protected)
+curl -i -X DELETE http://localhost:3000/api/v1/platform/tenants/acme \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Expected: login `200` with `admin.role = platform_admin` and no `tenantId`; create `201`;
+suspend/resume `200` with `status` changing; audit lists `tenant.created`, `tenant.admin.created`,
+`tenant.suspended`, `tenant.resumed`; delete of a tenant with data returns `409 tenant_not_empty`.
+
+The console exposes the same flow at `/platform/login` (session stored separately from the tenant
+admin session). Full guide: [usage/platform-admin.md](../usage/platform-admin.md).
 
 ## Verify the Go SDK
 

@@ -61,6 +61,7 @@ Test e2e memakai database dan Redis logical DB terpisah (`TEST_DATABASE_URL`,
 | `403` | Kredensial valid tetapi peran tidak diizinkan (mis. `platform_admin`) | Pakai admin `tenant_admin` |
 | `403 tenant_suspended` | Tenant sedang di-suspend platform admin | Minta operator platform melakukan `resume`; data tetap tersimpan dan job antre tetap diproses |
 | `403 origin_not_allowed` | `Origin` browser tidak ada di `ApiKey.allowedOrigins` | Tambahkan origin tersebut ke daftar key, atau panggil dari server tanpa header `Origin` |
+| Login platform `403` | Akun bukan `platform_admin` aktif, atau `tenantId` akun masih terisi | Isi `PLATFORM_ADMIN_EMAIL` + hash, pastikan akun platform punya `tenantId = NULL`; cek log `platform.login.failed` |
 | `404` | Resource tidak ada **atau** milik tenant lain | Pastikan tenant token sesuai pemilik data |
 | `413` | Body melebihi `INGEST_MAX_PAYLOAD_BYTES` (64 KB) | Kecilkan payload ingest |
 | `429` | Rate limit | Ingest 100/menit **per IP**; login admin 5/menit per IP; preferensi 60/menit per IP |

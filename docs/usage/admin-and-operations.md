@@ -256,7 +256,9 @@ Build manual: `docker build --target runner .`, `docker build -f console/Dockerf
 
 ## 12. Belum tersedia
 
-- Platform admin lintas tenant dan RBAC.
+- RBAC granular (mis. `platform_readonly`); role yang ada hanya `tenant_admin` dan
+  `platform_admin`. Lane platform punya panduan sendiri di
+  [platform-admin.md](platform-admin.md).
 - Self-service topic subscription oleh end-user.
 - Penjadwalan pengiriman (`scheduled_at` hanya disimpan).
 - Approved template WhatsApp dan pesan inbound.

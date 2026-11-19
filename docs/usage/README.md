@@ -11,11 +11,12 @@ arsitektur, lihat [indeks dokumen desain](../design/README.md) (mis. `docs/desig
 | Integrator backend (consumer) | Kirim notifikasi, push subscriber, kelola topik, terima webhook | [integration.md](integration.md) |
 | Frontend / aplikasi end-user | Tampilkan in-app, SSE, preference center, SDK JS/React | [end-user.md](end-user.md) |
 | Tenant admin / operator | Admin API, console, deployment, monitoring | [admin-and-operations.md](admin-and-operations.md) |
+| Platform operator | Kelola tenant lintas tenant, admin tenant, audit | [platform-admin.md](platform-admin.md) |
 | Baru pertama kali | Konsep, siklus hidup notifikasi, quickstart 5 menit | [overview.md](overview.md) |
 
-## Tiga lane autentikasi
+## Empat lane autentikasi
 
-NotifHub memisahkan tiga jenis pemanggil. Kredensial **tidak bisa ditukar** antar lane, dan tidak
+NotifHub memisahkan empat jenis pemanggil. Kredensial **tidak bisa ditukar** antar lane, dan tidak
 ada satu lane yang menerima kredensial lane lain.
 
 | Lane | Kredensial | Tenant berasal dari | Dipakai untuk |
@@ -23,6 +24,7 @@ ada satu lane yang menerima kredensial lane lain.
 | Ingest (consumer) | header `X-API-Key: nhk_...` | API key | `POST /api/v1/notify`, subscriber, topik |
 | Admin (tenant) | `Authorization: Bearer <admin JWT>` (`ADMIN_JWT_SECRET`) | klaim token | `/api/v1/admin/*` |
 | Subscriber (end-user) | `Authorization: Bearer <subscriber JWT>` (secret per tenant) | klaim token | in-app, SSE, preference center |
+| Platform | `Authorization: Bearer <platform admin JWT>` (role `platform_admin`) | tidak ada (lintas tenant) | `/api/v1/platform/*` |
 
 Konsekuensi penting: **tenant tidak pernah dikirim di body** untuk ingest/admin. Di ingest,
 `tenant_id` hanya boleh sama dengan tenant API key (kalau berbeda → `400`).

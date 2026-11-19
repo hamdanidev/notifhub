@@ -46,7 +46,7 @@ Basis: PART 1 (aturan 14, 33–37, 41, 46–47), serta kemampuan ingest, deliver
 - Self-service subscription end-user (`mode="self-service"`, opt-in) — di luar cakupan;
   batasannya dijelaskan di `docs/design/preference-center.md`.
 - End-user preference center UI — di luar cakupan; batasannya di `docs/design/preference-center.md`.
-- Platform admin lintas tenant — di luar dokumen ini; draf desainnya ada di
+- Platform admin lintas tenant — di luar dokumen ini; desain dan implementasinya ada di
   `docs/design/multi-tenant-platform-admin.md`.
 - Cleanup member kedaluwarsa sebagai scheduled job (ditunda; resolusi sudah memfilter).
 - Scheduled/delayed notification, batch ingest, workflow.

@@ -1,9 +1,9 @@
 # Desain multi-tenant: entitas tenant, platform admin, dan provisioning
 
-Status: **F1–F4 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill,
-idempotency per tenant, lane auth platform, provisioning tenant + admin, suspend, audit,
-`allowedOrigins`, dan console platform) pada 2026-11-19; F5 (dokumentasi akhir + regresi penuh)
-belum. Draf disetujui 2026-11-19. Lihat §19 untuk catatan implementasi.
+Status: **terimplementasi dan terverifikasi penuh (F1–F5)** pada 2026-11-19: entitas `Tenant`,
+FK, migrasi/backfill, idempotency per tenant, lane auth platform, provisioning tenant + admin,
+suspend, audit, `allowedOrigins`, dan console platform. Draf disetujui 2026-11-19. Lihat §19 untuk
+catatan implementasi per fase.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `docs/architecture/project-brief.md`, `docs/design/admin-api.md` (terutama §2 dan D6),
@@ -604,6 +604,10 @@ Perubahan teknis:
   tak sengaja.
 - **Env:** platform admin bootstrap memakai bcrypt hash di env, tidak pernah password mentah;
   `.env.example` hanya memuat placeholder.
+- **Discoverability lane platform.** URL `/platform/login` tidak ditautkan dari login tenant. Ini
+  **bukan** kontrol keamanan — endpoint tetap publik, terdokumentasi di Swagger, dan nama rutenya
+  ada di bundel console — melainkan pengurangan eksposur dan kebingungan/phishing. Pemisahan
+  console platform ke host/entry terpisah dicatat sebagai kandidat lanjutan.
 
 ## 13. Fase implementasi
 
@@ -613,7 +617,7 @@ Perubahan teknis:
 | **F2 (selesai)** | Klaim JWT opsional, `PlatformAdminGuard`, endpoint platform auth, env bootstrap platform admin | `npm run test:unit` (28 test) + e2e E31 |
 | **F3 (selesai)** | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E32–E37 |
 | **F4 (selesai)** | Console platform (login, tenant, admin, audit) | `console:typecheck`, `console:build`, verifikasi manual (SPA + API) |
-| F5 | Dokumentasi (dokumen ini → status terimplementasi, indeks, project-brief, overview, usage, configuration) + e2e lengkap | `npm run ci`, `npm run docs:check` |
+| **F5 (selesai)** | Dokumentasi (dokumen ini → status terimplementasi, indeks, project-brief, overview, usage, configuration) + regresi penuh | `npm run ci`, `console:typecheck/build`, `sdk`/`react`/`go` test, `docs:check`, OpenAPI drift |
 
 F1 sengaja tidak menambah endpoint: migrasi besar dan bug fix idempotency diverifikasi lebih dulu
 terhadap suite yang ada.
@@ -728,7 +732,7 @@ terhadap suite yang ada.
 - [x] `DELETE` tenant mengikuti aturan §8.2 (e2e E36).
 - [x] E1–E29 tetap hijau; `npm run ci` dan `npm run docs:check` hijau.
 - [x] Console platform lolos `typecheck`/`build` dan diverifikasi manual.
-- [ ] Dokumentasi diperbarui (indeks, project-brief, overview, usage, configuration).
+- [x] Dokumentasi diperbarui (indeks, project-brief, overview, usage, configuration).
 
 ## 18. Pertanyaan keputusan
 
@@ -876,7 +880,9 @@ Yang sudah berjalan (console React di `console/`):
 
 - `/platform/login` memakai `POST /platform/auth/login`; session disimpan terpisah di
   `sessionStorage` (`notifhub.console.platform-session`) dengan profil platform tanpa `tenantId`.
-  Login tenant (`/login`) menampilkan tautan ke login platform dan sebaliknya.
+  Login tenant **tidak** menautkan ke lane platform; `/platform/login` dibuka oleh operator yang
+  mengetahui URL-nya (didokumentasikan), untuk mengurangi eksposur. Login platform tetap
+  menautkan kembali ke login tenant.
 - Rute `/platform/*` dilindungi `PlatformProtectedRoute` (butuh role `platform_admin`); rute tenant
   memakai `ProtectedRoute` yang mengarahkan platform admin ke `/platform/tenants`. Handler 401
   global membedakan jalur `/platform` (hapus session platform, arahkan ke `/platform/login`).
@@ -907,4 +913,39 @@ Catatan:
    dijadwalkan pada rilis minor berikutnya.
 3. **Bahasa UI** mengikuti console yang ada: label navigasi Inggris (Tenants/Audit), pesan bantuan
    dan konfirmasi Bahasa Indonesia.
+
+### 19.5 F5 (2026-11-19)
+
+Dokumentasi yang ditambahkan/diperbarui:
+
+- `docs/usage/platform-admin.md` (baru): panduan operator platform — login/sesi, bootstrap akun,
+  siklus tenant, admin tenant, efek suspend, audit, kode error, batasan v1.
+- `docs/usage/README.md`: tabel peran + lane autentikasi menjadi **empat** lane (platform).
+- `docs/getting-started/local-setup.md`: bagian "Verify the platform lane" (login, tenant,
+  admin tenant, suspend/resume, audit, delete) + entri daftar isi.
+- `docs/getting-started/troubleshooting.md`: baris `tenant_suspended`, `origin_not_allowed`, dan
+  login platform `403`.
+- `README.md`, `docs/README.md`, `docs/design/README.md`, `docs/architecture/overview.md`,
+  `docs/architecture/project-brief.md`, `docs/design/admin-api.md`, `docs/design/react-and-console.md`:
+  status, tautan, dan lane platform.
+- **Tautan "Login platform admin" di halaman login tenant dihapus** setelah review: endpoint tetap
+  publik (Swagger) dan nama rute ada di bundel, jadi ini bukan kontrol keamanan; tujuannya
+  mengurangi eksposur/phishing. Lihat §12 dan §19.4.
+
+Regresi penuh:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run ci` (typecheck, build, unit, e2e, migrate status) | lulus, 6 langkah (86s) |
+| `npm run test:unit` / `test:e2e` | 28 / 37 test lulus |
+| `npm run console:typecheck` + `console:build` | lulus |
+| `npm run sdk:typecheck` + `sdk:test` | lulus, 23 test |
+| `npm run react:typecheck` + `react:test` | lulus, 4 test |
+| `npm run sdk:go:test` | lulus |
+| `npm run docs:check` | 401 tautan/anchor di 36 file |
+| `npm run openapi:export` + `git diff --exit-code openapi/notifhub.json` | tidak ada drift (3 path, 9 schema) |
+
+Kandidat lanjutan (di luar v1): RBAC granular (`platform_readonly`), pengelolaan akun platform
+admin lewat API/console, pemisahan console platform ke host terpisah, kuota/rate limit per tenant,
+dan retensi `PlatformAuditEvent`.
 
