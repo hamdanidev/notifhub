@@ -461,3 +461,23 @@ model AdminUser {
   @@index([tenantId])
   @@index([role])
 }
+
+/// Append-only audit trail for platform-lane mutations. No FK on purpose: entries must stay
+/// readable after an admin or tenant is deleted. Never store secrets here.
+model PlatformAuditEvent {
+  id           BigInt   @id @default(autoincrement())
+  actorAdminId String
+  actorEmail   String
+  action       String
+  tenantId     String?
+  targetType   String
+  targetId     String
+  metadata     Json?
+  ip           String?
+  requestId    String?
+  occurredAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([tenantId, occurredAt])
+  @@index([actorAdminId, occurredAt])
+  @@index([action, occurredAt])
+}

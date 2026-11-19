@@ -86,7 +86,7 @@ Aturan kerja:
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
-| Multi-tenant F1–F2: entitas `Tenant` + FK, migrasi/backfill, idempotency per tenant, lane auth platform (`/platform/auth/*`) | selesai & terverifikasi (e2e E30–E31); F3–F5 belum |
+| Multi-tenant F1–F3: entitas `Tenant` + FK, idempotency per tenant, lane platform, provisioning tenant/admin, suspend, audit, `allowedOrigins` | selesai & terverifikasi (e2e E30–E37); F4–F5 belum (console platform + docs akhir) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -100,7 +100,7 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `routing/`, `preferences/`, `subscriber-preferences/`, `templates/`, `subscribers/`,
   `notifications/`, `cleanup/`, `queues/`, `metrics/`, `health/`, `config/`, `common/`.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
-- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (10 migrasi).
+- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (11 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
 - `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile`, `console/nginx.conf`,
   `docker-compose.prod.yml`, `.env.prod.example`.
@@ -171,9 +171,10 @@ npx prisma migrate status
 
 - WhatsApp hanya mengirim teks (`type: "text"`), belum approved-template Meta; inbound reply tidak
   ditangani.
-- `platform_admin` sudah punya lane sendiri (`/api/v1/platform/auth/login` + `/me`, F2), tetapi
-  provisioning tenant dan audit belum ada (F3). Di lane tenant, `platform_admin` tetap ditolak;
-  belum ada RBAC granular. Desain: `docs/design/multi-tenant-platform-admin.md`.
+- `platform_admin` sudah punya lane sendiri (`/platform/auth/*`, provisioning tenant, suspend,
+  audit) dan tenant yang di-suspend ditolak `403 tenant_suspended` di tiga lane. Yang belum: RBAC
+  granular, UI console platform (F4), dan pengelolaan akun platform admin dari API. Desain:
+  `docs/design/multi-tenant-platform-admin.md`.
 - Entitas `Tenant` + FK sudah ada, tetapi belum ada provisioning/status tenant di API: tenant baru
   masih lewat seed/DB sampai F2–F3. Lanjutan desain: `docs/design/multi-tenant-platform-admin.md`.
 - Idempotency notifikasi kini unik per tenant (`@@unique([tenantId, idempotencyKey])`, migrasi
@@ -202,6 +203,8 @@ npx prisma migrate status
   `docs/design/templates/email-block-builder-design.md`, dan `docs/design/templates/template-limitations-roadmap.md`.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
+- Lane admin juga query DB per request (akun aktif + status tenant) agar suspend/deaktivasi berlaku
+  segera; tidak ada cache di v1.
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.
 - `ApiKey.allowedOrigins` disimpan tetapi belum ditegakkan.
 - Revocation token subscriber hanya per API key; tidak ada session/refresh token per user.
@@ -232,8 +235,9 @@ npx prisma migrate status
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
 3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log). Disetujui
-   2026-11-19; F1 (entitas tenant, FK, migrasi, idempotency per tenant) dan F2 (lane auth platform)
-   selesai. Lanjut F3–F5 di `docs/design/multi-tenant-platform-admin.md`.
+   2026-11-19; F1–F3 selesai (tenant + FK, idempotency per tenant, lane platform, provisioning,
+   suspend, audit, `allowedOrigins`). Lanjut F4–F5 (console platform + docs akhir) di
+   `docs/design/multi-tenant-platform-admin.md`.
 4. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
 5. Penegakan `allowedOrigins`/CORS per tenant, session/revocation token subscriber, dan upgrade
    dependensi untuk menutup temuan `npm audit`.

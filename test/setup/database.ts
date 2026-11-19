@@ -8,6 +8,7 @@ export const prisma = new PrismaClient();
  * exactly which tables the suite owns. `_prisma_migrations` is intentionally left alone.
  */
 const TABLES = [
+  'PlatformAuditEvent',
   'BillingEvent',
   'DeliveryAttempt',
   'DeliveryEvent',

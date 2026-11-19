@@ -25,7 +25,10 @@ export class AdminAuthService {
 
   async login(dto: LoginDto): Promise<LoginResponseDto> {
     const email = dto.email.trim().toLowerCase();
-    const admin = await this.prisma.adminUser.findUnique({ where: { email } });
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { email },
+      include: { tenant: { select: { status: true } } },
+    });
     const passwordMatches = await bcrypt.compare(
       dto.password,
       admin?.passwordHash ?? this.dummyHash,
@@ -54,6 +57,14 @@ export class AdminAuthService {
         'admin login rejected: account has no tenant',
       );
       throw new ForbiddenException('Admin role is not permitted');
+    }
+
+    if (admin.tenant?.status !== 'active') {
+      this.logger.warn(
+        { event: 'admin.login.failed', email, reason: 'tenant_suspended', tenant_id: admin.tenantId },
+        'admin login rejected: tenant is suspended',
+      );
+      throw new ForbiddenException('tenant_suspended');
     }
 
     const signed = this.tokens.sign({

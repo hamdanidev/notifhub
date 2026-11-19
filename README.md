@@ -27,8 +27,8 @@ go get github.com/hamdanidev/notifhub-go      # consumer API (release mirror)
 - **Targeting**: explicit recipients, dynamic topics with membership push, and time-bound topic
   membership.
 - **Tenancy**: four separate auth lanes (API key, admin JWT, subscriber JWT, platform admin JWT),
-  tenant-scoped data, and per-tenant subscriber signing secrets. The platform lane currently covers
-  authentication only; tenant provisioning is in progress.
+  tenant-scoped data, and per-tenant subscriber signing secrets. The platform lane covers
+  authentication, tenant provisioning, suspend/resume, and an audit trail.
 - **Operations**: health/readiness, Prometheus metrics, structured logs with request IDs, retention
   and idempotency cleanup jobs, and Swagger documentation.
 

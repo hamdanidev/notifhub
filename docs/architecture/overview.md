@@ -99,7 +99,7 @@ dari body request.
 | Consumer (ingest) | `X-API-Key: nhk_...` (tabel `ApiKey`, hash SHA-256) | `/notify`, subscribers, topics | API key |
 | Admin (tenant) | `Authorization: Bearer <admin JWT>` (`ADMIN_JWT_SECRET`, role `tenant_admin`) | `/admin/*` | klaim token |
 | Subscriber (end-user) | `Authorization: Bearer <subscriber JWT>` (secret per tenant) | in-app, SSE, preference center | klaim token |
-| Platform | `Authorization: Bearer <platform admin JWT>` (role `platform_admin`, **tanpa** klaim tenant) | `/platform/auth/*` (provisioning tenant menyusul) | — |
+| Platform | `Authorization: Bearer <platform admin JWT>` (role `platform_admin`, **tanpa** klaim tenant) | `/platform/auth/*`, provisioning tenant, tenant admins, audit | — |
 
 Konsekuensi yang sering menjadi sumber bug:
 
@@ -152,6 +152,7 @@ induknya. Ringkasan model di `prisma/schema.prisma`:
 | Penerima & topik | `Subscriber`, `Topic`, `TopicSubscriber` | Snapshot data dari consumer, membership topik (bisa time-bound) |
 | Auth | `ApiKey`, `AdminUser` | API key per tenant (hash), admin tenant |
 | Tenant | `Tenant` | Nama + status tenant; semua tabel ber-`tenantId` punya FK ke sini |
+| Audit platform | `PlatformAuditEvent` | Jejak append-only mutasi platform (actor, aksi, tenant, metadata non-rahasia) |
 
 Relasi penting: `NotificationRecipient` menyimpan `templateId`/`templateVersion`/
 `templateResolvedAt` yang diisi worker saat resolve, sehingga kiriman bisa ditelusuri ke versi
@@ -172,6 +173,9 @@ Prefix global `api/v1`; path berikut dikecualikan dari prefix:
 | Admin auth | `POST /api/v1/admin/auth/login`, `GET /api/v1/admin/auth/me` | publik / admin JWT |
 | Admin data | `/api/v1/admin/{api-keys,templates,template-assets,subscribers,topics,notifications}` | Admin JWT |
 | Platform auth | `POST /api/v1/platform/auth/login`, `GET /api/v1/platform/auth/me` | publik / platform JWT |
+| Platform tenant | `GET/POST /api/v1/platform/tenants`, `GET/PATCH/DELETE .../tenants/:id`, `POST .../suspend`, `POST .../resume` | platform JWT |
+| Platform admin tenant | `GET/POST /api/v1/platform/tenants/:id/admins`, `PATCH .../admins/:adminId` | platform JWT |
+| Platform audit | `GET /api/v1/platform/audit` | platform JWT |
 | Webhook provider | `POST /api/v1/webhooks/:provider` | HMAC `WEBHOOK_SIGNING_SECRET` |
 | Webhook WhatsApp | `GET`, `POST /api/v1/webhooks/whatsapp/events` | `X-Hub-Signature-256` |
 | Health | `GET /health/live`, `GET /health/ready` | publik |
@@ -220,6 +224,9 @@ consumer) → generator Go. Jangan mengedit `sdk/go/client.gen.go` secara manual
   sementara retry tetap dimiliki BullMQ.
 - **Status monotonik.** Callback provider tidak boleh memundurkan status pengiriman.
 - **Mode eksplisit.** `development`/`staging` tidak pernah mengirim ke penerima asli.
+- **Suspend = ingress.** Tenant `suspended` ditolak `403 tenant_suspended` di ingest, admin tenant,
+  dan subscriber; webhook tetap dicatat dan job yang sudah antre tetap diproses. `/metrics` dibuat
+  sebagai pengecualian agar monitoring tidak ikut mati.
 
 Batasan yang masih terbuka (WhatsApp text-only, RBAC belum ada, dan seterusnya) dirangkum di
 [project-brief §6](../architecture/project-brief.md#6-batasan-dan-deviasi-yang-diketahui).

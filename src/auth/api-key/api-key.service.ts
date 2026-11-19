@@ -76,7 +76,14 @@ export class ApiKeyService implements OnApplicationBootstrap {
 
     const record = await this.prisma.apiKey.findUnique({
       where: { keyHash: this.hash(rawKey) },
-      select: { id: true, tenantId: true, active: true, lastUsedAt: true },
+      select: {
+        id: true,
+        tenantId: true,
+        active: true,
+        lastUsedAt: true,
+        allowedOrigins: true,
+        tenant: { select: { status: true } },
+      },
     });
 
     if (record === null || !record.active) {
@@ -85,7 +92,12 @@ export class ApiKeyService implements OnApplicationBootstrap {
 
     void this.touchLastUsed(record.id, record.lastUsedAt);
 
-    return { apiKeyId: record.id, tenantId: record.tenantId };
+    return {
+      apiKeyId: record.id,
+      tenantId: record.tenantId,
+      tenantStatus: record.tenant.status,
+      allowedOrigins: record.allowedOrigins,
+    };
   }
 
   async createKey(params: {

@@ -1,6 +1,7 @@
 import { Controller, Get, Res, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiProduces, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { AllowSuspendedTenant } from '../common/decorators/allow-suspended-tenant.decorator';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { MetricsService } from './metrics.service';
 
@@ -8,6 +9,7 @@ import { MetricsService } from './metrics.service';
 @ApiSecurity('api-key')
 @Controller('metrics')
 @UseGuards(ApiKeyGuard)
+@AllowSuspendedTenant()
 export class MetricsController {
   constructor(private readonly metricsService: MetricsService) {}
 

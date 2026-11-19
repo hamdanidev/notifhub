@@ -5,6 +5,7 @@ import { Channel } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/bootstrap';
+import { AdminBootstrapService } from '../src/auth/admin/admin-bootstrap.service';
 import { CleanupService } from '../src/cleanup/cleanup.service';
 import {
   TEST_ADMIN_EMAIL,
@@ -19,12 +20,16 @@ import { RECIPIENT, seedFixtures, TEMPLATE_KEY } from './setup/fixtures';
 
 const SUBSCRIBER_SECRET = process.env.SUBSCRIBER_JWT_SECRET as string;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SIGNING_SECRET as string;
+const ACME_SECRET = 'acme-subscriber-secret-32-characters-min';
 
 let app: NestExpressApplication;
 let server: Server;
 let tenantBSecret = '';
 let tenantBApiKey = '';
 let adminToken = '';
+let platformToken = '';
+let acmeAdminToken = '';
+let acmeApiKey = '';
 let inAppNotificationId = '';
 
 function bearer(token: string): string {
@@ -178,8 +183,9 @@ describe('NotifHub e2e', () => {
     });
     expect(login.body.admin.tenantId).toBeUndefined();
 
-    const platformToken = login.body.accessToken as string;
-    const claims = jwt.decode(platformToken) as Record<string, unknown>;
+    const platformLogin = login.body.accessToken as string;
+    platformToken = platformLogin;
+    const claims = jwt.decode(platformLogin) as Record<string, unknown>;
     expect(claims.role).toBe('platform_admin');
     expect(claims.tenant).toBeUndefined();
 
@@ -208,6 +214,242 @@ describe('NotifHub e2e', () => {
       .post('/api/v1/platform/auth/login')
       .send({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD });
     expect(tenantOnPlatformLogin.status).toBe(403);
+  });
+
+  it('E32 platform admin membuat tenant + admin, lalu isolasi data tenant terjaga', async () => {
+    const created = await request(server)
+      .post('/api/v1/platform/tenants')
+      .set('Authorization', bearer(platformToken))
+      .send({ id: 'acme', name: 'Acme Corp' });
+
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      id: 'acme',
+      name: 'Acme Corp',
+      status: 'active',
+      adminCount: 0,
+      apiKeyCount: 0,
+    });
+
+    const adminCreated = await request(server)
+      .post('/api/v1/platform/tenants/acme/admins')
+      .set('Authorization', bearer(platformToken))
+      .send({ email: 'acme-admin@test.local', password: 'AcmeAdmin123!' });
+
+    expect(adminCreated.status).toBe(201);
+    expect(adminCreated.body).toMatchObject({
+      email: 'acme-admin@test.local',
+      role: 'tenant_admin',
+      active: true,
+    });
+
+    const login = await request(server)
+      .post('/api/v1/admin/auth/login')
+      .send({ email: 'acme-admin@test.local', password: 'AcmeAdmin123!' });
+    expect(login.status).toBe(200);
+    acmeAdminToken = login.body.accessToken as string;
+
+    const apiKey = await request(server)
+      .post('/api/v1/admin/api-keys')
+      .set('Authorization', bearer(acmeAdminToken))
+      .send({ name: 'acme-service', subscriberJwtSecret: ACME_SECRET });
+    expect(apiKey.status).toBe(201);
+    acmeApiKey = apiKey.body.key as string;
+
+    const subscriber = await request(server)
+      .put('/api/v1/subscribers/user-acme')
+      .set('X-API-Key', acmeApiKey)
+      .send({ email: 'user-acme@example.com', locale: 'id' });
+    expect(subscriber.status).toBe(200);
+    expect(subscriber.body.tenantId).toBe('acme');
+
+    const own = await request(server)
+      .get('/api/v1/admin/subscribers/user-acme')
+      .set('Authorization', bearer(acmeAdminToken));
+    expect(own.status).toBe(200);
+
+    const foreign = await request(server)
+      .get('/api/v1/admin/subscribers/user-acme')
+      .set('Authorization', bearer(adminToken));
+    expect(foreign.status).toBe(404);
+
+    const listed = await request(server)
+      .get('/api/v1/platform/tenants/acme')
+      .set('Authorization', bearer(platformToken));
+    expect(listed.status).toBe(200);
+    expect(listed.body).toMatchObject({ id: 'acme', adminCount: 1, apiKeyCount: 1 });
+  });
+
+  it('E33 suspend menolak request baru di tiga lane, resume memulihkan', async () => {
+    const suspend = await request(server)
+      .post('/api/v1/platform/tenants/acme/suspend')
+      .set('Authorization', bearer(platformToken));
+    expect(suspend.status).toBe(200);
+    expect(suspend.body.status).toBe('suspended');
+    expect(suspend.body.suspendedAt).not.toBeNull();
+
+    const suspendedLogin = await request(server)
+      .post('/api/v1/admin/auth/login')
+      .send({ email: 'acme-admin@test.local', password: 'AcmeAdmin123!' });
+    expect(suspendedLogin.status).toBe(403);
+    expect(suspendedLogin.body.message).toBe('tenant_suspended');
+
+    const adminRequest = await request(server)
+      .get('/api/v1/admin/subscribers')
+      .set('Authorization', bearer(acmeAdminToken));
+    expect(adminRequest.status).toBe(403);
+    expect(adminRequest.body.message).toBe('tenant_suspended');
+
+    const ingest = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', acmeApiKey)
+      .send({
+        idempotency_key: 'e2e-suspended-ingest-1',
+        template_key: TEMPLATE_KEY,
+        recipients: ['user-acme'],
+        channels: ['inapp'],
+        data: { nama: 'Budi' },
+      });
+    expect(ingest.status).toBe(403);
+    expect(ingest.body.message).toBe('tenant_suspended');
+
+    const subscriberRequest = await request(server)
+      .get('/api/v1/in-app/notifications')
+      .set('Authorization', bearer(subscriberToken('acme', ACME_SECRET, 'user-acme')));
+    expect(subscriberRequest.status).toBe(403);
+    expect(subscriberRequest.body.message).toBe('tenant_suspended');
+
+    const platformStillWorks = await request(server)
+      .get('/api/v1/platform/tenants/acme')
+      .set('Authorization', bearer(platformToken));
+    expect(platformStillWorks.status).toBe(200);
+
+    const resume = await request(server)
+      .post('/api/v1/platform/tenants/acme/resume')
+      .set('Authorization', bearer(platformToken));
+    expect(resume.status).toBe(200);
+    expect(resume.body).toMatchObject({ status: 'active', suspendedAt: null });
+
+    const adminAfterResume = await request(server)
+      .get('/api/v1/admin/subscribers')
+      .set('Authorization', bearer(acmeAdminToken));
+    expect(adminAfterResume.status).toBe(200);
+  });
+
+  it('E34 allowedOrigins menolak origin lain dan mengizinkan request tanpa Origin', async () => {
+    const keyResponse = await request(server)
+      .post('/api/v1/admin/api-keys')
+      .set('Authorization', bearer(adminToken))
+      .send({ name: 'origin-test', allowedOrigins: ['https://app.example.com'] });
+    expect(keyResponse.status).toBe(201);
+    const originKey = keyResponse.body.key as string;
+
+    const serverToServer = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', originKey)
+      .send(notifyBody('e2e-origin-1', ['inapp']));
+    expect(serverToServer.status).toBe(202);
+
+    const allowed = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', originKey)
+      .set('Origin', 'https://app.example.com')
+      .send(notifyBody('e2e-origin-2', ['inapp']));
+    expect(allowed.status).toBe(202);
+
+    const blocked = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', originKey)
+      .set('Origin', 'https://evil.example.com')
+      .send(notifyBody('e2e-origin-3', ['inapp']));
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.message).toBe('origin_not_allowed');
+  });
+
+  it('E35 audit platform mencatat mutasi dan bisa difilter', async () => {
+    const all = await request(server)
+      .get('/api/v1/platform/audit?tenantId=acme')
+      .set('Authorization', bearer(platformToken));
+
+    expect(all.status).toBe(200);
+    expect(all.body.total).toBeGreaterThanOrEqual(4);
+
+    const actions = (all.body.items as { action: string }[]).map((item) => item.action);
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        'tenant.created',
+        'tenant.admin.created',
+        'tenant.suspended',
+        'tenant.resumed',
+      ]),
+    );
+
+    const suspended = await request(server)
+      .get('/api/v1/platform/audit?tenantId=acme&action=tenant.suspended')
+      .set('Authorization', bearer(platformToken));
+
+    expect(suspended.status).toBe(200);
+    expect(
+      (suspended.body.items as { action: string }[]).every(
+        (item) => item.action === 'tenant.suspended',
+      ),
+    ).toBe(true);
+
+    const entry = all.body.items[0] as {
+      actorEmail: string;
+      targetType: string;
+      occurredAt: string;
+    };
+    expect(entry.actorEmail).toBe(TEST_PLATFORM_ADMIN_EMAIL);
+    expect(entry.targetType).toBe('tenant');
+    expect(Number.isNaN(Date.parse(entry.occurredAt))).toBe(false);
+  });
+
+  it('E36 delete tenant hanya untuk tenant kosong dan default dilindungi', async () => {
+    const withData = await request(server)
+      .delete('/api/v1/platform/tenants/acme')
+      .set('Authorization', bearer(platformToken));
+    expect(withData.status).toBe(409);
+    expect(withData.body.message).toBe('tenant_not_empty');
+
+    const created = await request(server)
+      .post('/api/v1/platform/tenants')
+      .set('Authorization', bearer(platformToken))
+      .send({ id: 'empty-tenant', name: 'Empty Tenant' });
+    expect(created.status).toBe(201);
+
+    const deleted = await request(server)
+      .delete('/api/v1/platform/tenants/empty-tenant')
+      .set('Authorization', bearer(platformToken));
+    expect(deleted.status).toBe(204);
+
+    const gone = await request(server)
+      .get('/api/v1/platform/tenants/empty-tenant')
+      .set('Authorization', bearer(platformToken));
+    expect(gone.status).toBe(404);
+
+    const protectedTenant = await request(server)
+      .delete('/api/v1/platform/tenants/default')
+      .set('Authorization', bearer(platformToken));
+    expect(protectedTenant.status).toBe(403);
+    expect(protectedTenant.body.message).toBe('tenant_protected');
+  });
+
+  it('E37 bootstrap idempoten saat dijalankan ulang', async () => {
+    const before = {
+      tenants: await prisma.tenant.count(),
+      admins: await prisma.adminUser.count(),
+    };
+
+    await app.get(AdminBootstrapService).onApplicationBootstrap();
+
+    const after = {
+      tenants: await prisma.tenant.count(),
+      admins: await prisma.adminUser.count(),
+    };
+
+    expect(after).toEqual(before);
+    expect(await prisma.tenant.count({ where: { id: 'default' } })).toBe(1);
   });
 
   it('E7 admin tenant A tidak bisa membaca data tenant B', async () => {

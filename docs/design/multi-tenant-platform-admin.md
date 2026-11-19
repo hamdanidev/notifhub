@@ -1,8 +1,9 @@
 # Desain multi-tenant: entitas tenant, platform admin, dan provisioning
 
-Status: **F1–F2 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill,
-idempotency per tenant, lane auth platform) pada 2026-11-19; F3–F5 belum. Draf disetujui
-2026-11-19. Lihat §19 untuk catatan implementasi.
+Status: **F1–F3 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill,
+idempotency per tenant, lane auth platform, provisioning tenant + admin, suspend, audit, dan
+`allowedOrigins`) pada 2026-11-19; F4–F5 belum. Draf disetujui 2026-11-19. Lihat §19 untuk catatan
+implementasi.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `docs/architecture/project-brief.md`, `docs/design/admin-api.md` (terutama §2 dan D6),
@@ -610,7 +611,7 @@ Perubahan teknis:
 |---|---|---|
 | **F1 (selesai)** | Schema `Tenant`, FK, CHECK, migrasi + backfill, seed, bootstrap tenant, perbaikan idempotency (D16) | `npm run test:e2e` (E1–E29 + E30 hijau), typecheck, unit |
 | **F2 (selesai)** | Klaim JWT opsional, `PlatformAdminGuard`, endpoint platform auth, env bootstrap platform admin | `npm run test:unit` (28 test) + e2e E31 |
-| F3 | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E32–E37 |
+| **F3 (selesai)** | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E32–E37 |
 | F4 | Console platform (login, tenant, admin, audit) | `console:typecheck`, `console:build`, verifikasi manual |
 | F5 | Dokumentasi (dokumen ini → status terimplementasi, indeks, project-brief, overview, usage, configuration) + e2e lengkap | `npm run ci`, `npm run docs:check` |
 
@@ -625,17 +626,17 @@ terhadap suite yang ada.
 |---|---|---|
 | E30 | **Sudah ada (F1).** Idempotency key sama di dua tenant (regresi G8) | Dua notifikasi berbeda, masing-masing hanya terlihat pemiliknya |
 | E31 | **Sudah ada (F2).** Platform login + `/platform/auth/me`, dan tiap lane menolak token lane lain | `200` + token tanpa `tenant`; tenant admin di platform `403`; platform admin di lane tenant `403`; password salah `401` |
-| E32 | Platform admin membuat tenant + admin, lalu admin tenant login dan memakai datanya | `201`/`200`; data tenant baru tidak terlihat dari tenant `default` |
-| E33 | Suspend tenant: ingest, subscriber, login tenant admin | `403 tenant_suspended`; platform tetap bisa; `resume` memulihkan |
-| E34 | `allowedOrigins`: key dengan daftar origin | `403 origin_not_allowed` untuk origin lain; `200` untuk origin terdaftar; daftar kosong = semua |
-| E35 | Audit: create/suspend/resume/admin dibuat | Baris audit muncul dengan actor, action, tenantId; filter bekerja |
-| E36 | `DELETE` tenant: berisi data vs kosong vs `default` | `409 tenant_not_empty`, `204`, `403 tenant_protected` |
-| E37 | Bootstrap ulang aplikasi (restart) | Tidak ada tenant/admin ganda; `default` tetap satu baris |
+| E32 | **Sudah ada (F3).** Platform admin membuat tenant + admin, lalu admin tenant login dan memakai datanya | `201`/`200`; data tenant baru tidak terlihat dari tenant `default` |
+| E33 | **Sudah ada (F3).** Suspend tenant: ingest, subscriber, login tenant admin | `403 tenant_suspended`; platform tetap bisa; `resume` memulihkan |
+| E34 | **Sudah ada (F3).** `allowedOrigins`: key dengan daftar origin | `403 origin_not_allowed` untuk origin lain; `200` untuk origin terdaftar; daftar kosong = semua |
+| E35 | **Sudah ada (F3).** Audit: create/suspend/resume/admin dibuat | Baris audit muncul dengan actor, action, tenantId; filter bekerja |
+| E36 | **Sudah ada (F3).** `DELETE` tenant: berisi data vs kosong vs `default` | `409 tenant_not_empty`, `204`, `403 tenant_protected` |
+| E37 | **Sudah ada (F3).** Bootstrap ulang aplikasi (restart) | Tidak ada tenant/admin ganda; `default` tetap satu baris |
 
 ### Regresi yang wajib tetap hijau
 
-- E1–E29 (`test/app.e2e-spec.ts`) tanpa perubahan perilaku yang tidak disengaja, plus E30
-  (idempotency lintas tenant).
+- E1–E29 (`test/app.e2e-spec.ts`) tanpa perubahan perilaku yang tidak disengaja, plus E30–E37
+  (idempotency, lane platform, provisioning, suspend, origins, audit, delete, bootstrap).
 - `npm run test:unit`, `npm run ci`, `npm run console:typecheck`, `npm run console:build`.
 - `npm run docs:check`.
 - Verifikasi manual: `npm run verify:preferences` (backend hidup) dan alur console tenant.
@@ -656,10 +657,12 @@ terhadap suite yang ada.
 |---|---|
 | `prisma/schema.prisma` | `Tenant`, `TenantStatus`, FK, `AdminUser.tenantId` nullable + CHECK, unique idempotency komposit, `PlatformAuditEvent` |
 | `prisma/migrations/<baru>_platform_tenants/migration.sql` | Tabel, backfill, FK, index, CHECK |
+| `prisma/migrations/20261119210000_platform_audit/migration.sql` | Tabel `PlatformAuditEvent` + index |
 | `prisma/seed.ts` | Upsert `Tenant(DEFAULT_TENANT_ID)` sebelum data lain |
 | `src/config/env.schema.ts` | `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD_HASH` (opsional, berpasangan) |
 | `.env.example`, `.env.prod.example` | Placeholder platform admin (kosong secara default) |
-| `src/platform/` (baru) | Module, controller auth/tenant/admin/audit, service, DTO |
+| `src/platform/` (baru) | Module, controller auth/tenant/admin/audit, service, DTO, konstanta |
+| `src/common/decorators/allow-suspended-tenant.decorator.ts` (baru) | Pengecualian suspend untuk `/metrics` |
 | `src/auth/admin/admin.types.ts`, `admin-token.service.ts`, `admin-jwt.guard.ts` | `tenantId` opsional, guard tenant cek DB + status tenant |
 | `src/auth/admin/platform-admin.guard.ts` (baru) | Guard lane platform |
 | `src/tenants/ensure-tenant.ts` (baru) | `ensureTenant()` idempoten, dipanggil bootstrap admin + API key sebelum menulis baris ber-tenant |
@@ -718,11 +721,11 @@ terhadap suite yang ada.
 - [x] Migrasi berhasil pada database development dan database test; backfill tenant benar.
 - [x] Tenant `default` dan bootstrap admin/API key tetap berjalan setelah restart (idempoten).
 - [x] `platform_admin` hanya bisa di lane platform; tenant admin hanya di lane tenant (e2e E31).
-- [ ] Suspend/resume berlaku di ingest, admin tenant, dan subscriber (e2e E33).
+- [x] Suspend/resume berlaku di ingest, admin tenant, dan subscriber (e2e E33).
 - [x] Idempotency per tenant teruji (e2e E30) dan tidak ada lookup idempotency tanpa tenant.
-- [ ] `allowedOrigins` ditegakkan (e2e E34).
-- [ ] Audit tercatat untuk semua mutasi platform dan bisa dibaca dengan filter (e2e E35).
-- [ ] `DELETE` tenant mengikuti aturan §8.2 (e2e E36).
+- [x] `allowedOrigins` ditegakkan (e2e E34).
+- [x] Audit tercatat untuk semua mutasi platform dan bisa dibaca dengan filter (e2e E35).
+- [x] `DELETE` tenant mengikuti aturan §8.2 (e2e E36).
 - [x] E1–E29 tetap hijau; `npm run ci` dan `npm run docs:check` hijau.
 - [ ] Console platform lolos `typecheck`/`build` dan diverifikasi manual.
 - [ ] Dokumentasi diperbarui (indeks, project-brief, overview, usage, configuration).
@@ -821,4 +824,49 @@ Catatan:
   ada bentrok email.
 - `admin-api.md` D6 tetap historis; lane tenant masih menolak `platform_admin`, hanya saja akun
   platform sekarang punya jalan masuk sendiri lewat `/platform/auth/login`.
+
+### 19.3 F3 (2026-11-19)
+
+Yang sudah berjalan:
+
+- API tenant: `GET/POST /platform/tenants`, `GET/PATCH /platform/tenants/:id`,
+  `POST .../suspend`, `POST .../resume`, `DELETE .../:id` (hanya tenant kosong; `default`
+  dilindungi), plus `GET/POST .../:id/admins` dan `PATCH .../:id/admins/:adminId`.
+- Model `PlatformAuditEvent` (append-only, tanpa FK) + migrasi `20261119210000_platform_audit`;
+  `GET /platform/audit` dengan filter `tenantId`, `action`, `from`, `to`, limit/offset.
+- Suspend ditegakkan di tiga lane:
+  - `ApiKeyGuard` membaca `tenant.status` pada query API key yang sama; `403 tenant_suspended`,
+    dengan pengecualian `@AllowSuspendedTenant()` untuk `/metrics`;
+  - `AdminJwtGuard` kini mengecek DB setiap request: akun aktif, role/tenant token cocok dengan
+    akun, dan tenant aktif (`403 tenant_suspended`);
+  - login admin tenant menolak tenant suspended (`403 tenant_suspended`);
+  - `SubscriberJwtGuard` mengecek status tenant setelah verifikasi token (`403 tenant_suspended`);
+  - webhook provider tetap diproses, job yang sudah antre tetap jalan (sesuai D8).
+- `allowedOrigins` ditegakkan di `ApiKeyGuard`: daftar kosong = semua origin; `Origin` yang tidak
+  cocok → `403 origin_not_allowed`; request tanpa `Origin` diizinkan.
+- Tenant admin dibuat dengan password awal (bcrypt 10); menonaktifkan admin aktif terakhir
+  ditolak `409 last_tenant_admin`; akun platform admin tidak bisa dikelola lewat rute ini (`404`).
+
+Verifikasi:
+
+- `npm run typecheck`; `npm run test:unit` (28 test); `npm run test:e2e` (**37 test**: E32–E37
+  baru); `npm run ci`; `npm run docs:check`.
+- E32 membuktikan provisioning + isolasi; E33 suspend/resume di tiga lane; E34 origin allowlist;
+  E35 audit + filter; E36 aturan delete; E37 bootstrap idempoten.
+
+Deviasi dan catatan:
+
+1. **Audit bersifat best-effort.** Kegagalan menulis `PlatformAuditEvent` hanya di-log
+   (`platform.audit.failed`) agar mutasi yang sudah terjadi tidak dilaporkan gagal. Bila kelak
+   audit harus atomik, bungkus mutasi + audit dalam satu transaksi.
+2. **Delete tenant** memakai pre-check hitungan di 14 tabel lalu fallback ke FK violation
+   (`P2003 → 409 tenant_not_empty`), sehingga balapan dengan penulisan baru tetap aman.
+3. **`E37` bukan restart proses**, melainkan memanggil ulang `AdminBootstrapService.onApplicationBootstrap()`
+   dan memastikan jumlah tenant/admin tidak berubah.
+4. **`/metrics`** tetap dapat diakses dengan API key milik tenant suspended (pengecualian sadar
+   agar monitoring tidak ikut mati); endpoint bisnis tetap `403`.
+5. **Snapshot tenant** (`adminCount`, `apiKeyCount`) memakai `_count`; jumlah notifikasi tidak
+   diekspos di v1 sesuai Q7.
+
+Belum dikerjakan: console platform (F4) dan pembaruan dokumentasi akhir (F5).
 
