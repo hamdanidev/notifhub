@@ -235,5 +235,7 @@ npx prisma migrate status
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
 3. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
-4. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
+4. Pisahkan console platform ke host/origin sendiri (isolasi artifact + session); draf desain dan
+   rencana rollout ada di `docs/design/platform-console-host-split.md`.
+5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
