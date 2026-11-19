@@ -583,8 +583,9 @@ Perubahan teknis:
   `console/src/lib/adminResend.ts` (SDK terbit tidak diubah).
 - `ProtectedRoute` menjadi role-aware: rute tenant butuh `tenant_admin`, rute platform butuh
   `platform_admin`; role yang salah diarahkan ke beranda role-nya, bukan sekadar `401`.
-- `AppLayout` tetap untuk tenant; `PlatformLayout` baru untuk platform (navigasi: Tenants, Audit,
-  profil, logout).
+- `AppLayout` tetap untuk tenant; `PlatformLayout` memakai design system console yang sama
+  (sidebar, topbar, lebar konten) dengan aksen teal, brand "P"/"Platform", dan bagian navigasi
+  "Manage" — sengaja tidak identik agar operator bisa membedakan lane.
 - Tidak ada tenant switcher/impersonation di v1.
 
 ## 12. Keamanan
@@ -948,4 +949,20 @@ Regresi penuh:
 Kandidat lanjutan (di luar v1): RBAC granular (`platform_readonly`), pengelolaan akun platform
 admin lewat API/console, pemisahan console platform ke host terpisah, kuota/rate limit per tenant,
 dan retensi `PlatformAuditEvent`.
+
+### 19.6 UI platform (2026-11-19)
+
+- UI tidak lagi memakai navbar Bootstrap mentah. `PlatformLayout` memakai design system console
+  tenant (sidebar yang bisa diciutkan, topbar, lebar konten, kartu, tabel) dengan identitas
+  platform: aksen teal `#0f766e`, brand mark `P`, sub-label `PLATFORM`, bagian navigasi `Manage`,
+  dan crumb `Platform / <halaman>`.
+- Login platform memakai kartu login yang sama dengan aksen teal; tautan dari login tenant tetap
+  tidak ada (lihat §12).
+- Form pembuatan admin/reset password memakai `autoComplete="off"`/`new-password` agar password
+  manager tidak mengisi form tersebut.
+- Verifikasi visual: `console:typecheck` dan `console:build` lulus; screenshot headless Edge
+  (Chromium) diambil untuk `/platform/login`, `/platform/tenants`, `/platform/tenants/acme`, dan
+  `/platform/audit` dengan session platform disuntikkan lewat CDP. Tidak ada browser automation
+  yang ditambahkan ke repo.
+- Tidak ada perubahan API maupun perilaku; ini murni presentasi.
 

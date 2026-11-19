@@ -323,6 +323,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
                     <Form.Label className="small text-muted mb-1">Email</Form.Label>
                     <Form.Control
                       type="email"
+                      autoComplete="off"
                       value={adminEmail}
                       onChange={(event) => setAdminEmail(event.target.value)}
                     />
@@ -331,6 +332,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
                     <Form.Label className="small text-muted mb-1">Password awal</Form.Label>
                     <Form.Control
                       type="password"
+                      autoComplete="new-password"
                       value={adminPassword}
                       onChange={(event) => setAdminPassword(event.target.value)}
                     />
@@ -415,6 +417,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
           </p>
           <Form.Control
             type="password"
+            autoComplete="new-password"
             value={passwordValue}
             placeholder="Minimal 8 karakter"
             onChange={(event) => setPasswordValue(event.target.value)}

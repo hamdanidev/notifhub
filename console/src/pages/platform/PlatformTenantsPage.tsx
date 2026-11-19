@@ -156,6 +156,7 @@ export function PlatformTenantsPage(): JSX.Element {
                 <Form.Label className="small text-muted mb-1">Tenant id</Form.Label>
                 <Form.Control
                   value={newId}
+                  autoComplete="off"
                   placeholder="mis. acme"
                   onChange={(event) => setNewId(event.target.value)}
                 />
@@ -167,6 +168,7 @@ export function PlatformTenantsPage(): JSX.Element {
                 <Form.Label className="small text-muted mb-1">Nama</Form.Label>
                 <Form.Control
                   value={newName}
+                  autoComplete="off"
                   placeholder="mis. Acme Corp"
                   onChange={(event) => setNewName(event.target.value)}
                 />

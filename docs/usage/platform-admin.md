@@ -119,6 +119,10 @@ Aturan yang perlu diingat:
 
 ## Console
 
+Halaman console memakai design system yang sama dengan console tenant (sidebar, topbar, tabel,
+kartu) dengan aksen teal dan label **Platform**, sehingga terasa satu produk tetapi tetap mudah
+dibedakan dari lane tenant.
+
 | Halaman | Isi |
 |---|---|
 | `/platform/login` | Login platform admin |

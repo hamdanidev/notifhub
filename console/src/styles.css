@@ -1058,3 +1058,53 @@ a:hover {
     position: static;
   }
 }
+
+/* ------------------------------------------------------------ platform lane */
+
+:root {
+  --platform-accent: #0f766e;
+}
+
+.platform-shell .app-sidebar {
+  border-top: 3px solid var(--platform-accent);
+}
+
+.platform-shell .brand-mark {
+  background: var(--platform-accent);
+}
+
+.platform-shell .brand-sub {
+  color: var(--platform-accent);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.platform-shell .app-nav-link.active {
+  background: #edf7f5;
+  box-shadow: inset 2px 0 0 var(--platform-accent);
+}
+
+.platform-shell .sidebar-tenant .dot {
+  background: var(--platform-accent);
+}
+
+.login-page--platform .login-card {
+  border-top: 3px solid var(--platform-accent);
+}
+
+.login-page--platform .brand-mark {
+  background: var(--platform-accent);
+}
+
+.login-page--platform h1 {
+  color: var(--platform-accent);
+}
+
+.platform-shell code {
+  color: #44403c;
+  background: #f5f5f4;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}

@@ -50,11 +50,12 @@ export function PlatformLoginPage(): JSX.Element {
   };
 
   return (
-    <div className="login-page">
+    <div className="login-page login-page--platform">
       <div className="login-card">
         <div className="login-brand">
-          <div className="brand-mark">N</div>
+          <div className="brand-mark">P</div>
           <span className="brand-name">NotifHub</span>
+          <span className="brand-sub">Platform</span>
         </div>
 
         <h1>Platform</h1>

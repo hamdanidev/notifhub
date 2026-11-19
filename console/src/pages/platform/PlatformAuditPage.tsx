@@ -90,6 +90,7 @@ export function PlatformAuditPage(): JSX.Element {
                 <Form.Label className="small text-muted mb-1">Tenant id</Form.Label>
                 <Form.Control
                   value={tenantIdInput}
+                  autoComplete="off"
                   placeholder="mis. acme"
                   onChange={(event) => setTenantIdInput(event.target.value)}
                 />
