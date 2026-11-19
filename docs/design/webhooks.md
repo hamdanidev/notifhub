@@ -1,8 +1,20 @@
 # Desain webhook provider, rollup status, dan pembersihan data
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: PART 1 (aturan 19, 25–27, 45) dan fondasi platform notifikasi yang sudah berjalan
-(lihat `docs/local-setup.md`, `docs/in-app.md`, `docs/email-and-preferences.md`).
+(lihat `docs/getting-started/local-setup.md`, `docs/design/in-app.md`, `docs/design/email-and-preferences.md`).
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Webhook provider](#2-webhook-provider)
+- [3. Rollup `overallStatus`](#3-rollup-overallstatus)
+- [4. Cleanup job](#4-cleanup-job)
+- [5. Konfigurasi & perubahan proyek](#5-konfigurasi--perubahan-proyek)
+- [6. Daftar file](#6-daftar-file)
+- [7. Rencana verifikasi](#7-rencana-verifikasi)
+- [8. Keputusan desain](#8-keputusan-desain)
+- [9. Catatan implementasi](#9-catatan-implementasi)
 
 ---
 
@@ -25,12 +37,12 @@ Basis: PART 1 (aturan 19, 25–27, 45) dan fondasi platform notifikasi yang suda
 
 ### Tidak termasuk (di luar cakupan)
 
-- Topic & admin API + auth admin JWT (lihat `docs/admin-api.md`).
-- Admin Console & `@notifhub/react` (lihat `docs/react-and-console.md`).
-- WhatsApp provider/worker (lihat `docs/whatsapp.md`).
-- End-user preference center, platform admin (lihat `docs/preference-center.md`).
-- API baca `delivery_events` (menyusul di admin API — `docs/admin-api.md` — dan konsolnya di
-  `docs/react-and-console.md`).
+- Topic & admin API + auth admin JWT (lihat `docs/design/admin-api.md`).
+- Admin Console & `@notifhub/react` (lihat `docs/design/react-and-console.md`).
+- WhatsApp provider/worker (lihat `docs/design/whatsapp.md`).
+- End-user preference center, platform admin (lihat `docs/design/preference-center.md`).
+- API baca `delivery_events` (menyusul di admin API — `docs/design/admin-api.md` — dan konsolnya di
+  `docs/design/react-and-console.md`).
 - Batch ingest, digest, campaign features.
 
 ---
@@ -157,7 +169,7 @@ Dua job `@Cron` terpisah, timezone **UTC** (deterministik), berjalan malam:
   (batch 1000, loop sampai habis).
 - Soft delete: `deletedAt = now()` (PART 1 rule 27: soft delete only, tidak ada hard delete).
 - Log jumlah baris (`notification.retention.archived`).
-- Data tetap dapat dibaca admin (`docs/admin-api.md`, `docs/react-and-console.md`)
+- Data tetap dapat dibaca admin (`docs/design/admin-api.md`, `docs/design/react-and-console.md`)
   dengan filter `deletedAt`.
 
 ### 4.2 Idempotency (`30 2 * * *`)
@@ -219,11 +231,11 @@ WHERE "idempotencyExpiresAt" < $1
 | `src/app.module.ts` | `WebhooksModule`, `NotificationsModule`, `CleanupModule` |
 | `.env.example`, `.env` | `WEBHOOK_SIGNING_SECRET` |
 | `package.json` | versi 0.4.0 |
-| `docs/local-setup.md`, `README.md` | Bagian webhook provider, rollup status, dan pembersihan data |
+| `docs/getting-started/local-setup.md`, `README.md` | Bagian webhook provider, rollup status, dan pembersihan data |
 
 ### SDK — tidak berubah
 
-Tidak ada perubahan pada SDK; lihat `docs/go-sdk.md`.
+Tidak ada perubahan pada SDK; lihat `docs/sdk/go-sdk.md`.
 
 ---
 
@@ -272,7 +284,7 @@ Tidak ada perubahan pada SDK; lihat `docs/go-sdk.md`.
 | D7 | Retention = soft delete `deletedAt` saja (tanpa hard delete) | Ya |
 | D8 | Jadwal cleanup UTC 02:00 (retention) dan 02:30 (idempotency) | Ya |
 | D9 | `WEBHOOK_SIGNING_SECRET` wajib di semua mode (min 32 karakter) | Ya |
-| D10 | `delivery_events` belum punya API baca (menunggu admin API — `docs/admin-api.md`) | Ya |
+| D10 | `delivery_events` belum punya API baca (menunggu admin API — `docs/design/admin-api.md`) | Ya |
 
 ---
 

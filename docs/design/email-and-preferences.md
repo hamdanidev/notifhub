@@ -1,7 +1,22 @@
 # Desain email, abstraksi provider, dan preferensi
 
-Status: terimplementasi dan terverifikasi.
-Basis: PART 1 (aturan 4, 15, 17, 22–24, 38–45), fondasi ingest/queue (`docs/local-setup.md`), dan implementasi in-app (`docs/in-app.md`).
+Status: **terimplementasi dan terverifikasi**.
+Basis: PART 1 (aturan 4, 15, 17, 22–24, 38–45), fondasi ingest/queue (`docs/getting-started/local-setup.md`), dan implementasi in-app (`docs/design/in-app.md`).
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Alur data email](#2-alur-data-email)
+- [3. Provider abstraction + circuit breaker](#3-provider-abstraction--circuit-breaker)
+- [4. Email channel](#4-email-channel)
+- [5. Preferensi + quiet hours](#5-preferensi--quiet-hours)
+- [6. Subscriber API](#6-subscriber-api)
+- [7. Perubahan schema, seed, env, dependency](#7-perubahan-schema-seed-env-dependency)
+- [8. Daftar file](#8-daftar-file)
+- [9. Verifikasi](#9-verifikasi)
+- [10. Keputusan desain](#10-keputusan-desain)
+- [11. Catatan implementasi](#11-catatan-implementasi)
+- [12. Template email kaya (2026-11-16)](#12-template-email-kaya-2026-11-16)
 
 ---
 
@@ -11,11 +26,11 @@ Basis: PART 1 (aturan 4, 15, 17, 22–24, 38–45), fondasi ingest/queue (`docs/
 
 1. **Provider abstraction** di `src/providers/`:
    - interface `NotificationProvider`
-   - `InAppProvider` (refactor dari worker in-app — lihat `docs/in-app.md`; tetap publish ke Redis)
+   - `InAppProvider` (refactor dari worker in-app — lihat `docs/design/in-app.md`; tetap publish ke Redis)
    - `EmailProvider` (SMTP via `@nestjs-modules/mailer` + `nodemailer`)
    - `ProviderExecutor` yang membungkus setiap panggilan provider dengan circuit breaker `opossum`,
      timeout, dan logging state breaker.
-2. **Worker email** (`notification:email`): resolve alamat, cek preferensi, resolve + render
+2. **Worker email** (`notification-email`): resolve alamat, cek preferensi, resolve + render
    template email (Handlebars), panggil provider, update status, tulis `delivery_attempts`.
 3. **Enforcement preferensi** untuk semua worker (in-app dan email):
    - `enabled=false` → status `skipped`, alasan `preference_disabled`
@@ -33,12 +48,12 @@ Basis: PART 1 (aturan 4, 15, 17, 22–24, 38–45), fondasi ingest/queue (`docs/
 
 ### Tidak termasuk (dokumen lain)
 
-- WhatsApp provider + worker (lihat `docs/whatsapp.md`).
-- Admin API / ApiKey table dan topic (lihat `docs/admin-api.md`).
-- End-user preference center (lihat `docs/preference-center.md`) dan UI admin
-  (lihat `docs/react-and-console.md`).
-- Webhook status provider dan rollup `overallStatus` (lihat `docs/webhooks.md`).
-- Cleanup job idempotency & retention (lihat D7 dan `docs/webhooks.md`).
+- WhatsApp provider + worker (lihat `docs/design/whatsapp.md`).
+- Admin API / ApiKey table dan topic (lihat `docs/design/admin-api.md`).
+- End-user preference center (lihat `docs/design/preference-center.md`) dan UI admin
+  (lihat `docs/design/react-and-console.md`).
+- Webhook status provider dan rollup `overallStatus` (lihat `docs/design/webhooks.md`).
+- Cleanup job idempotency & retention (lihat D7 dan `docs/design/webhooks.md`).
 - Scheduled/delayed notification dari consumer, batch ingest, digest.
 
 ---
@@ -48,7 +63,7 @@ Basis: PART 1 (aturan 4, 15, 17, 22–24, 38–45), fondasi ingest/queue (`docs/
 ```
 ingest (channels termasuk email)
   -> NotificationRecipient(status=pending, channel=email)
-  -> queue notification:email
+  -> queue notification-email
   -> EmailProcessor.process(job)
        1. readiness gate (ReadinessService)
        2. load recipient row + notification (tenant, priority, payload)
@@ -113,7 +128,7 @@ export interface NotificationProvider {
 ### 3.3 Provider registry
 
 `ProviderRegistry` memetakan `Channel` → `NotificationProvider`. `sms` dan `whatsapp` belum punya
-provider; worker untuk channel tersebut baru dirancang di `docs/whatsapp.md`, jadi job tetap
+provider; worker untuk channel tersebut baru dirancang di `docs/design/whatsapp.md`, jadi job tetap
 menunggu.
 
 ---
@@ -213,7 +228,7 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
 ### 6.1 `PUT /api/v1/subscribers/:externalId`
 
 - Auth: `X-API-Key` (`ApiKeyGuard`), tenant = `DEFAULT_TENANT_ID` (desain admin API di
-  `docs/admin-api.md` menurunkannya per API key).
+  `docs/design/admin-api.md` menurunkannya per API key).
 - Body (semua opsional, full replacement — lihat D10):
 
 ```json
@@ -256,7 +271,7 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
 
 - `DELETE` (menunggu keputusan D1).
 - Endpoint preferensi end-user tidak termasuk di sini: preferensi end-user punya API self-service
-  publik tersendiri — lihat `docs/preference-center.md`.
+  publik tersendiri — lihat `docs/design/preference-center.md`.
 
 ---
 
@@ -310,7 +325,7 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
 | `src/config/env.schema.ts` | SMTP wajib di luar development |
 | `prisma/seed.ts` | Template email |
 | `package.json` | versi 0.3.0 |
-| `docs/local-setup.md`, `README.md` | Bagian email dan preferensi |
+| `docs/getting-started/local-setup.md`, `README.md` | Bagian email dan preferensi |
 
 ### SDK — tidak berubah
 
@@ -345,7 +360,7 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
 13. Circuit breaker: hentikan SMTP sink, ingest 3 email → log `provider.circuit.open` dan job
     retry/failed; nyalakan sink kembali → breaker `halfOpen`/`close` dan pengiriman pulih.
 14. Metrics: `notifhub_delivery_latency_seconds{provider="smtp"}`, `notifhub_provider_errors_total`.
-15. In-app tetap berjalan (regresi in-app — lihat `docs/in-app.md`): SSE replay/live, catch-up,
+15. In-app tetap berjalan (regresi in-app — lihat `docs/design/in-app.md`): SSE replay/live, catch-up,
     read receipt.
 
 ---
@@ -360,7 +375,7 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
 | D4 | Opsi circuit breaker sebagai konstanta (timeout 10s, 50%, reset 30s), tanpa env baru | Ya |
 | D5 | Handlebars default escaping; HTML memakai `{{{ }}}` | Ya |
 | D6 | `SMTP_*` wajib saat startup di staging/production, `development` log-only | Ya |
-| D7 | Cleanup job idempotency/retention dijadwalkan bersama cleanup job webhook (`docs/webhooks.md`), butuh keputusan semantik arsip | Ya |
+| D7 | Cleanup job idempotency/retention dijadwalkan bersama cleanup job webhook (`docs/design/webhooks.md`), butuh keputusan semantik arsip | Ya |
 | D8 | Tambah `scripts/dev-smtp-sink.mjs` sebagai alat verifikasi lokal (bukan service compose) | Ya |
 | D9 | Tidak menambah framework unit test backend; verifikasi lewat E2E + SQL (SDK tetap vitest) | Ya |
 | D10 | `PUT` subscriber = full replacement (field yang tidak dikirim menjadi `null`, timezone default `Asia/Jakarta`) | Ya |
@@ -393,7 +408,7 @@ tanpa konversi wall-clock → UTC. Pergeseran DST dalam window diabaikan (didoku
 
 ## 12. Template email kaya (2026-11-16)
 
-Desain ada di `docs/template-system-design.md`.
+Desain ada di `docs/design/templates/template-system-design.md`.
 
 - Body email adalah fragmen HTML Handlebars; layout opsional membungkus dengan `{{{body}}}`.
   Theme token JSON dan partial versioned direferensikan eksplisit oleh template.

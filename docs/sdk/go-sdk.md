@@ -1,7 +1,20 @@
 # Desain Go SDK
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: PART 1 (aturan SDK-first/OpenAPI rule 29, Go SDK).
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Cakupan API publik](#2-cakupan-api-publik)
+- [3. Pipeline generasi](#3-pipeline-generasi)
+- [4. Struktur Go module](#4-struktur-go-module)
+- [5. Surface wrapper](#5-surface-wrapper)
+- [6. Error, retry, dan perilaku](#6-error-retry-dan-perilaku)
+- [7. Test dan verifikasi](#7-test-dan-verifikasi)
+- [8. Keputusan desain](#8-keputusan-desain)
+- [9. Catatan implementasi](#9-catatan-implementasi)
+- [10. Rilis dan distribusi](#10-rilis-dan-distribusi)
 
 ---
 
@@ -24,11 +37,11 @@ Basis: PART 1 (aturan SDK-first/OpenAPI rule 29, Go SDK).
 
 ### Tidak termasuk
 
-- Admin API (`docs/admin-api.md`), webhook receiver (`docs/webhooks.md`), in-app
-  SSE/subscriber JWT (`docs/in-app.md`) — Go SDK ini untuk service consumer.
+- Admin API (`docs/design/admin-api.md`), webhook receiver (`docs/design/webhooks.md`), in-app
+  SSE/subscriber JWT (`docs/design/in-app.md`) — Go SDK ini untuk service consumer.
 - SDK bahasa lain (Python/PHP/Java) — di luar cakupan dokumen ini.
-- End-user preference center (`docs/preference-center.md`) dan platform admin UI
-  (`docs/react-and-console.md`).
+- End-user preference center (`docs/design/preference-center.md`) dan platform admin UI
+  (`docs/design/react-and-console.md`).
 - CI/pipeline publikasi registry (belum ada registry Go; modul dipakai via `replace`/git).
 - Perubahan schema backend.
 

@@ -1,0 +1,72 @@
+# Indeks dokumen desain
+
+Folder ini berisi **catatan desain per fitur**: masalah yang dipecahkan, keputusan yang diambil
+(`D1…Dn`), kontrak yang dijanjikan, dan hasil verifikasinya. Dokumen-dokumen ini ditulis sebelum
+implementasi dan diperbarui setelahnya pada bagian **Catatan implementasi**.
+
+Cara membacanya:
+
+1. Baca `Status:` di baris atas — itu menentukan apakah dokumen menggambarkan kode saat ini,
+   sebagian, atau rencana.
+2. Lompat ke bagian yang Anda butuhkan lewat daftar isi di setiap dokumen.
+3. Untuk perilaku yang benar-benar berjalan, prioritaskan **Catatan implementasi** dan bagian
+   **Verifikasi**; rencana di bagian awal bisa sudah bergeser.
+4. Batasan yang masih terbuka dirangkum di
+   [project-brief §6](../architecture/project-brief.md#6-batasan-dan-deviasi-yang-diketahui) dan
+   [template-limitations-roadmap](templates/template-limitations-roadmap.md).
+
+Legenda status: **terimplementasi** = ada di kode dan terverifikasi · **sebagian** = fase tertentu
+selesai · **rencana** = belum dikerjakan.
+
+## Peta dokumen
+
+| Dokumen | Pertanyaan yang dijawab | Status | Bagian kunci |
+|---|---|---|---|
+| [in-app.md](in-app.md) | Bagaimana notifikasi in-app dikirim, disimpan, dan dialirkan ke browser lewat SSE? | terimplementasi | §3 kontrak HTTP, §4 auth subscriber, §5 Redis, §6 worker |
+| [email-and-preferences.md](email-and-preferences.md) | Bagaimana email dikirim lewat provider abstraction, dan bagaimana preferensi/quiet hours ditegakkan? | terimplementasi | §3 circuit breaker, §5 preferensi, §6 Subscriber API |
+| [preference-center.md](preference-center.md) | Bagaimana end-user mengubah preferensinya sendiri tanpa lane admin? | terimplementasi | §3 arsitektur, §5 endpoint, §6 JWT per tenant |
+| [webhooks.md](webhooks.md) | Bagaimana callback provider diverifikasi, dicatat, dan menggulung status notifikasi? | terimplementasi | §2 signature, §3 rollup, §4 cleanup |
+| [whatsapp.md](whatsapp.md) | Bagaimana kanal WhatsApp memakai Meta Cloud API, termasuk webhook-nya? | terimplementasi | §3 Cloud API, §4 worker, §5 webhook |
+| [admin-api.md](admin-api.md) | Bagaimana tiga lane auth dipisahkan, API key dikelola, tenant diisolasi, dan endpoint admin disusun? | terimplementasi | §2 lane auth, §3 ApiKey, §6 Admin API |
+| [react-and-console.md](react-and-console.md) | Bagaimana `@notifhub/js` (admin client), `@notifhub/react`, dan console tenant admin dibangun? | terimplementasi | §2 auth frontend, §3 admin client, §4 React, §5 console |
+| [console-needs-analysis.md](console-needs-analysis.md) | Gap operasional console apa yang perlu ditutup, dan fase mana yang sudah jalan? | Fase A+B selesai, Fase C belum | §1 ringkasan, §4 refresh, §5 re-send |
+| [sample-in-app-design.md](sample-in-app-design.md) | Bagaimana sample React 18 memakai SDK terbit untuk in-app, SSE, dan preference center? | terimplementasi (dev-only) | §4 arsitektur, §6 middleware dev, §15 hasil verifikasi |
+| [templates/template-system-design.md](templates/template-system-design.md) | Bagaimana sistem template v2 bekerja: versi, draft/publish, render per channel, sanitasi? | terimplementasi | §1 keputusan, §5 D1–D12, §7 pipeline render, §18 catatan |
+| [templates/email-authoring-ui-design.md](templates/email-authoring-ui-design.md) | Bagaimana admin non-teknis mengubah theme dan layout tanpa menulis JSON/HTML? | terimplementasi | §2 keputusan, §3 UX, §5 batasan |
+| [templates/email-block-builder-design.md](templates/email-block-builder-design.md) | Bagaimana body email disusun dari block, dan bagaimana `builderData` divalidasi? | terimplementasi | §3 model data, §4 UX, §7 verifikasi |
+| [templates/template-limitations-roadmap.md](templates/template-limitations-roadmap.md) | Batasan template mana yang paling berisiko, dan apa prioritas serta statusnya? | P0, P1, sebagian P2 selesai | §2 tabel batasan, §3 prioritas, §11–§14 hasil |
+
+## Arah baca menurut pekerjaan
+
+| Kalau Anda akan… | Baca |
+|---|---|
+| Menambah atau mengubah kanal | [in-app](in-app.md) → [email-and-preferences](email-and-preferences.md) → [whatsapp](whatsapp.md), lalu [webhooks](webhooks.md) untuk status |
+| Menyentuh template atau render | [template-system-design](templates/template-system-design.md) → [block builder](templates/email-block-builder-design.md) → [limitations roadmap](templates/template-limitations-roadmap.md) |
+| Menyentuh auth, tenant, atau endpoint admin | [admin-api](admin-api.md) → [preference-center](preference-center.md) §6 → [in-app](in-app.md) §4 |
+| Menyentuh console atau SDK frontend | [react-and-console](react-and-console.md) → [console-needs-analysis](console-needs-analysis.md) → [sample-in-app-design](sample-in-app-design.md) |
+| Mencari alasan sebuah keputusan | Cari `D<n>` di dokumen terkait; keputusan diberi nomor dan alasannya ditulis di tabel |
+
+## Anatomi dokumen desain
+
+Urutan bagian yang dipakai konsisten, walau tidak setiap dokumen memuat semuanya:
+
+| Bagian | Isi |
+|---|---|
+| `Status:` / `Basis:` | Status implementasi dan dokumen/keputusan yang menjadi dasar |
+| Ruang lingkup | Apa yang termasuk dan **tidak** termasuk |
+| Alur data / kontrak | Diagram alur, endpoint, bentuk payload |
+| Schema / konfigurasi | Perubahan Prisma, env, dependency |
+| Daftar file | File yang disentuh, untuk memudahkan penelusuran |
+| Verifikasi | Skenario end-to-end beserta hasil yang diharapkan |
+| Keputusan `D<n>` | Keputusan bernomor + alasan + status persetujuan |
+| Catatan implementasi | Deviasi dari rencana, bug yang ditemukan, bukti verifikasi |
+
+## Menambah dokumen desain
+
+1. Beri nama file sesuai fitur (`kebab-case.md`), bukan nomor urut.
+2. Awali dengan `Status:` dan `Basis:`, lalu bagian bernomor dan daftar isi (lihat dokumen lain
+   sebagai contoh).
+3. Tambahkan baris ke tabel "Peta dokumen" di halaman ini dan ke tabel "Daftar dokumen" di
+   [docs/README.md](../README.md).
+4. Rujuk dokumen lain dengan path relatif dari root repo (`docs/design/...`) agar mudah dicari
+   dari mana pun.

@@ -1,7 +1,22 @@
 # Desain Admin API: API key, autentikasi admin, topik, dan isolasi tenant
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: PART 1 (aturan 14, 33–37, 41, 46–47), serta kemampuan ingest, delivery, dan preferensi yang sudah berjalan.
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Tiga jalur autentikasi (tidak boleh tercampur)](#2-tiga-jalur-autentikasi-tidak-boleh-tercampur)
+- [3. ApiKey tabel](#3-apikey-tabel)
+- [4. Ingest dengan topic](#4-ingest-dengan-topic)
+- [5. Topic membership API (consumer)](#5-topic-membership-api-consumer)
+- [6. Admin API](#6-admin-api)
+- [7. Data model & konfigurasi](#7-data-model--konfigurasi)
+- [8. Daftar file](#8-daftar-file)
+- [9. Verifikasi](#9-verifikasi)
+- [10. Keputusan desain](#10-keputusan-desain)
+- [11. Catatan implementasi](#11-catatan-implementasi)
+- [12. Template system v2 (2026-11-16)](#12-template-system-v2-2026-11-16)
 
 ---
 
@@ -25,12 +40,12 @@ Basis: PART 1 (aturan 14, 33–37, 41, 46–47), serta kemampuan ingest, deliver
 
 ### Tidak termasuk (di luar cakupan)
 
-- Admin Console / `@notifhub/react` — lihat `docs/react-and-console.md`.
-- WhatsApp provider/worker — lihat `docs/whatsapp.md`.
+- Admin Console / `@notifhub/react` — lihat `docs/design/react-and-console.md`.
+- WhatsApp provider/worker — lihat `docs/design/whatsapp.md`.
 - Group acknowledgment (broadcast/critical, deadline) — ditunda; lihat D11.
 - Self-service subscription end-user (`mode="self-service"`, opt-in) — di luar cakupan;
-  batasannya dijelaskan di `docs/preference-center.md`.
-- End-user preference center UI — di luar cakupan; batasannya di `docs/preference-center.md`.
+  batasannya dijelaskan di `docs/design/preference-center.md`.
+- End-user preference center UI — di luar cakupan; batasannya di `docs/design/preference-center.md`.
   Platform admin lintas tenant belum dikerjakan.
 - Cleanup member kedaluwarsa sebagai scheduled job (ditunda; resolusi sudah memfilter).
 - Scheduled/delayed notification, batch ingest, workflow.
@@ -153,7 +168,7 @@ Auth: `X-API-Key` (tenant dari key). Base `/api/v1/topics`.
   `expiresAt` efektif; jika tidak → `400`.
 - Jika topic existing `isTimeBound=false` dan body `isTimeBound=true` → `400`
   (`isTimeBound cannot be changed on an existing topic`); perubahan hanya lewat Admin Console
-  (lihat `docs/react-and-console.md`).
+  (lihat `docs/design/react-and-console.md`).
 - `members` maks 1000; `recipientId` 1–128 karakter.
 - Response `200`:
 
@@ -178,7 +193,7 @@ Auth: `X-API-Key` (tenant dari key). Base `/api/v1/topics`.
 - `Topic.mode` default `"push"`; dokumen ini tidak menyediakan endpoint untuk mengubah `mode`.
 - Consumer membership API tetap dapat dipakai untuk topic mode apa pun; pembatasan self-service
   (opt-in end-user) berada di luar cakupan dokumen ini dan dicatat sebagai batasan di
-  `docs/preference-center.md`.
+  `docs/design/preference-center.md`.
 
 ---
 
@@ -222,10 +237,10 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 - `GET /subscribers/:externalId/preferences` → daftar preferensi per channel.
 - `PUT /subscribers/:externalId/preferences/:channel`
   `{ enabled, quietHoursStart?, quietHoursEnd?, timezone }` → upsert, `200`.
-  (Diperlukan Admin Console — lihat `docs/react-and-console.md`; enforcement sudah berjalan
-  sejak fitur preferensi diperkenalkan — lihat `docs/email-and-preferences.md`.)
+  (Diperlukan Admin Console — lihat `docs/design/react-and-console.md`; enforcement sudah berjalan
+  sejak fitur preferensi diperkenalkan — lihat `docs/design/email-and-preferences.md`.)
 - API preferensi self-service publik untuk end-user berada di luar Admin API dan dibahas di
-  `docs/preference-center.md`.
+  `docs/design/preference-center.md`.
 
 ### 6.4 Topics
 
@@ -233,7 +248,7 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 - `GET /topics/:key` + `GET /topics/:key/members?includeExpired=`.
 - `PUT /topics/:key/members` dan `POST /topics/:key/members` dengan body yang sama seperti
   endpoint consumer (tenant dari admin JWT). Dipakai Admin Console — lihat
-  `docs/react-and-console.md`.
+  `docs/design/react-and-console.md`.
 
 ### 6.5 Notifications
 
@@ -333,7 +348,7 @@ Bootstrap admin (saat `onApplicationBootstrap`):
 `src/ingest/dto/notify.dto.ts` (topics, recipients opsional, validasi), `src/ingest/ingest.service.ts`
 (resolusi topic, tenant dari API key, snapshot/targetType), `src/ingest/ingest.module.ts`,
 `src/app.module.ts`, `src/main.ts` (scheme `admin-jwt`), `src/config/env.schema.ts`,
-`.env.example`/`.env`, `package.json`, `README.md`, `docs/local-setup.md`.
+`.env.example`/`.env`, `package.json`, `README.md`, `docs/getting-started/local-setup.md`.
 Untuk re-send: `prisma/schema.prisma`, migrasi
 `prisma/migrations/20261116130000_resend_audit/`, `src/admin/admin.module.ts`,
 `src/admin/services/admin-notifications.service.ts`.
@@ -364,7 +379,7 @@ Untuk re-send: `prisma/schema.prisma`, migrasi
     (active=false), detail.
 12. Admin subscribers: list/detail; upsert preference `enabled=false` untuk email lalu ingest
     email → recipient `skipped` (regresi preferensi tetap bekerja; lihat
-    `docs/email-and-preferences.md`).
+    `docs/design/email-and-preferences.md`).
 13. Admin notifications: list filter status + detail berisi recipients, attempts, events, payload;
     notification tenant lain → `404`.
 14. Admin re-send failed: notification baru dibuat, original tidak berubah, audit link terisi,
@@ -429,7 +444,7 @@ Untuk re-send: `prisma/schema.prisma`, migrasi
 
 ## 12. Template system v2 (2026-11-16)
 
-Desain lengkap dan keputusan D1–D12 ada di `docs/template-system-design.md`.
+Desain lengkap dan keputusan D1–D12 ada di `docs/design/templates/template-system-design.md`.
 
 - Model: `NotificationTemplate` memiliki `status` (`draft`/`published`), `format`, `direction`,
   `strictVariables`, `variables`, `sampleData`, `preheader`, `revision`, `publishedAt`, dan
@@ -449,7 +464,7 @@ Desain lengkap dan keputusan D1–D12 ada di `docs/template-system-design.md`.
   `GET /api/v1/template-images/:id` menyajikan gambar publik (UUID) untuk email client.
 - Roadmap P0/P1 menambahkan validasi `builderData`, plain-text email, retensi audit/test send,
   warning dua kolom, drag-and-drop/undo-redo console, serta ekspor HTML; lihat
-  `docs/template-limitations-roadmap.md`. Detail notifikasi kini memuat `templateId`,
+  `docs/design/templates/template-limitations-roadmap.md`. Detail notifikasi kini memuat `templateId`,
   `templateVersion`, dan `templateResolvedAt` per recipient (P2 D10).
 - Payload admin memakai parser 1 MB (`TEMPLATE_MAX_PAYLOAD_BYTES`); ingest tetap
   `INGEST_MAX_PAYLOAD_BYTES` 64 KB.

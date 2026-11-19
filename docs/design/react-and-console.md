@@ -1,9 +1,24 @@
 # Desain binding React dan console admin
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: PART 1 (SDK-first rule 29, Admin Console tenant-only, stack frontend fixed) dan fondasi
-platform notifikasi yang sudah berjalan (lihat `docs/local-setup.md`, `docs/in-app.md`,
-`docs/email-and-preferences.md`, `docs/admin-api.md`).
+platform notifikasi yang sudah berjalan (lihat `docs/getting-started/local-setup.md`, `docs/design/in-app.md`,
+`docs/design/email-and-preferences.md`, `docs/design/admin-api.md`).
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Arsitektur frontend & auth](#2-arsitektur-frontend--auth)
+- [3. Ekstensi `@notifhub/js` — `NotifHubAdminClient`](#3-ekstensi-notifhubjs--notifhubadminclient)
+- [4. `@notifhub/react`](#4-notifhubreact)
+- [5. `notifhub-console`](#5-notifhub-console)
+- [6. Struktur folder](#6-struktur-folder)
+- [7. Verifikasi](#7-verifikasi)
+- [8. Keputusan desain](#8-keputusan-desain)
+- [9. Catatan implementasi](#9-catatan-implementasi)
+- [10. Iterasi console: refresh dan resend failed](#10-iterasi-console-refresh-dan-resend-failed)
+- [11. Editor template v2 (2026-11-16)](#11-editor-template-v2-2026-11-16)
+- [11. Aset template tanpa kode (2026-11-16)](#11-aset-template-tanpa-kode-2026-11-16)
 
 ---
 
@@ -26,14 +41,14 @@ platform notifikasi yang sudah berjalan (lihat `docs/local-setup.md`, `docs/in-a
    - API keys (list, create, revoke),
    - profil admin + logout.
 4. Build/typecheck untuk ketiga paket dan verifikasi end-to-end terhadap backend Admin API
-   (lihat `docs/admin-api.md`).
+   (lihat `docs/design/admin-api.md`).
 
 ### Tidak termasuk (di luar cakupan)
 
-- WhatsApp provider/worker (lihat `docs/whatsapp.md`), Go SDK (lihat `docs/go-sdk.md`), platform
-  admin lintas tenant (lihat `docs/preference-center.md`).
+- WhatsApp provider/worker (lihat `docs/design/whatsapp.md`), Go SDK (lihat `docs/sdk/go-sdk.md`), platform
+  admin lintas tenant (lihat `docs/design/preference-center.md`).
 - Refresh token, SSO/OIDC, RBAC granular, audit log UI.
-- End-user preference center (lihat `docs/preference-center.md`), self-service subscription UI.
+- End-user preference center (lihat `docs/design/preference-center.md`), self-service subscription UI.
 - Containerisasi console/backend (Dockerfile/production compose belum diminta).
 - Browser automation/E2E suite (Playwright) — verifikasi manual + unit test.
 
@@ -104,7 +119,7 @@ class NotifHubAdminClient {
 }
 ```
 
-Tipe model ditulis manual mengikuti kontrak Admin API (lihat `docs/admin-api.md`; OpenAPI tetap
+Tipe model ditulis manual mengikuti kontrak Admin API (lihat `docs/design/admin-api.md`; OpenAPI tetap
 sumber kebenaran, dan tipe admin bukan target SDK generation pihak ketiga).
 
 ---
@@ -147,7 +162,7 @@ const {
 - Belum ada endpoint unread-count; angka bell dihitung dari halaman yang di-fetch + event.
 - Tidak ada komponen bergaya siap pakai; contoh CSS disediakan di README.
 - Paket juga menyediakan hook `usePreferences` untuk data preferensi end-user; lihat
-  `docs/preference-center.md`.
+  `docs/design/preference-center.md`.
 
 ---
 
@@ -185,7 +200,7 @@ Layout: sidebar + topbar Bootstrap, indikator admin/tenant, tombol logout, toast
 - Query key per resource; mutasi meng-invalidate key terkait.
 - Semua panggilan lewat `NotifHubAdminClient`; error `NotifHubError` dipetakan ke pesan UI
   (`unauthorized` → logout, `not_found` → halaman kosong, lainnya → alert).
-- Pagination limit/offset (maks 100) sesuai Admin API (lihat `docs/admin-api.md`).
+- Pagination limit/offset (maks 100) sesuai Admin API (lihat `docs/design/admin-api.md`).
 - Dashboard: 4 query count (status pending/partial/sent/failed dengan `limit=1` → `total`)
   + 1 query 200 notifikasi terbaru untuk grafik 14 hari (agregasi client-side).
   Ini batasan yang didokumentasikan (belum ada endpoint analytics).
@@ -231,7 +246,7 @@ console/
 
 `console/` **bukan** npm workspace root (agar dependency frontend tidak bercampur dengan backend);
 instalasi: `npm --prefix console install`, script `npm run console:install|dev|build|typecheck`
-di root (menjalankan perintah di folder console). Panduan setup ada di `docs/local-setup.md`.
+di root (menjalankan perintah di folder console). Panduan setup ada di `docs/getting-started/local-setup.md`.
 
 ---
 
@@ -359,7 +374,7 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16.
 
 ## 11. Editor template v2 (2026-11-16)
 
-Desain dan batasan ada di `docs/template-system-design.md`.
+Desain dan batasan ada di `docs/design/templates/template-system-design.md`.
 
 - `/templates`: filter status/channel/locale, aksi edit/clone/activate/deactivate, status dan versi.
 - `/templates/new` dan `/templates/:id/edit`: editor dua panel (konten, variabel, aset,
@@ -378,11 +393,11 @@ Desain dan batasan ada di `docs/template-system-design.md`.
   mode advanced.
 - Layout memakai galeri preset (transaksional/promo/notifikasi) + field logo/brand/footer;
   partial memakai form header/footer/CTA/signature. HTML tetap bisa diedit lewat mode advanced.
-- Detail dan batasan: `docs/email-authoring-ui-design.md`.
+- Detail dan batasan: `docs/design/templates/email-authoring-ui-design.md`.
 
 ### 11.2 Block builder email (2026-11-16)
 
 - Tab Konten punya toggle **Visual/HTML**. Visual menyediakan block heading, teks, gambar, tombol,
   divider, spacer, dan dua kolom; properti block, reorder, duplikat, hapus, dan variable picker.
 - `builderData` JSON disimpan di samping `body` HTML; worker tidak membacanya. Template lama tanpa
-  builderData tetap memakai HTML. Detail: `docs/email-block-builder-design.md`.
+  builderData tetap memakai HTML. Detail: `docs/design/templates/email-block-builder-design.md`.

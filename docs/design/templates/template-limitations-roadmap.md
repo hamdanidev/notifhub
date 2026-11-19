@@ -4,14 +4,27 @@ Status: **P0, P1, dan slice P2 (D10 + upload gambar) terimplementasi dan terveri
 2026-11-16. Item P2 lain belum dimulai. Lihat §11, §12, §13, dan §14.
 
 Tanggal: 2026-11-16
-Basis: `docs/template-system-design.md`, `docs/email-authoring-ui-design.md`,
-`docs/email-block-builder-design.md`, `docs/project-brief.md`, kode template/admin/worker/cleanup,
+Basis: `docs/design/templates/template-system-design.md`, `docs/design/templates/email-authoring-ui-design.md`,
+`docs/design/templates/email-block-builder-design.md`, `docs/architecture/project-brief.md`, kode template/admin/worker/cleanup,
 console template, dan suite E2E E1–E20. HEAD desain: `348eb64` (working tree bersih; berisi
 `29072f6` dan perbaikan sidebar setelahnya).
 
-Peta dokumen: §1 ringkasan prioritas · §2 penilaian 13 batasan · §3 keputusan D1 · §4 keputusan
-D2–D13 · §5 perubahan schema/API/console · §6 migrasi dan kompatibilitas · §7 keamanan dan
-sanitasi · §8 test dan regresi · §9 risiko dan yang ditunda · §10 definition of done.
+**Isi dokumen**
+
+- [1. Ringkasan prioritas](#1-ringkasan-prioritas)
+- [2. Penilaian 13 batasan](#2-penilaian-13-batasan)
+- [3. D1 — Prioritas P0/P1/P2 dan alasan](#3-d1--prioritas-p0p1p2-dan-alasan)
+- [4. Keputusan D2–D13](#4-keputusan-d2d13)
+- [5. Perubahan schema, API, dan console](#5-perubahan-schema-api-dan-console)
+- [6. Migrasi dan backward compatibility](#6-migrasi-dan-backward-compatibility)
+- [7. Rencana keamanan dan sanitasi](#7-rencana-keamanan-dan-sanitasi)
+- [8. Rencana test, verifikasi, dan regresi](#8-rencana-test-verifikasi-dan-regresi)
+- [9. Risiko dan hal yang sengaja ditunda](#9-risiko-dan-hal-yang-sengaja-ditunda)
+- [10. Definition of done dan persetujuan](#10-definition-of-done-dan-persetujuan)
+- [11. Implementasi dan verifikasi P0](#11-implementasi-dan-verifikasi-p0)
+- [12. Implementasi dan verifikasi P1](#12-implementasi-dan-verifikasi-p1)
+- [13. Implementasi dan verifikasi P2 (D10)](#13-implementasi-dan-verifikasi-p2-d10)
+- [14. Implementasi dan verifikasi P2 (upload gambar)](#14-implementasi-dan-verifikasi-p2-upload-gambar)
 
 ---
 

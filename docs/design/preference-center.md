@@ -1,8 +1,21 @@
 # Desain preference center end-user
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: keputusan produk NotifHub (SDK-first, isolasi tenant, tiga lane auth). Dokumen pendamping:
-`docs/email-and-preferences.md`, `docs/admin-api.md`, `docs/in-app.md`, `docs/local-setup.md`.
+`docs/design/email-and-preferences.md`, `docs/design/admin-api.md`, `docs/design/in-app.md`, `docs/getting-started/local-setup.md`.
+
+**Isi dokumen**
+
+- [1. Latar belakang: dua celah yang harus ditutup lebih dulu](#1-latar-belakang-dua-celah-yang-harus-ditutup-lebih-dulu)
+- [2. Ruang lingkup](#2-ruang-lingkup)
+- [3. Arsitektur dan alur](#3-arsitektur-dan-alur)
+- [4. Schema dan migrasi](#4-schema-dan-migrasi)
+- [5. Endpoint](#5-endpoint)
+- [6. Verifikasi JWT subscriber per tenant](#6-verifikasi-jwt-subscriber-per-tenant)
+- [7. Keputusan bernomor](#7-keputusan-bernomor)
+- [8. File](#8-file)
+- [9. Batasan dan di luar scope](#9-batasan-dan-di-luar-scope)
+- [10. Catatan implementasi](#10-catatan-implementasi)
 
 ---
 
@@ -339,7 +352,7 @@ token dev selalu valid tanpa perlu mengingat snapshot di DB.
 | `packages/react/test/preferences.test.tsx` | 1 smoke test SSR hook |
 | `scripts/verify-preferences.mjs` | verifikasi HTTP + DB, 33 check |
 | `scripts/dev-subscriber-token.mjs` | helper token dev |
-| `docs/preference-center.md` | dokumen ini |
+| `docs/design/preference-center.md` | dokumen ini |
 
 ### 8.2 Diubah
 
@@ -360,7 +373,7 @@ token dev selalu valid tanpa perlu mengingat snapshot di DB.
 | `packages/js-sdk/src/{client,types,index}.ts` | `getPreferences`, `updatePreference`, tipe |
 | `packages/react/src/{preferences,index}.ts` | hook `usePreferences` |
 | `packages/*/package.json`, `package.json` | versi + script `verify:preferences`, `dev:subscriber-token` |
-| `docs/local-setup.md`, `README.md` | verifikasi & ringkasan fitur |
+| `docs/getting-started/local-setup.md`, `README.md` | verifikasi & ringkasan fitur |
 
 Tidak ada file console, Go SDK, atau `openapi/notifhub.json` yang diubah (D9, D11).
 

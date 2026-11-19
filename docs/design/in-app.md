@@ -1,7 +1,24 @@
 # Desain in-app: pengiriman, SSE, catch-up, dan SDK JavaScript
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: PART 1 (aturan 29, 38–45) dan implementasi ingest yang sudah ada di repo ini.
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Alur data](#2-alur-data)
+- [3. Kontrak HTTP](#3-kontrak-http)
+- [4. Auth subscriber](#4-auth-subscriber)
+- [5. Redis](#5-redis)
+- [6. Worker in-app](#6-worker-in-app)
+- [7. Template in-app (minimal)](#7-template-in-app-minimal)
+- [8. `@notifhub/js`](#8-notifhubjs)
+- [9. Perubahan konfigurasi proyek](#9-perubahan-konfigurasi-proyek)
+- [10. Daftar file](#10-daftar-file)
+- [11. Rencana verifikasi](#11-rencana-verifikasi)
+- [12. Keputusan desain](#12-keputusan-desain)
+- [13. Catatan implementasi (penyesuaian saat implementasi)](#13-catatan-implementasi-penyesuaian-saat-implementasi)
+- [14. Template in-app v2 (2026-11-16)](#14-template-in-app-v2-2026-11-16)
 
 ---
 
@@ -9,7 +26,7 @@ Basis: PART 1 (aturan 29, 38–45) dan implementasi ingest yang sudah ada di rep
 
 ### Termasuk dalam cakupan
 
-1. **Worker in-app**: mengonsumsi queue `notification:inapp`, meresolve + merender template in-app,
+1. **Worker in-app**: mengonsumsi queue `notification-inapp`, meresolve + merender template in-app,
    mem-publish event ke Redis, memperbarui status pengiriman, dan menulis `delivery_attempts`.
 2. **Redis event bus**: Pub/Sub untuk push langsung + Redis Stream untuk replay maksimal 5 menit.
 3. **SSE endpoint** `GET /api/v1/in-app/stream` dengan auth JWT subscriber.
@@ -17,16 +34,16 @@ Basis: PART 1 (aturan 29, 38–45) dan implementasi ingest yang sudah ada di rep
 5. **Read receipt** `POST /api/v1/in-app/notifications/:notificationId/read`.
 6. **Auth subscriber**: `SubscriberJwtGuard` + verifikasi HS256 dengan secret API key tenant
    (fallback `SUBSCRIBER_JWT_SECRET` untuk tenant tanpa secret, lihat
-   `docs/preference-center.md`), terpisah penuh dari `ApiKeyGuard` (ingest) dan admin JWT
-   (`docs/admin-api.md`).
+   `docs/design/preference-center.md`), terpisah penuh dari `ApiKeyGuard` (ingest) dan admin JWT
+   (`docs/design/admin-api.md`).
 7. **Package `@notifhub/js`**: SDK headless, fetch-based SSE, retry, reconnect, typed error, cancellation.
 
 ### Tidak termasuk (dokumen lain)
 
-- Provider email/WhatsApp dan worker-nya (`docs/email-and-preferences.md`, `docs/whatsapp.md`).
-- Enforcement preferensi + quiet hours (`docs/email-and-preferences.md`).
-- Topic, group ack, admin API (`docs/admin-api.md`), `@notifhub/react` + console
-  (`docs/react-and-console.md`), `sdk/go` (`docs/go-sdk.md`), workflow engine.
+- Provider email/WhatsApp dan worker-nya (`docs/design/email-and-preferences.md`, `docs/design/whatsapp.md`).
+- Enforcement preferensi + quiet hours (`docs/design/email-and-preferences.md`).
+- Topic, group ack, admin API (`docs/design/admin-api.md`), `@notifhub/react` + console
+  (`docs/design/react-and-console.md`), `sdk/go` (`docs/sdk/go-sdk.md`), workflow engine.
 - Scheduled/delayed notification, billing logic, digest, campaign.
 
 ---
@@ -37,7 +54,7 @@ Basis: PART 1 (aturan 29, 38–45) dan implementasi ingest yang sudah ada di rep
 
 ```
 POST /api/v1/notify (ingest)
-  -> queue notification:inapp
+  -> queue notification-inapp
   -> InAppProcessor.process(job)
        1. tunggu ReadinessService.untilReady() (DB sudah connect)
        2. ambil NotificationRecipient + Notification (channel=inapp)
@@ -168,14 +185,14 @@ Response `200`:
 
 ## 4. Auth subscriber
 
-- Algoritma **HS256**, secret `SUBSCRIBER_JWT_SECRET` (`docs/admin-api.md`: per API key).
+- Algoritma **HS256**, secret `SUBSCRIBER_JWT_SECRET` (`docs/design/admin-api.md`: per API key).
 - Claims wajib: `sub` (recipientId), `tenant`, `exp`. `iat` opsional.
 - Token **hanya** dibaca dari header `Authorization: Bearer <token>`. Query param diabaikan
   sepenuhnya (permintaan dengan `?token=` tanpa header tetap `401`).
 - Guard menempelkan `req.subscriber = { recipientId, tenant }`; controller tidak memverifikasi ulang.
 - Semua kegagalan auth -> `401` seragam (`Invalid or missing subscriber token`), detail hanya di log.
 - Verifikasi memakai `jsonwebtoken` langsung di `SubscriberTokenService` (bukan `@nestjs/jwt`),
-  agar admin JWT (`docs/admin-api.md`) bisa memakai instance + secret admin yang terpisah tanpa
+  agar admin JWT (`docs/design/admin-api.md`) bisa memakai instance + secret admin yang terpisah tanpa
   risiko tercampur. Opsi verifikasi: `algorithms: ['HS256']`, `clockTolerance: 5` detik.
 - Tenant pada token harus sama dengan `Notification.tenantId` pada saat query (filter di DB).
 
@@ -245,7 +262,7 @@ Catatan implementasi:
 - Resolusi `(key, channel=inapp, locale)`: versi `active` tertinggi untuk locale exact;
   jika tidak ada -> locale `DEFAULT_LOCALE`; jika tidak ada juga -> `template_not_found`.
 - Render: substitusi `{{var}}` dari `Notification.payload.data` (string/number/boolean).
-  Tanpa helper/block/partials Handlebars penuh — itu bagian dari `docs/email-and-preferences.md`.
+  Tanpa helper/block/partials Handlebars penuh — itu bagian dari `docs/design/email-and-preferences.md`.
 - Variabel yang tidak ada diganti string kosong dan dicatat `debug` (bukan error).
 - `subject` opsional (saat ini `null` untuk in-app), `body` wajib.
 
@@ -411,16 +428,16 @@ serta `test/*.test.ts` bila unit test disetujui.
 | # | Keputusan | Pilihan yang diambil |
 |---|---|---|
 | D1 | Read receipt masuk cakupan in-app | Ya (kecil, dibutuhkan `@notifhub/react` nanti) |
-| D2 | Group ack ditunda | Ya (`docs/admin-api.md`, butuh mekanisme group) |
-| D3 | Enforcement preferensi + quiet hours | Ditunda ke `docs/email-and-preferences.md` sesuai PART 1 |
+| D2 | Group ack ditunda | Ya (`docs/design/admin-api.md`, butuh mekanisme group) |
+| D3 | Enforcement preferensi + quiet hours | Ditunda ke `docs/design/email-and-preferences.md` sesuai PART 1 |
 | D4 | Worker in-app menulis `delivery_attempts` | Ya (satu baris per attempt) |
-| D5 | Render template minimal `{{var}}` di worker in-app | Ya; alternatif: kirim data mentah dan render di `docs/email-and-preferences.md` |
+| D5 | Render template minimal `{{var}}` di worker in-app | Ya; alternatif: kirim data mentah dan render di `docs/design/email-and-preferences.md` |
 | D6 | Pagination keyset dengan cursor opaque | Ya; alternatif: offset (lebih sederhana, kurang stabil) |
 | D7 | Concurrency worker default (1), tanpa env baru | Ya |
 | D8 | Unit test SDK (vitest) untuk retry/backoff/error mapping | Ya, minimal 3–4 test |
 | D9 | Nama event SSE `notification` | Ya |
 | D10 | `MAXLEN ~ 500` untuk stream replay (hardcode) | Ya; bisa dijadikan env nanti bila perlu |
-| D11 | Verifikasi JWT memakai `jsonwebtoken` langsung (tanpa `@nestjs/jwt`) | Ya, agar secret admin (`docs/admin-api.md`) tidak tercampur |
+| D11 | Verifikasi JWT memakai `jsonwebtoken` langsung (tanpa `@nestjs/jwt`) | Ya, agar secret admin (`docs/design/admin-api.md`) tidak tercampur |
 
 ---
 
@@ -447,4 +464,4 @@ serta `test/*.test.ts` bila unit test disetujui.
 - Format in-app adalah `text`; HTML/markdown belum didukung karena SDK terbit menampilkan body
   sebagai teks. Template baru dengan HTML ditolak; baris lama tetap dikirim.
 - Variabel memakai escaping `noEscape` (teks polos), schema variabel opsional, dan
-  `strictVariables` dapat diaktifkan per template. Detail di `docs/template-system-design.md`.
+  `strictVariables` dapat diaktifkan per template. Detail di `docs/design/templates/template-system-design.md`.

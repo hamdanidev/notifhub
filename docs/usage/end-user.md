@@ -6,6 +6,18 @@ preferensi notifikasi. Lane ini memakai **subscriber JWT**, bukan API key.
 > API key **tidak boleh** dipakai di browser. Aplikasi Anda (backend consumer) yang memegang API
 > key; browser hanya menerima subscriber JWT berumur pendek.
 
+**Isi dokumen**
+
+- [1. Token subscriber](#1-token-subscriber)
+- [2. In-app: catch-up dan read receipt](#2-in-app-catch-up-dan-read-receipt)
+- [3. SSE real-time](#3-sse-real-time)
+- [4. Preference center](#4-preference-center)
+- [5. SDK JavaScript (`@notifhub/js`)](#5-sdk-javascript-notifhubjs)
+- [6. React (`@notifhub/react`)](#6-react-notifhubreact)
+- [7. Keamanan dan batasan](#7-keamanan-dan-batasan)
+
+---
+
 ## 1. Token subscriber
 
 Token dibuat oleh backend Anda, bukan oleh NotifHub. Syaratnya:

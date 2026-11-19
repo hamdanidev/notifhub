@@ -2,7 +2,7 @@
 
 Status: **terimplementasi dan terverifikasi** pada 2026-11-16. Lihat §7.
 
-Basis: `docs/template-system-design.md`, `docs/email-authoring-ui-design.md`, dan keputusan untuk
+Basis: `docs/design/templates/template-system-design.md`, `docs/design/templates/email-authoring-ui-design.md`, dan keputusan untuk
 tidak memakai GrapesJS pada tahap ini.
 
 ---
@@ -86,7 +86,7 @@ Body HTML dihasilkan dari block dan disimpan seperti biasa. `builderData` tidak 
   `sandbox=""`; validasi publish server tetap berlaku.
 - Roadmap P0 (2026-11-16) menambahkan validasi `builderData` di backend (schema v1, maksimum 200
   block/64 KiB) dan warning dua kolom bila layout tidak mendukung `.nh-col`; lihat
-  `docs/template-limitations-roadmap.md`. Plain-text email kini digenerate otomatis oleh backend.
+  `docs/design/templates/template-limitations-roadmap.md`. Plain-text email kini digenerate otomatis oleh backend.
 - Roadmap P1 (2026-11-16) menambahkan drag-and-drop native (handle `⋮⋮`), undo/redo 50 langkah
   dengan coalesce 500 ms, tombol Undo/Redo + shortcut, serta ekspor/salin HTML body. Tidak ada
   dependency baru; tombol naik/turun tetap menjadi jalur aksesibel.

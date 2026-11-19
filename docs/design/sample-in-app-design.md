@@ -8,6 +8,24 @@ Dokumen ini merancang sample React 18 untuk fitur notifikasi in-app memakai pake
 terbit, `@notifhub/js@0.3.0` dan `@notifhub/react@0.2.0`. Sample bersifat demonstrasi lokal, bukan
 starter produksi dan bukan bagian dari paket yang dipublikasikan.
 
+**Isi dokumen**
+
+- [1. Tujuan](#1-tujuan)
+- [2. Non-tujuan](#2-non-tujuan)
+- [3. Kondisi awal yang dimanfaatkan](#3-kondisi-awal-yang-dimanfaatkan)
+- [4. Arsitektur](#4-arsitektur)
+- [5. Keputusan desain](#5-keputusan-desain)
+- [6. Kontrak middleware dev](#6-kontrak-middleware-dev)
+- [7. Alur UI dan state](#7-alur-ui-dan-state)
+- [8. Struktur file](#8-struktur-file)
+- [9. Dependency sample](#9-dependency-sample)
+- [10. TypeScript dan kualitas kode](#10-typescript-dan-kualitas-kode)
+- [11. Rencana verifikasi](#11-rencana-verifikasi)
+- [12. Batasan dan deviasi yang akan dicatat](#12-batasan-dan-deviasi-yang-akan-dicatat)
+- [13. Kriteria penerimaan](#13-kriteria-penerimaan)
+- [14. Persetujuan](#14-persetujuan)
+- [15. Catatan implementasi dan hasil verifikasi](#15-catatan-implementasi-dan-hasil-verifikasi)
+
 ---
 
 ## 1. Tujuan
@@ -410,8 +428,8 @@ Saat sesi ada:
 | `.github/workflows/ci.yml` | langkah install/typecheck/build sample di job `packages` |
 | `README.md` | baris `sample/in-app-web/` di repository layout, link desain, perintah verifikasi |
 | `docs/usage/end-user.md` | tautan ke sample di bagian React |
-| `docs/project-brief.md` | peta repository, status kapabilitas, perintah sample, batasan dev-only |
-| `docs/sample-in-app-design.md` | status dan catatan implementasi/verifikasi |
+| `docs/architecture/project-brief.md` | peta repository, status kapabilitas, perintah sample, batasan dev-only |
+| `docs/design/sample-in-app-design.md` | status dan catatan implementasi/verifikasi |
 
 Tidak ada perubahan pada `src/`, `prisma/`, `packages/`, `console/`, `sdk/go/`, atau
 `openapi/notifhub.json`.

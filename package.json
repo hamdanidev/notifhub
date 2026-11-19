@@ -37,6 +37,7 @@
     "openapi:export": "node scripts/export-openapi.mjs",
     "dev:subscriber-token": "node --env-file=.env scripts/dev-subscriber-token.mjs",
     "verify:preferences": "node --env-file=.env scripts/verify-preferences.mjs",
+    "docs:check": "node scripts/check-docs-links.mjs",
     "sdk:go:generate": "cd sdk/go && go generate ./...",
     "sdk:go:test": "cd sdk/go && go test ./..."
   },

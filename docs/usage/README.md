@@ -1,7 +1,8 @@
 # Panduan penggunaan NotifHub
 
 Dokumentasi ini menjelaskan **cara memakai** NotifHub. Untuk alasan desain dan keputusan
-arsitektur, lihat dokumen di `docs/` (mis. `docs/in-app.md`, `docs/webhooks.md`).
+arsitektur, lihat [indeks dokumen desain](../design/README.md) (mis. `docs/design/in-app.md`,
+`docs/design/webhooks.md`).
 
 ## Pilih jalur baca
 
@@ -85,7 +86,7 @@ npm run start:dev         # http://localhost:3000
 ```
 
 Detail lengkap (termasuk verifikasi tiap fitur dan Docker) ada di
-[docs/local-setup.md](../local-setup.md).
+[docs/getting-started/local-setup.md](../getting-started/local-setup.md).
 
 > Semua contoh di dokumentasi ini memakai nilai development (`dev-api-key-change-in-prod`,
 > `user-test-1`). Jangan memakai nilai tersebut di produksi.

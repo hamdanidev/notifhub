@@ -43,7 +43,10 @@ npm run start:dev         # backend on http://localhost:3000
 npm run console:dev       # tenant console on http://localhost:5173
 ```
 
-Full setup, verification steps per feature, and troubleshooting: [docs/local-setup.md](docs/local-setup.md).
+Full setup, per-feature verification, and troubleshooting:
+[docs/README.md](docs/README.md) is the entry point, or jump straight to
+[docs/getting-started/local-setup.md](docs/getting-started/local-setup.md) and
+[docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md).
 
 ## Repository layout
 
@@ -58,30 +61,30 @@ Full setup, verification steps per feature, and troubleshooting: [docs/local-set
 | `sdk/go/` | Go SDK (`github.com/hamdanidev/notifhub-go`) generated from the public OpenAPI document |
 | `openapi/notifhub.json` | Public consumer OpenAPI subset used for SDK generation |
 | `scripts/` | OpenAPI export, local provider stubs, development token helper, end-to-end verification |
-| `docs/` | Architecture, feature designs, and setup guide |
+| `docs/` | Getting started, architecture, feature designs, usage guides, SDK, and operations docs — start at [`docs/README.md`](docs/README.md) |
 
 ## Documentation
 
-- [Usage guide](docs/usage/README.md) — concepts and quickstart, consumer integration, end-user
-  (in-app/SSE/preference center), admin and operations
-- [Local setup and verification](docs/local-setup.md)
-- [Project brief: architecture, rules, and known limitations](docs/project-brief.md)
-- [Production readiness: tests, images, and CI](docs/production-readiness.md)
-- Feature designs:
-  [in-app](docs/in-app.md) ·
-  [email and preferences](docs/email-and-preferences.md) ·
-  [template system](docs/template-system-design.md) ·
-  [email authoring UI](docs/email-authoring-ui-design.md) ·
-  [email block builder](docs/email-block-builder-design.md) ·
-  [template limits roadmap](docs/template-limitations-roadmap.md) ·
-  [webhooks](docs/webhooks.md) ·
-  [admin API](docs/admin-api.md) ·
-  [React and console](docs/react-and-console.md) ·
-  [console refresh/re-send](docs/console-needs-analysis.md) ·
-  [sample in-app](docs/sample-in-app-design.md) ·
-  [WhatsApp](docs/whatsapp.md) ·
-  [Go SDK](docs/go-sdk.md) ·
-  [preference center](docs/preference-center.md)
+Everything lives under [`docs/`](docs/README.md), which maps every document and suggests a reading
+order per role.
+
+- **Getting started:** [local setup and verification](docs/getting-started/local-setup.md) ·
+  [configuration reference](docs/getting-started/configuration.md) ·
+  [troubleshooting](docs/getting-started/troubleshooting.md)
+- **Architecture:** [system overview](docs/architecture/overview.md) ·
+  [project brief: stack, capabilities, known limitations](docs/architecture/project-brief.md)
+- **Usage guide:** [concepts and quickstart](docs/usage/README.md) ·
+  [consumer integration](docs/usage/integration.md) ·
+  [end-user: in-app/SSE/preference center](docs/usage/end-user.md) ·
+  [admin and operations](docs/usage/admin-and-operations.md)
+- **Design docs:** [index](docs/design/README.md) — in-app, email and preferences, preference
+  center, webhooks, WhatsApp, admin API, React and console, console needs analysis, in-app sample;
+  templates: [system design](docs/design/templates/template-system-design.md),
+  [authoring UI](docs/design/templates/email-authoring-ui-design.md),
+  [block builder](docs/design/templates/email-block-builder-design.md),
+  [limitations roadmap](docs/design/templates/template-limitations-roadmap.md)
+- **SDKs:** [Go SDK](docs/sdk/go-sdk.md) · [npm publishing](docs/sdk/npm-publishing.md)
+- **Operations:** [production readiness: tests, images, and CI](docs/operations/production-readiness.md)
 
 ## Testing
 
@@ -96,6 +99,7 @@ npm run typecheck --prefix sample/in-app-web && npm run build --prefix sample/in
 npm run console:typecheck && npm run console:build
 npm run sdk:go:test
 npm run verify:preferences              # HTTP + DB smoke test, needs a running backend
+npm run docs:check                      # relative links and heading anchors in docs/
 ```
 
 ## Docker
@@ -107,7 +111,7 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 The stack runs Postgres, Redis, a one-shot `migrate` job, the backend (`:3000`), and the console
 (`:8080`). It is meant for verification, not as a production deployment; see
-[docs/local-setup.md](docs/local-setup.md#run-the-docker-smoke-stack).
+[docs/getting-started/local-setup.md](docs/getting-started/local-setup.md#run-the-docker-smoke-stack).
 
 ## Versions
 

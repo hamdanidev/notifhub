@@ -1,7 +1,7 @@
 # Desain UI authoring template: form theme dan galeri layout
 
 Status: **terimplementasi dan terverifikasi** pada 2026-11-16. Lihat §6.
-Basis: `docs/template-system-design.md` §18, console template v2, dan keputusan untuk tidak memakai
+Basis: `docs/design/templates/template-system-design.md` §18, console template v2, dan keputusan untuk tidak memakai
 GrapesJS pada tahap ini.
 
 ---

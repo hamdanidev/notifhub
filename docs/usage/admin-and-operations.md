@@ -2,6 +2,23 @@
 
 Panduan untuk tenant admin (console + Admin API) dan operator yang menjalankan NotifHub.
 
+**Isi dokumen**
+
+- [1. Login admin](#1-login-admin)
+- [2. API key](#2-api-key)
+- [3. Template](#3-template)
+- [4. Subscriber dan preferensi (sisi admin)](#4-subscriber-dan-preferensi-sisi-admin)
+- [5. Topik (sisi admin)](#5-topik-sisi-admin)
+- [6. Notifikasi](#6-notifikasi)
+- [7. Console](#7-console)
+- [8. Operasional](#8-operasional)
+- [9. Deployment (Docker)](#9-deployment-docker)
+- [10. Env penting](#10-env-penting)
+- [11. Troubleshooting](#11-troubleshooting)
+- [12. Belum tersedia](#12-belum-tersedia)
+
+---
+
 ## 1. Login admin
 
 ```bash
@@ -196,8 +213,8 @@ Di `NOTIFHUB_MODE=production`, env ini wajib (validasi gagal saat startup bila k
 Build manual: `docker build --target runner .`, `docker build -f console/Dockerfile .`,
 `docker build --target migrator .`. Stack ini untuk verifikasi, bukan deployment produksi
 (tanpa TLS/secret manager). Detail ada di
-[docs/production-readiness.md](../production-readiness.md) dan
-[docs/local-setup.md](../local-setup.md).
+[docs/operations/production-readiness.md](../operations/production-readiness.md) dan
+[docs/getting-started/local-setup.md](../getting-started/local-setup.md).
 
 ## 10. Env penting
 

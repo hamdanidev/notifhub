@@ -1,7 +1,21 @@
 # Desain production readiness
 
-Status: terimplementasi dan terverifikasi (lihat §11).
-Basis: `docs/project-brief.md`, kondisi repo saat ini, dan `docs/preference-center.md`.
+Status: **terimplementasi dan terverifikasi** (lihat §11).
+Basis: `docs/architecture/project-brief.md`, kondisi repo saat ini, dan `docs/design/preference-center.md`.
+
+**Isi dokumen**
+
+- [1. Latar belakang](#1-latar-belakang)
+- [2. Ruang lingkup](#2-ruang-lingkup)
+- [3. Arsitektur test](#3-arsitektur-test)
+- [4. Skenario e2e](#4-skenario-e2e)
+- [5. Docker](#5-docker)
+- [6. CI (`github/workflows/ci.yml`)](#6-ci-githubworkflowsciyml)
+- [7. Keputusan bernomor](#7-keputusan-bernomor)
+- [8. Daftar file](#8-daftar-file)
+- [9. Rencana verifikasi](#9-rencana-verifikasi)
+- [10. Risiko dan batasan](#10-risiko-dan-batasan)
+- [11. Catatan implementasi](#11-catatan-implementasi)
 
 ---
 
@@ -227,7 +241,7 @@ Bila ada nomor yang ingin diubah, sebutkan nomornya.
 | `docker-compose.prod.yml` | smoke stack |
 | `.env.prod.example` | contoh env produksi tanpa secret |
 | `.github/workflows/ci.yml` | pipeline |
-| `docs/production-readiness.md` | dokumen ini |
+| `docs/operations/production-readiness.md` | dokumen ini |
 
 ### 8.2 Diubah
 
@@ -237,7 +251,7 @@ Bila ada nomor yang ingin diubah, sebutkan nomornya.
 | `src/app.module.ts` | `ignoreEnvFile` saat test |
 | `src/ingest/ingest.controller.ts` | hapus istilah fase dari deskripsi Swagger |
 | `package.json`, `package-lock.json` | devDependency test, script `test:e2e`, `test:db:setup`, `ci`; versi `0.10.0` |
-| `README.md`, `docs/local-setup.md`, `docs/project-brief.md` | perintah test/CI/Docker, batasan repo non-git, versi |
+| `README.md`, `docs/getting-started/local-setup.md`, `docs/architecture/project-brief.md` | perintah test/CI/Docker, batasan repo non-git, versi |
 
 Tidak ada perubahan pada schema, endpoint, atau perilaku runtime.
 

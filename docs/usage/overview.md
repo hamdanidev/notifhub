@@ -77,7 +77,7 @@ job dikirim ulang ke channel fallback (satu kali, tanpa fallback berantai).
 ## Quickstart 5 menit
 
 Prasyarat: backend berjalan dan seed sudah dijalankan (lihat
-[docs/local-setup.md](../local-setup.md)).
+[docs/getting-started/local-setup.md](../getting-started/local-setup.md)).
 
 ```bash
 # 1. Kirim notifikasi in-app ke recipient yang ada di seed

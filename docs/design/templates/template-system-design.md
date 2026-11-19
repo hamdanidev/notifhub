@@ -4,14 +4,30 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16. Lihat §18 untuk 
 deviasi, dan bukti verifikasi. Desain awal disetujui sebelum implementasi.
 
 Tanggal: 2026-11-16
-Basis: commit `c8b2eaf`, `docs/project-brief.md`, `docs/admin-api.md`, `docs/react-and-console.md`,
-`docs/email-and-preferences.md`, `docs/in-app.md`, `docs/whatsapp.md`, serta kode template/worker/
+Basis: commit `c8b2eaf`, `docs/architecture/project-brief.md`, `docs/design/admin-api.md`, `docs/design/react-and-console.md`,
+`docs/design/email-and-preferences.md`, `docs/design/in-app.md`, `docs/design/whatsapp.md`, serta kode template/worker/
 console yang ada. Ringkasan keputusan ada di §1; detail ada di §5–§15.
 
-Peta dokumen: §1 ringkasan keputusan · §2 kondisi/gap · §3 prinsip · §4 opsi authoring · §5
-keputusan D1–D12 · §6 schema/migrasi · §7 pipeline render · §8 perilaku channel · §9 Admin API ·
-§10 console · §11 keamanan · §12 localization/RTL · §13 migrasi/kompatibilitas · §14 fase ·
-§15 verifikasi · §16 risiko · §17 definition of done.
+**Isi dokumen**
+
+- [1. Ringkasan keputusan](#1-ringkasan-keputusan)
+- [2. Kondisi saat ini dan gap](#2-kondisi-saat-ini-dan-gap)
+- [3. Prinsip desain](#3-prinsip-desain)
+- [4. Opsi desain authoring dan trade-off](#4-opsi-desain-authoring-dan-trade-off)
+- [5. Keputusan D1–D12](#5-keputusan-d1d12)
+- [6. Perubahan schema dan model data](#6-perubahan-schema-dan-model-data)
+- [7. Pipeline render dan perilaku worker](#7-pipeline-render-dan-perilaku-worker)
+- [8. Perilaku per channel](#8-perilaku-per-channel)
+- [9. Perubahan Admin API](#9-perubahan-admin-api)
+- [10. Perubahan console](#10-perubahan-console)
+- [11. Keamanan dan sanitasi (rinci)](#11-keamanan-dan-sanitasi-rinci)
+- [12. Localization dan RTL](#12-localization-dan-rtl)
+- [13. Migrasi dan kompatibilitas ke belakang](#13-migrasi-dan-kompatibilitas-ke-belakang)
+- [14. Fase MVP dan fase lanjutan](#14-fase-mvp-dan-fase-lanjutan)
+- [15. Rencana verifikasi end-to-end dan regresi](#15-rencana-verifikasi-end-to-end-dan-regresi)
+- [16. Risiko dan pertanyaan terbuka](#16-risiko-dan-pertanyaan-terbuka)
+- [17. Definition of done (setelah persetujuan)](#17-definition-of-done-setelah-persetujuan)
+- [18. Catatan implementasi dan verifikasi](#18-catatan-implementasi-dan-verifikasi)
 
 ---
 
@@ -1448,8 +1464,8 @@ perubahan perilaku.
 5. Console typecheck/build lulus; alur draft → preview → test send → publish → rollback
    terverifikasi manual.
 6. Validator menolak payload berbahaya; preview tersandbox; tenant isolation terbukti.
-7. Dokumentasi (`docs/template-system-design.md`, `docs/admin-api.md`, `docs/react-and-console.md`,
-   `docs/email-and-preferences.md`, `docs/in-app.md`, `docs/whatsapp.md`, `docs/local-setup.md`,
+7. Dokumentasi (`docs/design/templates/template-system-design.md`, `docs/design/admin-api.md`, `docs/design/react-and-console.md`,
+   `docs/design/email-and-preferences.md`, `docs/design/in-app.md`, `docs/design/whatsapp.md`, `docs/getting-started/local-setup.md`,
    README) diperbarui sesuai implementasi.
 8. Laporan akhir berisi bukti perintah/status/output, deviasi, batasan, dan kondisi lingkungan.
 
@@ -1498,7 +1514,7 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - Sanitizer HTML/CSS berbasis pola, bukan parser penuh; sandbox iframe dan validasi publish adalah
   lapisan utama. `{{{ }}}` dinamis tetap disanitasi saat render.
-- Block builder MVP sudah tersedia (lihat `docs/email-block-builder-design.md`); loop/conditional
+- Block builder MVP sudah tersedia (lihat `docs/design/templates/email-block-builder-design.md`); loop/conditional
   visual, MJML/juice, markdown in-app, Meta approved WhatsApp template, impor HTML ke Visual,
   diff visual versi, CodeMirror, atau approval maker-checker belum ada.
 - Test send hanya email/WhatsApp; in-app/SMS memakai preview.
@@ -1507,7 +1523,7 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 - Roadmap P0/P1 (2026-11-16) menambahkan validasi `builderData`, plain-text email otomatis,
   retensi telemetry, warning dua kolom, drag-and-drop/undo-redo, ekspor HTML, dan proteksi hapus
   aset. Slice P2 menambahkan pencatatan `templateId`/`templateVersion` per recipient dan upload
-  gambar tervalidasi (storage lokal); lihat `docs/template-limitations-roadmap.md` §11–§14.
+  gambar tervalidasi (storage lokal); lihat `docs/design/templates/template-limitations-roadmap.md` §11–§14.
 - `preview` tidak menulis tabel audit (hanya log terstruktur); publish/test send diaudit.
 - Dukungan email client/dark mode tetap best effort dan diverifikasi manual.
 

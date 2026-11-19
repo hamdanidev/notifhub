@@ -205,7 +205,7 @@ menempelkan nilai secret ke laporan atau issue.
 |---|---|---|
 | **Gagal menerbitkan token (502)** | PostgreSQL mati, migrasi/seed belum jalan, `.env` tidak ada | `npm run infra:up`, `npx prisma migrate deploy`, `npx prisma db seed` |
 | **SERVICE_API_KEY belum diisi (503)** | `.env` root tidak lengkap | Isi `SERVICE_API_KEY`, restart Vite/backend |
-| **401 setelah token baru** | Tenant punya secret API key yang berbeda dari `SUBSCRIBER_JWT_SECRET` | Helper membaca secret key tenant; samakan key/env atau pakai tenant yang benar. Lihat `docs/preference-center.md` §6.1 |
+| **401 setelah token baru** | Tenant punya secret API key yang berbeda dari `SUBSCRIBER_JWT_SECRET` | Helper membaca secret key tenant; samakan key/env atau pakai tenant yang benar. Lihat `docs/design/preference-center.md` §6.1 |
 | **429** | Batas 60 request/menit per IP untuk preferences | Tunggu satu menit; UI menampilkan durasi bila header tersedia |
 | **Notifikasi tidak muncul** | Backend/Redis mati, worker belum selesai, atau template seed tidak ada | Cek `/health/ready`, log backend, dan `NotificationRecipient` |
 | **Koneksi SSE tidak terbuka** | Proxy/backend tidak berjalan | Pastikan `npm run start:dev` dan `GET /health/live` |
@@ -233,6 +233,6 @@ respons menyertakannya.
 ## Dokumen terkait
 
 - [Panduan integrasi end-user](../../docs/usage/end-user.md)
-- [Preference center](../../docs/preference-center.md)
-- [Local setup dan verifikasi](../../docs/local-setup.md)
-- [Desain sample](../../docs/sample-in-app-design.md)
+- [Preference center](../../docs/design/preference-center.md)
+- [Local setup dan verifikasi](../../docs/getting-started/local-setup.md)
+- [Desain sample](../../docs/design/sample-in-app-design.md)

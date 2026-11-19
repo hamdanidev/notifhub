@@ -3,10 +3,36 @@
 The NotifHub backend runs **natively on the host** with `npm run start:dev`.
 Only PostgreSQL and Redis run in Docker, from `docker-compose.dev.yml`.
 
+Related: [configuration](configuration.md) for every environment variable, and
+[troubleshooting](troubleshooting.md) for common failures.
+
+**Contents**
+
+- [Prerequisites](#prerequisites)
+- [Steps](#steps)
+- [Run the automated tests (e2e)](#run-the-automated-tests-e2e)
+- [Verify](#verify)
+- [Verify in-app notifications (SSE)](#verify-in-app-notifications-sse)
+- [Verify email and subscriber push-sync](#verify-email-and-subscriber-push-sync)
+- [Verify the preference center (end-user preferences)](#verify-the-preference-center-end-user-preferences)
+- [Verify webhooks, status rollup, and cleanup](#verify-webhooks-status-rollup-and-cleanup)
+- [Verify the admin API, API keys, and topics](#verify-the-admin-api-api-keys-and-topics)
+- [Verify the React bindings and the console](#verify-the-react-bindings-and-the-console)
+- [Verify WhatsApp](#verify-whatsapp)
+- [Verify the Go SDK](#verify-the-go-sdk)
+- [Run the Docker smoke stack](#run-the-docker-smoke-stack)
+- [Notes](#notes)
+- [Troubleshooting](#troubleshooting)
+
+---
+
 ## Prerequisites
 
 - Node.js 20+ (the containers and CI use Node 24)
 - Docker + Docker Compose
+
+The verification commands below use a POSIX shell (`curl`, `export`, `$(...)`, `/tmp`). On Windows,
+run them from Git Bash or WSL, or translate them to PowerShell.
 
 ## Steps
 
@@ -184,7 +210,7 @@ node dist/main
 - Provider calls are wrapped in an opossum circuit breaker (10 s timeout, opens after repeated
   failures, probes again after 30 s); BullMQ still owns retries with exponential backoff.
 - End-user preferences are served by the public preference API
-  (`docs/preference-center.md`); tenant admins see the same rows in the console. Create rows
+  (`docs/design/preference-center.md`); tenant admins see the same rows in the console. Create rows
   directly in `NotificationPreference` only when you need a raw fixture.
 
 ## Verify the preference center (end-user preferences)
@@ -351,7 +377,7 @@ Notes:
 - `VITE_NOTIFHUB_API_URL` in `console/.env` defaults to `http://localhost:3000`.
 - Admin template/asset payloads use `TEMPLATE_MAX_PAYLOAD_BYTES` (default 1 MB); ingest remains
   limited by `INGEST_MAX_PAYLOAD_BYTES` (default 64 KB). Lihat
-  `docs/template-system-design.md` untuk alur draft → preview → publish → test send.
+  `docs/design/templates/template-system-design.md` untuk alur draft → preview → publish → test send.
 - Upload gambar template disimpan di `TEMPLATE_IMAGE_DIR` (default `var/template-images`,
   di-ignore git). Maksimum `TEMPLATE_IMAGE_MAX_BYTES` (default 5 MB). Set
   `TEMPLATE_IMAGE_BASE_URL` di belakang reverse proxy agar URL gambar di email absolut dan

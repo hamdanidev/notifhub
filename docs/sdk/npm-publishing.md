@@ -1,8 +1,22 @@
 # Desain publikasi npm SDK JavaScript dan React
 
-Status: terpublikasi. `@notifhub/js@0.3.0` dan `@notifhub/react@0.2.0` tersedia di npm
+Status: **terpublikasi**. `@notifhub/js@0.3.0` dan `@notifhub/react@0.2.0` tersedia di npm
 (lihat §11).
-Basis: `docs/project-brief.md`, `docs/usage/`, kondisi `packages/js-sdk` dan `packages/react`.
+Basis: `docs/architecture/project-brief.md`, `docs/usage/`, kondisi `packages/js-sdk` dan `packages/react`.
+
+**Isi dokumen**
+
+- [1. Latar belakang](#1-latar-belakang)
+- [2. Ruang lingkup](#2-ruang-lingkup)
+- [3. Kondisi paket saat ini](#3-kondisi-paket-saat-ini)
+- [4. Perubahan manifest](#4-perubahan-manifest)
+- [5. Versi dan urutan rilis](#5-versi-dan-urutan-rilis)
+- [6. Alur publish](#6-alur-publish)
+- [7. Verifikasi](#7-verifikasi)
+- [8. Keputusan bernomor](#8-keputusan-bernomor)
+- [9. Risiko dan batasan](#9-risiko-dan-batasan)
+- [10. Minta persetujuan](#10-minta-persetujuan)
+- [11. Catatan implementasi](#11-catatan-implementasi)
 
 ---
 
@@ -39,7 +53,7 @@ diverifikasi adalah seluruh jalur sampai `npm publish --dry-run` dan instalasi d
    bersih (ESM, CJS, TypeScript), dan pengecekan isi tarball.
 4. Workflow `.github/workflows/publish-npm.yml` (`workflow_dispatch`, input paket + dry-run,
    `NPM_TOKEN`, provenance).
-5. Dokumentasi: `docs/npm-publishing.md` (dokumen ini), pembaruan README paket + `docs/usage/`.
+5. Dokumentasi: `docs/sdk/npm-publishing.md` (dokumen ini), pembaruan README paket + `docs/usage/`.
 
 ### Tidak termasuk
 
@@ -199,7 +213,7 @@ npmjs.com dan belum ada akun terautentikasi di environment ini.
 | D9 | Publish manual tetap didokumentasikan sebagai jalur utama rilis pertama | Ya |
 | D10 | Tanpa changesets/versioning otomatis | Ya |
 | D11 | `files` tetap `["dist"]`; source/test tidak ikut | Ya |
-| D12 | Dokumen rilis baru `docs/npm-publishing.md`; README paket + `docs/usage/` diperbarui | Ya |
+| D12 | Dokumen rilis baru `docs/sdk/npm-publishing.md`; README paket + `docs/usage/` diperbarui | Ya |
 
 Bila ada nomor yang ingin diubah (misalnya D4 lisensi, atau D7 menambah `prepublishOnly`), sebutkan.
 

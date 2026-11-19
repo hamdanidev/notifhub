@@ -3,6 +3,16 @@
 Konteks ringkas untuk siapa pun (atau sesi AI) yang melanjutkan pekerjaan di NotifHub.
 Dokumen ini menggambarkan kondisi terkini, bukan riwayat pengerjaan.
 
+**Isi dokumen**
+
+- [1. Produk dan aturan kerja](#1-produk-dan-aturan-kerja)
+- [2. Stack dan arsitektur](#2-stack-dan-arsitektur)
+- [3. Kapabilitas saat ini](#3-kapabilitas-saat-ini)
+- [4. Peta repository](#4-peta-repository)
+- [5. Lingkungan dan perintah](#5-lingkungan-dan-perintah)
+- [6. Batasan dan deviasi yang diketahui](#6-batasan-dan-deviasi-yang-diketahui)
+- [7. Kandidat pekerjaan berikutnya](#7-kandidat-pekerjaan-berikutnya)
+
 ---
 
 ## 1. Produk dan aturan kerja
@@ -88,7 +98,7 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `routing/`, `preferences/`, `subscriber-preferences/`, `templates/`, `subscribers/`,
   `notifications/`, `cleanup/`, `queues/`, `metrics/`, `health/`, `config/`, `common/`.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
-- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (4 migrasi).
+- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (9 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
 - `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile`, `console/nginx.conf`,
   `docker-compose.prod.yml`, `.env.prod.example`.
@@ -99,21 +109,24 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
 - `console/` — aplikasi React 18 + Vite + Bootstrap 5 (desain minimal/netral; jangan kembali ke
   gradient/glow). Tenant admin only.
 - `sample/in-app-web/` — sample end-user React 18 + Vite (CSS biasa, SDK npm terbit), middleware
-  `/dev/*` hanya untuk lokal; lihat `docs/sample-in-app-design.md` dan README sample.
+  `/dev/*` hanya untuk lokal; lihat `docs/design/sample-in-app-design.md` dan README sample.
 - `sdk/go/` — Go SDK: `client.gen.go` (generated, jangan diedit), `client.go`, `errors.go`,
   `types.go`, `examples/send`, test.
 - `openapi/notifhub.json` — spec publik konsumen (3 path, 9 schema).
 - `scripts/` — `export-openapi.mjs`, `dev-whatsapp-stub.mjs`, `dev-smtp-sink.mjs`,
   `dev-subscriber-token.mjs`, `verify-preferences.mjs`, `test-db-setup.mjs`, `ci.mjs`.
-- `docs/` — `docs/usage/` berisi panduan pemakaian (konsep, consumer, end-user, admin/operasi);
-  sisanya dokumen desain per fitur (lihat `README.md`), `docs/local-setup.md` berisi semua
-  perintah verifikasi, `docs/project-brief.md` (dokumen ini).
+- `docs/` — dokumentasi bertema; mulai dari `docs/README.md` (peta dokumen + jalur baca).
+  `docs/getting-started/` berisi setup, referensi konfigurasi, dan troubleshooting;
+  `docs/architecture/` berisi gambaran sistem (dokumen ini salah satunya);
+  `docs/design/` berisi dokumen desain per fitur dan indeksnya; `docs/usage/` panduan pemakaian;
+  `docs/sdk/` desain dan rilis SDK; `docs/operations/` kesiapan rilis dan CI.
 
 ---
 
 ## 5. Lingkungan dan perintah
 
-- Working directory: `D:\Softlabs-workshop\NotifHub`
+- Working directory: root repo (mesin pengembangan awal memakai
+  `D:\Softlabs-workshop\NotifHub`).
 - Windows PowerShell; Node 24; npm; Go 1.23.4; Docker Desktop (mungkin perlu dihidupkan).
 - Container Postgres/Redis biasanya hidup. Cek dengan
   `docker compose -f docker-compose.dev.yml ps`.
@@ -137,13 +150,14 @@ npm run typecheck --prefix sample/in-app-web && npm run build --prefix sample/in
 npm run console:typecheck && npm run console:build
 npm run sdk:go:test
 npm run verify:preferences      # HTTP + DB, backend harus hidup
+npm run docs:check              # tautan dan anchor Markdown di docs/
 npx prisma migrate status
 ```
 
 - Login console dev: `admin@notifhub.local` / `NotifHubAdmin123!` (hash ada di `.env`).
 - API key dev: `dev-api-key-change-in-prod` (bootstrap dari `SERVICE_API_KEY`).
 - Token subscriber dev: `npm run dev:subscriber-token -- <recipientId> [tenant]` (ditandatangani
-  dengan secret API key tenant; lihat `docs/preference-center.md` §6.1).
+  dengan secret API key tenant; lihat `docs/design/preference-center.md` §6.1).
 - Jika butuh data bersih: `npm run infra:reset` → `npx prisma migrate deploy` →
   `npx prisma db seed` (destruktif; konfirmasi dulu).
 - File `.env` berisi secret dev; `.env.example` adalah referensi. WhatsApp env kosong di dev
@@ -175,8 +189,8 @@ npx prisma migrate status
   maksimum 200 block/64 KiB); plain-text email digenerate otomatis dengan fallback HTML-only;
   audit/test send memiliki retensi (180/730 hari, dapat dinonaktifkan). Aset hanya dapat dihapus
   jika tidak direferensikan. Preview/test send memakai UI manual (tanpa Playwright); sanitizer
-  HTML/CSS berbasis pola, bukan parser penuh. Lihat `docs/template-system-design.md` §18,
-  `docs/email-block-builder-design.md`, dan `docs/template-limitations-roadmap.md`.
+  HTML/CSS berbasis pola, bukan parser penuh. Lihat `docs/design/templates/template-system-design.md` §18,
+  `docs/design/templates/email-block-builder-design.md`, dan `docs/design/templates/template-limitations-roadmap.md`.
 - Login admin belum punya refresh token.
 - Verifikasi token subscriber memakai satu query DB per request (tanpa cache).
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.
@@ -189,8 +203,9 @@ npx prisma migrate status
 - Key `bootstrap` menyimpan snapshot `SUBSCRIBER_JWT_SECRET`; bila env berubah, startup mencatat
   `api_key.bootstrap.subscriber_secret_mismatch` dan token dengan env baru ditolak untuk tenant itu
   sampai key diselaraskan (helper dev membaca secret dari key, jadi tidak terpengaruh).
-- Repo ini belum berupa git repository, sehingga `.github/workflows/ci.yml` belum pernah dieksekusi
-  GitHub Actions; padanannya (`npm run ci`) diverifikasi lokal.
+- Repo sudah menjadi git repository dengan remote `origin`
+  (`https://github.com/hamdanidev/notifhub.git`) dan `.github/workflows/ci.yml` sudah ada; padanan
+  lokalnya adalah `npm run ci`. Status hijau CI di GitHub tidak diperiksa dari dokumen ini.
 - Image Docker dibangun single-arch (amd64) dan belum dipush ke registry. `docker-compose.prod.yml`
   adalah smoke stack (tanpa TLS/secret manager), bukan deployment produksi.
 - E2E tidak menguji SSE dan rate limit 429; keduanya tetap diverifikasi manual lewat
@@ -203,8 +218,8 @@ npx prisma migrate status
 
 ## 7. Kandidat pekerjaan berikutnya
 
-1. Inisialisasi git + push ke GitHub agar CI aktif, lalu tambahkan registry push dan proteksi
-   branch.
+1. Aktifkan registry push untuk image backend/console, tambahkan proteksi branch, dan pastikan CI
+   GitHub Actions hijau di setiap PR.
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
 3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log).

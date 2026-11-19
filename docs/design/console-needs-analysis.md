@@ -8,6 +8,20 @@ Dokumen ini menjawab dua keluhan konkret pada console saat ini — tidak ada **r
 sebanyak mungkin fitur, melainkan menutup celah operasional yang membuat console sulit dipakai
 untuk menindaklanjuti pengiriman yang gagal.
 
+**Isi dokumen**
+
+- [1. Ringkasan eksekutif](#1-ringkasan-eksekutif)
+- [2. Kondisi console saat ini](#2-kondisi-console-saat-ini)
+- [3. Peta gap dan prioritas](#3-peta-gap-dan-prioritas)
+- [4. Kebutuhan refresh](#4-kebutuhan-refresh)
+- [5. Kebutuhan re-send](#5-kebutuhan-re-send)
+- [6. Kebutuhan lain yang layak menyusul](#6-kebutuhan-lain-yang-layak-menyusul)
+- [7. Usulan fase](#7-usulan-fase)
+- [8. Keputusan yang perlu disetujui](#8-keputusan-yang-perlu-disetujui)
+- [9. Risiko dan batasan](#9-risiko-dan-batasan)
+- [10. Pertanyaan keputusan](#10-pertanyaan-keputusan)
+- [11. Status implementasi (2026-11-16)](#11-status-implementasi-2026-11-16)
+
 ---
 
 ## 1. Ringkasan eksekutif

@@ -1,8 +1,22 @@
 # Desain kanal WhatsApp (Meta Cloud API)
 
-Status: terimplementasi dan terverifikasi.
+Status: **terimplementasi dan terverifikasi**.
 Basis: PART 1 (aturan 4, 15, 17, 22–24, 38–45) dan fondasi platform notifikasi yang sudah
-berjalan (`docs/in-app.md`, `docs/email-and-preferences.md`, `docs/webhooks.md`).
+berjalan (`docs/design/in-app.md`, `docs/design/email-and-preferences.md`, `docs/design/webhooks.md`).
+
+**Isi dokumen**
+
+- [1. Ruang lingkup](#1-ruang-lingkup)
+- [2. Alur data](#2-alur-data)
+- [3. WhatsApp Cloud API](#3-whatsapp-cloud-api)
+- [4. Worker WhatsApp](#4-worker-whatsapp)
+- [5. Webhook WhatsApp](#5-webhook-whatsapp)
+- [6. Konfigurasi](#6-konfigurasi)
+- [7. Daftar file](#7-daftar-file)
+- [8. Verifikasi](#8-verifikasi)
+- [9. Keputusan desain](#9-keputusan-desain)
+- [10. Catatan implementasi](#10-catatan-implementasi)
+- [11. Template WhatsApp v2 (2026-11-16)](#11-template-whatsapp-v2-2026-11-16)
 
 ---
 
@@ -12,7 +26,7 @@ berjalan (`docs/in-app.md`, `docs/email-and-preferences.md`, `docs/webhooks.md`)
 
 1. **`WhatsAppProvider`** (Meta WhatsApp Cloud API) di `src/providers/whatsapp/`, memakai
    `ProviderExecutor` (circuit breaker) yang sudah ada.
-2. **Worker WhatsApp** untuk queue `notification:whatsapp`: resolve nomor, cek preferensi,
+2. **Worker WhatsApp** untuk queue `notification-whatsapp`: resolve nomor, cek preferensi,
    render template, kirim lewat provider, update status, tulis `delivery_attempts`.
 3. **Webhook WhatsApp** `GET/POST /api/v1/webhooks/whatsapp`:
    - `GET` verifikasi `hub.mode`/`hub.verify_token`/`hub.challenge`,
@@ -31,8 +45,8 @@ berjalan (`docs/in-app.md`, `docs/email-and-preferences.md`, `docs/webhooks.md`)
   lihat D2.
 - Media/attachment, pesan interaktif, OTP flow khusus.
 - Multi-provider WhatsApp (Twilio/360dialog).
-- Go SDK (lihat `docs/go-sdk.md`), platform admin, end-user preference center
-  (lihat `docs/preference-center.md`).
+- Go SDK (lihat `docs/sdk/go-sdk.md`), platform admin, end-user preference center
+  (lihat `docs/design/preference-center.md`).
 - Balasan/percakapan masuk (inbound message handling) selain status webhook.
 
 ---
@@ -42,7 +56,7 @@ berjalan (`docs/in-app.md`, `docs/email-and-preferences.md`, `docs/webhooks.md`)
 ```
 ingest (channels: ["whatsapp"])
   -> NotificationRecipient(status=pending, channel=whatsapp)
-  -> queue notification:whatsapp
+  -> queue notification-whatsapp
   -> WhatsAppProcessor.process(job)
        1. readiness gate
        2. load recipient + notification (tenant, priority)
@@ -143,7 +157,7 @@ ini.
 - Response selalu `202 {"status":"accepted"}` untuk signature valid, termasuk event yang
   tidak dikenal (retry-friendly).
 - Signature diverifikasi atas **raw body** (capture `req.rawBody` sudah ada sejak webhook
-  provider generik — lihat `docs/webhooks.md`).
+  provider generik — lihat `docs/design/webhooks.md`).
 
 ### 5.3 Idempotensi
 
@@ -187,7 +201,7 @@ Aturan validasi: jika salah satu `WHATSAPP_PHONE_NUMBER_ID`/`ACCESS_TOKEN` diisi
 | `src/webhooks/whatsapp/whatsapp-signature.service.ts` | Verifikasi `X-Hub-Signature-256` |
 | `src/webhooks/whatsapp/whatsapp-webhook.module.ts` | Wiring |
 | `scripts/dev-whatsapp-stub.mjs` | Stub Cloud API untuk verifikasi lokal |
-| `docs/whatsapp.md` | Dokumen ini |
+| `docs/design/whatsapp.md` | Dokumen ini |
 
 ### Diubah
 
@@ -200,7 +214,7 @@ Aturan validasi: jika salah satu `WHATSAPP_PHONE_NUMBER_ID`/`ACCESS_TOKEN` diisi
 | `src/webhooks/webhooks.service.ts` | Ekstrak helper `applyProviderStatus` agar dipakai ulang |
 | `src/config/env.schema.ts` | Env WhatsApp + validasi berpasangan |
 | `.env.example`, `.env` | Variabel WhatsApp (kosong di dev) |
-| `package.json`, `README.md`, `docs/local-setup.md` | Versi + dokumentasi |
+| `package.json`, `README.md`, `docs/getting-started/local-setup.md` | Versi + dokumentasi |
 
 Tidak ada perubahan `@notifhub/js`, `@notifhub/react`, atau console (WhatsApp dikelola lewat
 API/console yang sudah ada; template channel `whatsapp` bisa dibuat dari console).
@@ -253,14 +267,14 @@ API/console yang sudah ada; template channel `whatsapp` bisa dibuat dari console
 ## 10. Catatan implementasi
 
 1. **Path webhook** menjadi `/api/v1/webhooks/whatsapp/events` (bukan `/webhooks/whatsapp`) agar
-   tidak bertabrakan dengan `POST /webhooks/:provider` generik (lihat `docs/webhooks.md`).
+   tidak bertabrakan dengan `POST /webhooks/:provider` generik (lihat `docs/design/webhooks.md`).
 2. **Wamid tak dikenal** dibalas `202` dan hanya di-log; `delivery_events` membutuhkan
    `notificationId`, sehingga event yang tidak terpetakan tidak disimpan.
 3. **`ProviderConfigurationError`** diterjemahkan menjadi `UnrecoverableError` di worker, supaya
    konfigurasi yang belum diisi tidak memicu retry storm.
 4. **Status webhook** memakai helper bersama `WebhooksService.applyDeliveryStatus`; transisi tetap
    monotonik (`failed` setelah `read` diabaikan, event tetap dicatat).
-5. **Staging** tetap mewajibkan `CATCH_ALL_RECIPIENT` (lihat `docs/email-and-preferences.md`);
+5. **Staging** tetap mewajibkan `CATCH_ALL_RECIPIENT` (lihat `docs/design/email-and-preferences.md`);
    WhatsApp memakai `WHATSAPP_CATCH_ALL_RECIPIENT`, dengan fallback ke `CATCH_ALL_RECIPIENT` bila
    nilainya berupa nomor telepon.
 6. **Verifikasi:** stub menerima `to=+628999999999` (staging) dan `to=+628123456789`
@@ -277,5 +291,5 @@ API/console yang sudah ada; template channel `whatsapp` bisa dibuat dari console
 
 - Template WhatsApp hanya `format=text`, tanpa subject/preheader/layout/theme/partial; batas
   4.096 karakter setelah render. Provider tetap mengirim `type: "text"`.
-- Schema variabel, draft/publish, preview, dan audit mengikuti `docs/template-system-design.md`.
+- Schema variabel, draft/publish, preview, dan audit mengikuti `docs/design/templates/template-system-design.md`.
   Pemetaan Meta approved-template tetap ditunda.

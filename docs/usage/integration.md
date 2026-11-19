@@ -2,6 +2,18 @@
 
 Panduan untuk sistem Anda yang mengirim notifikasi lewat NotifHub memakai **API key**.
 
+**Isi dokumen**
+
+- [Ringkasan endpoint](#ringkasan-endpoint)
+- [1. Mengirim notifikasi](#1-mengirim-notifikasi)
+- [2. Push-sync subscriber](#2-push-sync-subscriber)
+- [3. Topik dan keanggotaan](#3-topik-dan-keanggotaan)
+- [4. Webhook provider](#4-webhook-provider)
+- [5. Error, limit, dan praktik aman](#5-error-limit-dan-praktik-aman)
+- [6. Go SDK](#6-go-sdk)
+
+---
+
 ## Ringkasan endpoint
 
 | Method & path | Fungsi |
