@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_NOTIFHUB_API_URL?: string;
+  readonly VITE_PLATFORM_CONSOLE_URL?: string;
 }
 
 interface ImportMeta {

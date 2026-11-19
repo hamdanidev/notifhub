@@ -24,5 +24,7 @@ RUN npm run console:build
 
 FROM nginx:1.27-alpine AS runner
 COPY console/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/console/dist /usr/share/nginx/html
+# The build now produces dist/tenant and dist/platform; the current (tenant) image serves the
+# tenant artifact. The platform image/stage is added in P2 of the host-split design.
+COPY --from=build /app/console/dist/tenant /usr/share/nginx/html
 EXPOSE 80

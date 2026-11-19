@@ -1,6 +1,8 @@
 # Desain pemisahan console platform ke host terpisah
 
-Status: **draf desain — menunggu persetujuan**. Belum ada perubahan kode/deploy untuk dokumen ini.
+Status: **P1 terimplementasi dan terverifikasi** (split build: dua entry + dua artifact) pada
+2026-11-19; P2–P4 (Docker/nginx, CI, rollout) belum. Draf disetujui 2026-11-19. Lihat §18 untuk
+catatan implementasi P1.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `console/` (React 18 + Vite), `console/Dockerfile`, `console/nginx.conf`,
@@ -26,6 +28,7 @@ Basis: `console/` (React 18 + Vite), `console/Dockerfile`, `console/nginx.conf`,
 - [15. Risiko](#15-risiko)
 - [16. Definition of done](#16-definition-of-done)
 - [17. Pertanyaan keputusan](#17-pertanyaan-keputusan)
+- [18. Catatan implementasi](#18-catatan-implementasi)
 
 ---
 
@@ -196,12 +199,16 @@ export default defineConfig(({ mode }) => {
 `console/package.json`:
 
 ```json
-"build": "npm run typecheck && npm run build:tenant && npm run build:platform",
+"build": "npm run typecheck && node scripts/prepare-build.mjs && npm run build:tenant && npm run build:platform",
 "build:tenant": "vite build",
-"build:platform": "vite build --mode platform",
+"build:platform": "vite build --mode platform && node scripts/finalize-platform-build.mjs",
 "preview:tenant": "vite preview --outDir dist/tenant",
 "preview:platform": "vite preview --mode platform --outDir dist/platform"
 ```
+
+`prepare-build.mjs` menghapus `console/dist` (termasuk layout lama di root) sebelum kedua build,
+dan `finalize-platform-build.mjs` mengganti nama `dist/platform/platform.html` menjadi
+`dist/platform/index.html` agar host statis menyajikan dokumen root dengan benar.
 
 `vite build` tanpa `--mode` tetap memakai mode `production` (target tenant), sehingga perintah
 `npm run console:build` lama tetap menghasilkan artifact tenant **dan** platform. Untuk dev lokal,
@@ -385,10 +392,15 @@ login ulang di origin baru.
 | `console/src/platform-main.tsx` (baru) | Bootstrap React untuk platform |
 | `console/src/PlatformApp.tsx` (baru) | Router platform |
 | `console/src/App.tsx` | Router tenant saja + redirect `/platform/*` |
+| `console/src/auth/ProtectedRoute.tsx` | Tenant-only (cek session platform dihapus) |
+| `console/src/auth/LoginPage.tsx` | Impor session platform dihapus (tenant build bersih) |
+| `console/src/lib/queryClient.ts` | Handler 401 tenant saja |
+| `console/src/lib/platformQueryClient.ts` (baru) | Query client + handler 401 platform |
 | `console/src/components/ExternalRedirect.tsx` (baru) | Redirect lintas origin |
 | `console/src/env.ts` | Tambah `PLATFORM_CONSOLE_URL` (bukan file baru) |
 | `console/vite.config.ts` | Mode `tenant`/`platform`, `outDir`, input |
 | `console/package.json` | Script build/preview per target |
+| `console/scripts/prepare-build.mjs`, `console/scripts/finalize-platform-build.mjs` (baru) | Bersihkan `dist` dan ubah `platform.html` → `index.html` |
 | `console/Dockerfile` | Stage `build-tenant`/`build-platform`, `runner-tenant`/`runner-platform` |
 | `console/nginx/tenant.conf.template`, `console/nginx/platform.conf.template` (baru) | Config nginx per lane (menggantikan `console/nginx.conf`) |
 | `console/nginx/check-platform-url.sh` (baru) | Entrypoint tenant: gagal cepat bila `PLATFORM_CONSOLE_URL` kosong |
@@ -435,3 +447,49 @@ login ulang di origin baru.
 | Q4 | Pemisahan paket `console-platform` sekarang atau tunda? | Tunda sampai kebutuhan UI/rilis benar-benar berbeda |
 | Q5 | Apakah host platform perlu basic auth/VPN di ingress? | Ya untuk produksi; tidak diimplementasikan di repo |
 | Q6 | Apakah `VITE_PLATFORM_CONSOLE_URL` wajib di build tenant? | Opsional; jika kosong, route `/platform/*` menjadi 404 |
+
+## 18. Catatan implementasi
+
+### 18.1 P1 (2026-11-19)
+
+Yang sudah berjalan:
+
+- Entry terpisah: `index.html` + `src/main.tsx` (tenant) dan `platform.html` +
+  `src/platform-main.tsx` (platform).
+- `App.tsx` hanya memuat router tenant; `/platform/*` memakai `ExternalRedirect` ke
+  `VITE_PLATFORM_CONSOLE_URL` (fallback `NotFoundPage` bila kosong). `PlatformApp.tsx` hanya
+  memuat route platform.
+- Vite memakai `mode` sebagai pemilih target: build default → tenant, `--mode platform` →
+  platform; output `dist/tenant` dan `dist/platform`.
+- `prepare-build.mjs` membersihkan `console/dist` sebelum build; `finalize-platform-build.mjs`
+  mengganti nama `platform.html` menjadi `index.html` di artifact platform.
+- Query client dipisah: `queryClient` (tenant) dan `platformQueryClient` (platform). `LoginPage`
+  dan `ProtectedRoute` tenant tidak lagi mengimpor modul session platform.
+- Script npm: `build:tenant`, `build:platform`, `preview:tenant`, `preview:platform`; perintah
+  `console:build` lama tetap membangun kedua artifact.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `console:typecheck` | lulus |
+| `console:build` | dua artifact; `dist/tenant/index.html` (JS ±990 KB) dan `dist/platform/index.html` (JS ±502 KB) |
+| Grep bundle tenant | tidak memuat `NotifHub Platform` maupun `platform-session` |
+| Grep bundle platform | tidak memuat `notifhub.console.session` |
+| Preview tenant (`:4173`) | title `NotifHub Console` |
+| Preview platform (`:4174`) | title `NotifHub Platform`; `/platform/login` `200` |
+| Redirect lintas host | build tenant dengan `VITE_PLATFORM_CONSOLE_URL=http://localhost:4174`: `/platform/login` di `:4173` berakhir di `http://localhost:4174/platform/login` (title `NotifHub Platform`) |
+
+Catatan:
+
+1. **CSS masih satu `styles.css`** yang berisi aturan tenant dan platform, sehingga nama class
+   platform dapat muncul di asset CSS tenant. Yang dipisahkan dan diverifikasi adalah JavaScript,
+   route, dan halaman; pemisahan CSS per entry bisa menjadi penyempurnaan bila diperlukan.
+2. **`NotFoundPage` dipakai kedua entry**, jadi teks umum seperti "Kembali ke dashboard" muncul di
+   kedua bundle. Ini halaman shared, bukan halaman tenant.
+3. **Redirect hanya aktif bila env diisi saat build tenant**; tanpa env, route `/platform/*`
+   menampilkan 404 (perilaku aman untuk deployment satu host).
+4. **Dockerfile tenant** sementara diarahkan ke `dist/tenant` agar image console yang ada tetap
+   berfungsi setelah split build; stage `runner-platform` dan nginx template ditambahkan di P2.
+5. Belum dikerjakan: Docker stage ganda + nginx template/guard, compose service, CI build kedua
+   target, dokumentasi deployment, dan rollout (P2–P4).

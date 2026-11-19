@@ -6,7 +6,6 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { loginSchema, type LoginValues } from '../forms/schemas';
 import { describeError } from '../lib/format';
-import { loadPlatformSession } from '../lib/platformSession';
 
 export function LoginPage(): JSX.Element {
   const { session, login } = useAuth();
@@ -25,10 +24,6 @@ export function LoginPage(): JSX.Element {
 
   if (session !== null) {
     return <Navigate to="/" replace />;
-  }
-
-  if (loadPlatformSession() !== null) {
-    return <Navigate to="/platform/tenants" replace />;
   }
 
   const onSubmit = async (values: LoginValues): Promise<void> => {

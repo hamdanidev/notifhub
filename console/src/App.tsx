@@ -1,18 +1,14 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
+import { ExternalRedirect } from './components/ExternalRedirect';
+import { PLATFORM_CONSOLE_URL } from './env';
 import { LoginPage } from './auth/LoginPage';
-import { PlatformLoginPage } from './auth/PlatformLoginPage';
-import { PlatformProtectedRoute } from './auth/PlatformProtectedRoute';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './layout/AppLayout';
-import { PlatformLayout } from './layout/PlatformLayout';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { NotificationDetailPage } from './pages/NotificationDetailPage';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { PlatformAuditPage } from './pages/platform/PlatformAuditPage';
-import { PlatformTenantDetailPage } from './pages/platform/PlatformTenantDetailPage';
-import { PlatformTenantsPage } from './pages/platform/PlatformTenantsPage';
 import { SubscriberDetailPage } from './pages/SubscriberDetailPage';
 import { SubscribersPage } from './pages/SubscribersPage';
 import { TemplateAssetsPage } from './pages/TemplateAssetsPage';
@@ -23,8 +19,26 @@ import { TopicDetailPage } from './pages/TopicDetailPage';
 import { TopicsPage } from './pages/TopicsPage';
 
 /**
- * Data router (rather than <BrowserRouter>) so the template editor can use useBlocker for its
- * unsaved-changes guard. Route structure and URLs are unchanged.
+ * Sends `/platform/*` requests on the tenant host to the platform console origin.
+ *
+ * When `VITE_PLATFORM_CONSOLE_URL` is not configured (single-host deployments and local
+ * development) the route falls back to NotFound, so the tenant build never embeds platform pages.
+ */
+function PlatformConsoleRedirect(): JSX.Element {
+  const location = useLocation();
+
+  if (PLATFORM_CONSOLE_URL.length === 0) {
+    return <NotFoundPage />;
+  }
+
+  return (
+    <ExternalRedirect to={`${PLATFORM_CONSOLE_URL}${location.pathname}${location.search}`} />
+  );
+}
+
+/**
+ * Tenant console router. Data router (rather than <BrowserRouter>) so the template editor can
+ * use useBlocker for its unsaved-changes guard.
  */
 export const router = createBrowserRouter([
   {
@@ -32,22 +46,8 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    path: '/platform/login',
-    element: <PlatformLoginPage />,
-  },
-  {
-    path: '/platform',
-    element: (
-      <PlatformProtectedRoute>
-        <PlatformLayout />
-      </PlatformProtectedRoute>
-    ),
-    children: [
-      { index: true, element: <Navigate to="/platform/tenants" replace /> },
-      { path: 'tenants', element: <PlatformTenantsPage /> },
-      { path: 'tenants/:id', element: <PlatformTenantDetailPage /> },
-      { path: 'audit', element: <PlatformAuditPage /> },
-    ],
+    path: '/platform/*',
+    element: <PlatformConsoleRedirect />,
   },
   {
     element: (
