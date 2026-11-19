@@ -2,6 +2,7 @@ import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ensureTenant } from '../../tenants/ensure-tenant';
 import { TENANT_ADMIN_ROLE } from './admin.types';
 
 /**
@@ -24,6 +25,15 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
     const email = this.config.getOrThrow<string>('ADMIN_EMAIL').trim().toLowerCase();
     const passwordHash = this.config.getOrThrow<string>('ADMIN_PASSWORD_HASH');
     const tenantId = this.config.getOrThrow<string>('DEFAULT_TENANT_ID');
+
+    const tenantState = await ensureTenant(this.prisma, tenantId);
+
+    if (tenantState === 'created') {
+      this.logger.info(
+        { event: 'tenant.bootstrap.created', tenant_id: tenantId },
+        'bootstrap tenant created',
+      );
+    }
 
     const existing = await this.prisma.adminUser.findUnique({ where: { email } });
 

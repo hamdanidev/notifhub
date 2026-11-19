@@ -17,6 +17,12 @@ const TEST_RECIPIENT_ID = 'user-test-1';
 const TEST_TIMEZONE = 'Asia/Jakarta';
 
 async function main(): Promise<void> {
+  await prisma.tenant.upsert({
+    where: { id: TENANT_ID },
+    update: {},
+    create: { id: TENANT_ID, name: TENANT_ID },
+  });
+
   const inAppTemplate = await prisma.notificationTemplate.upsert({
     where: {
       tenantId_key_channel_locale_version: {

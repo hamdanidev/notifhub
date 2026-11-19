@@ -1,11 +1,13 @@
 # Desain multi-tenant: entitas tenant, platform admin, dan provisioning
 
-Status: **draf desain — menunggu persetujuan**. Belum ada kode yang diubah untuk dokumen ini.
+Status: **F1 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill, dan
+idempotency per tenant) pada 2026-11-19; F2–F5 belum. Draf disetujui 2026-11-19. Lihat §19 untuk
+catatan implementasi F1.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `docs/architecture/project-brief.md`, `docs/design/admin-api.md` (terutama §2 dan D6),
 `docs/design/preference-center.md` §6, kode `src/auth`, `src/admin`, `src/ingest`, `src/cleanup`,
-serta suite e2e E1–E20. Audit tenancy dilakukan pada 2026-11-19; temuan dicatat di §3.
+serta suite e2e E1–E29. Audit tenancy dilakukan pada 2026-11-19; temuan dicatat di §3.
 
 **Isi dokumen**
 
@@ -27,6 +29,7 @@ serta suite e2e E1–E20. Audit tenancy dilakukan pada 2026-11-19; temuan dicata
 - [16. Risiko](#16-risiko)
 - [17. Definition of done](#17-definition-of-done)
 - [18. Pertanyaan keputusan](#18-pertanyaan-keputusan)
+- [19. Catatan implementasi](#19-catatan-implementasi)
 
 ---
 
@@ -57,7 +60,7 @@ merancang penutup gap tersebut, termasuk dua bug tenancy yang ditemukan saat aud
 8. Console platform (login terpisah, daftar tenant, detail tenant + admin, audit).
 9. Bootstrap idempoten: tenant `default`, admin tenant, API key bootstrap, dan opsional platform
    admin dari env.
-10. Test e2e baru (E21–E28), unit test guard/validator, dan pembaruan dokumentasi.
+10. Test e2e baru (E30–E37), unit test guard/validator, dan pembaruan dokumentasi.
 
 ### Tidak termasuk
 
@@ -261,10 +264,12 @@ ALTER TABLE "AdminUser"
 1. `CREATE TYPE "TenantStatus" AS ENUM ('active', 'suspended');`
 2. `CREATE TABLE "Tenant" (…)` + index `status`, `createdAt`.
 3. Backfill tenant yang sudah ada. **Sumber union wajib mencakup semua tabel di §6.2**, kalau
-   tidak FK di langkah 5 akan gagal:
+   tidak FK di langkah 5 akan gagal. `updatedAt` wajib diisi karena kolomnya `NOT NULL` tanpa
+   default, dan literal enum perlu cast:
    ```sql
-   INSERT INTO "Tenant" ("id", "name", "status")
-   SELECT DISTINCT t."tenantId", t."tenantId", 'active'
+   INSERT INTO "Tenant" ("id", "name", "status", "createdAt", "updatedAt")
+   SELECT DISTINCT t."tenantId", t."tenantId", 'active'::"TenantStatus",
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
    FROM (
      SELECT "tenantId" FROM "Notification"
      UNION SELECT "tenantId" FROM "NotificationTemplate"
@@ -283,7 +288,8 @@ ALTER TABLE "AdminUser"
    ) AS t
    ON CONFLICT ("id") DO NOTHING;
 
-   INSERT INTO "Tenant" ("id", "name") VALUES ('default', 'Default')
+   INSERT INTO "Tenant" ("id", "name", "status", "createdAt", "updatedAt")
+   VALUES ('default', 'Default', 'active'::"TenantStatus", CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
    ON CONFLICT ("id") DO NOTHING;
    ```
 4. `ALTER TABLE "AdminUser" ALTER COLUMN "tenantId" DROP DEFAULT, ALTER COLUMN "tenantId" DROP NOT NULL;`
@@ -294,11 +300,13 @@ ALTER TABLE "AdminUser"
    CREATE UNIQUE INDEX "Notification_tenantId_idempotencyKey_key"
      ON "Notification" ("tenantId", "idempotencyKey");
    ```
-7. Tambahkan CHECK constraint `AdminUser_role_tenant_check`.
+7. Tambahkan CHECK constraint `AdminUser_role_tenant_check`. Baris `platform_admin` manual yang
+   sudah ada **harus** memiliki `tenantId` NULL; bila tidak, constraint gagal dan migrasi berhenti
+   (perbaiki datanya lalu ulangi). Aplikasi belum punya jalur untuk membuat baris seperti itu.
 
-Dibuat dengan `npx prisma migrate dev --name platform_tenants` lalu SQL backfill/CHECK dirapikan
-manual. Urutan penting: tabel `Tenant` + backfill **sebelum** FK. Untuk database kosong, langkah 3
-hanya membuat `default`.
+Dibuat dengan `npx prisma migrate diff`/`migrate deploy` (lingkungan non-interaktif tidak mendukung
+`migrate dev`), lalu SQL backfill/CHECK disisipkan manual. Urutan penting: tabel `Tenant` + backfill
+**sebelum** FK. Untuk database kosong, langkah 3 hanya membuat `default`.
 
 **Rollback.** Turunkan migrasi berarti mengembalikan unique global `idempotencyKey`. Ini gagal bila
 sudah ada dua tenant memakai key yang sama; dokumentasikan bahwa rollback memerlukan pembersihan
@@ -307,9 +315,10 @@ data idempotency. FK dan CHECK bisa di-drop tanpa kehilangan data.
 ### 6.5 Dampak ke seed dan test
 
 - `prisma/seed.ts`: upsert `Tenant(DEFAULT_TENANT_ID)` sebelum template.
-- `test/setup/database.ts`: tambahkan `Tenant` ke daftar `TRUNCATE` (paling akhir).
-- `test/setup/fixtures.ts`: buat baris `Tenant` untuk `default` dan tenant B sebelum data lain.
-- `test/env.ts`: tambahkan env platform admin (lihat §7.6).
+- `test/setup/database.ts`: `Tenant` ditambahkan ke daftar `TRUNCATE` (paling akhir).
+- `test/setup/fixtures.ts`: membuat `Tenant` `default` + tenant B, template in-app tenant B, dan
+  API key tenant B dengan raw key yang diketahui agar ingest lintas tenant bisa diuji.
+- `test/env.ts`: env platform admin ditambahkan saat F2 (§7.6).
 
 ## 7. Auth dan otorisasi
 
@@ -599,9 +608,9 @@ Perubahan teknis:
 
 | Fase | Isi | Verifikasi |
 |---|---|---|
-| F1 | Schema `Tenant`, FK, CHECK, migrasi + backfill, seed, bootstrap tenant, perbaikan idempotency (D16) | `prisma migrate deploy`, `npm run test:e2e` (E1–E20 tetap hijau), test baru idempotency lintas tenant |
+| **F1 (selesai)** | Schema `Tenant`, FK, CHECK, migrasi + backfill, seed, bootstrap tenant, perbaikan idempotency (D16) | `npm run test:e2e` (E1–E29 + E30 hijau), typecheck, unit |
 | F2 | Klaim JWT opsional, `PlatformAdminGuard`, endpoint platform auth, env bootstrap platform admin | Unit guard + e2e login platform |
-| F3 | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E21–E27 |
+| F3 | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E31–E36 |
 | F4 | Console platform (login, tenant, admin, audit) | `console:typecheck`, `console:build`, verifikasi manual |
 | F5 | Dokumentasi (dokumen ini → status terimplementasi, indeks, project-brief, overview, usage, configuration) + e2e lengkap | `npm run ci`, `npm run docs:check` |
 
@@ -614,18 +623,19 @@ terhadap suite yang ada.
 
 | # | Skenario | Ekspektasi |
 |---|---|---|
-| E21 | Platform admin membuat tenant + admin, lalu admin tenant login dan memakai datanya | `201`/`200`; data tenant baru tidak terlihat dari tenant `default` |
-| E22 | Batas role: tenant admin → `/platform/*`, platform admin → `/admin/*` | `403 role_not_allowed` keduanya |
-| E23 | Suspend tenant: ingest, subscriber, login tenant admin | `403 tenant_suspended`; platform tetap bisa; `resume` memulihkan |
-| E24 | Idempotency key sama di dua tenant (regresi G8) | Dua notifikasi berbeda, masing-masing hanya terlihat pemiliknya |
-| E25 | `allowedOrigins`: key dengan daftar origin | `403 origin_not_allowed` untuk origin lain; `200` untuk origin terdaftar; daftar kosong = semua |
-| E26 | Audit: create/suspend/resume/admin dibuat | Baris audit muncul dengan actor, action, tenantId; filter bekerja |
-| E27 | `DELETE` tenant: berisi data vs kosong vs `default` | `409 tenant_not_empty`, `204`, `403 tenant_protected` |
-| E28 | Bootstrap ulang aplikasi (restart) | Tidak ada tenant/admin ganda; `default` tetap satu baris |
+| E30 | **Sudah ada (F1).** Idempotency key sama di dua tenant (regresi G8) | Dua notifikasi berbeda, masing-masing hanya terlihat pemiliknya |
+| E31 | Platform admin membuat tenant + admin, lalu admin tenant login dan memakai datanya | `201`/`200`; data tenant baru tidak terlihat dari tenant `default` |
+| E32 | Batas role: tenant admin → `/platform/*`, platform admin → `/admin/*` | `403 role_not_allowed` keduanya |
+| E33 | Suspend tenant: ingest, subscriber, login tenant admin | `403 tenant_suspended`; platform tetap bisa; `resume` memulihkan |
+| E34 | `allowedOrigins`: key dengan daftar origin | `403 origin_not_allowed` untuk origin lain; `200` untuk origin terdaftar; daftar kosong = semua |
+| E35 | Audit: create/suspend/resume/admin dibuat | Baris audit muncul dengan actor, action, tenantId; filter bekerja |
+| E36 | `DELETE` tenant: berisi data vs kosong vs `default` | `409 tenant_not_empty`, `204`, `403 tenant_protected` |
+| E37 | Bootstrap ulang aplikasi (restart) | Tidak ada tenant/admin ganda; `default` tetap satu baris |
 
 ### Regresi yang wajib tetap hijau
 
-- E1–E20 (`test/app.e2e-spec.ts`) tanpa perubahan perilaku yang tidak disengaja.
+- E1–E29 (`test/app.e2e-spec.ts`) tanpa perubahan perilaku yang tidak disengaja, plus E30
+  (idempotency lintas tenant).
 - `npm run test:unit`, `npm run ci`, `npm run console:typecheck`, `npm run console:build`.
 - `npm run docs:check`.
 - Verifikasi manual: `npm run verify:preferences` (backend hidup) dan alur console tenant.
@@ -651,6 +661,7 @@ terhadap suite yang ada.
 | `src/platform/` (baru) | Module, controller auth/tenant/admin/audit, service, DTO |
 | `src/auth/admin/admin.types.ts`, `admin-token.service.ts`, `admin-jwt.guard.ts` | `tenantId` opsional, guard tenant cek DB + status tenant |
 | `src/auth/admin/platform-admin.guard.ts` (baru) | Guard lane platform |
+| `src/tenants/ensure-tenant.ts` (baru) | `ensureTenant()` idempoten, dipanggil bootstrap admin + API key sebelum menulis baris ber-tenant |
 | `src/auth/admin/admin-bootstrap.service.ts` | Bootstrap tenant + platform admin opsional |
 | `src/auth/api-key/api-key.service.ts`, `src/common/guards/api-key.guard.ts` | Select `tenant.status`, enforcement `allowedOrigins`, opsi `allowSuspendedTenant` |
 | `src/auth/subscriber/subscriber-jwt.guard.ts` | Lookup `Tenant.status` sebelum verifikasi token |
@@ -675,7 +686,7 @@ terhadap suite yang ada.
 
 | File | Perubahan |
 |---|---|
-| `test/app.e2e-spec.ts` | E21–E28 |
+| `test/app.e2e-spec.ts` | E30 (F1) dan E31–E37 (F3) |
 | `test/setup/database.ts` | `Tenant` di daftar `TRUNCATE` |
 | `test/setup/fixtures.ts` | Baris `Tenant` untuk `default` dan tenant B |
 | `test/env.ts` | Env platform admin untuk test |
@@ -702,15 +713,15 @@ terhadap suite yang ada.
 
 ## 17. Definition of done
 
-- [ ] Migrasi berhasil pada database development dan salinan data lama; backfill tenant benar.
-- [ ] Tenant `default` dan bootstrap admin/API key tetap berjalan setelah restart (idempoten).
-- [ ] `platform_admin` hanya bisa di lane platform; tenant admin hanya di lane tenant (e2e E22).
-- [ ] Suspend/resume berlaku di ingest, admin tenant, dan subscriber (e2e E23).
-- [ ] Idempotency per tenant teruji (e2e E24) dan tidak ada lookup idempotency tanpa tenant.
-- [ ] `allowedOrigins` ditegakkan (e2e E25).
-- [ ] Audit tercatat untuk semua mutasi platform dan bisa dibaca dengan filter (e2e E26).
-- [ ] `DELETE` tenant mengikuti aturan §8.2 (e2e E27).
-- [ ] E1–E20 tetap hijau; `npm run ci` dan `npm run docs:check` hijau.
+- [x] Migrasi berhasil pada database development dan database test; backfill tenant benar.
+- [x] Tenant `default` dan bootstrap admin/API key tetap berjalan setelah restart (idempoten).
+- [ ] `platform_admin` hanya bisa di lane platform; tenant admin hanya di lane tenant (e2e E32).
+- [ ] Suspend/resume berlaku di ingest, admin tenant, dan subscriber (e2e E33).
+- [x] Idempotency per tenant teruji (e2e E30) dan tidak ada lookup idempotency tanpa tenant.
+- [ ] `allowedOrigins` ditegakkan (e2e E34).
+- [ ] Audit tercatat untuk semua mutasi platform dan bisa dibaca dengan filter (e2e E35).
+- [ ] `DELETE` tenant mengikuti aturan §8.2 (e2e E36).
+- [x] E1–E29 tetap hijau; `npm run ci` dan `npm run docs:check` hijau.
 - [ ] Console platform lolos `typecheck`/`build` dan diverifikasi manual.
 - [ ] Dokumentasi diperbarui (indeks, project-brief, overview, usage, configuration).
 
@@ -727,6 +738,50 @@ Mohon persetujuan untuk poin berikut sebelum implementasi:
 | Q5 | `DELETE` tenant: hanya jika kosong (rekomendasi) atau sediakan purge berisiko? | Hanya tenant kosong |
 | Q6 | Email admin tetap unik global (satu akun satu tenant) di v1? | Ya; membership multi-tenant ditunda |
 | Q7 | Apakah platform admin boleh melihat hitungan data tenant (mis. jumlah notifikasi), atau metadata tenant saja? | `adminCount` + `apiKeyCount` saja |
-| Q8 | Perbaikan idempotency (G8) dikerjakan di fase F1 bersama migrasi? | Ya |
+| Q8 | Perbaikan idempotency (G8) dikerjakan di fase F1 bersama migrasi? | Ya — selesai di F1, teruji sebagai e2e E30 |
 | Q9 | Retensi `PlatformAuditEvent`: tanpa cleanup di v1, atau ikut retensi 730 hari? | Tanpa cleanup v1; evaluasi setelah ada volume |
 | Q10 | `ApiKey.allowedOrigins` kosong: tetap berarti "semua origin" (kompatibel dengan key lama) atau wajib diisi? | Kosong = semua origin; hanya key yang mengisi daftar yang ditegakkan |
+
+Semua usulan di atas disetujui pada 2026-11-19 dan menjadi acuan F2–F5. Q8 sudah selesai di F1.
+
+## 19. Catatan implementasi
+
+### 19.1 F1 (2026-11-19)
+
+Yang sudah berjalan:
+
+- `Tenant` + `TenantStatus`, FK `Restrict` dari 14 model, CHECK `AdminUser_role_tenant_check`,
+  unique `(tenantId, idempotencyKey)`, dan `AdminUser.tenantId` nullable tanpa default.
+- Migrasi `20261119131500_platform_tenants`: enum + tabel, drop unique global, alter `AdminUser`,
+  index/unique baru, backfill 14 tabel + `default`, 14 FK, lalu CHECK.
+- `ensureTenant()` (`src/tenants/ensure-tenant.ts`) dipanggil bootstrap admin dan bootstrap API
+  key; `prisma/seed.ts` membuat tenant sebelum template.
+- Ingest (jalur normal dan jalur race) serta resend memakai lookup komposit
+  `tenantId_idempotencyKey`.
+- Test e2e E30 (idempotency lintas tenant). Fixture tenant B kini punya template in-app dan API
+  key dengan raw key yang diketahui, sehingga ingest lintas tenant bisa diuji.
+- Diverifikasi: `npm run typecheck`, `npm run test:unit` (22 test), `npm run test:e2e` (30 test),
+  `npm run ci` (6 langkah), `npx prisma migrate deploy` pada `notifhub_dev` dan `notifhub_test`,
+  serta `npx prisma db seed`.
+
+Deviasi dan catatan:
+
+1. **E6 berubah.** Sebelumnya `platform_admin` bisa login di lane tenant lalu ditolak `403` saat
+   `/admin/auth/me`. Sekarang login tenant menolak akun tanpa tenant (`403`), sesuai §7.1.
+2. **Nomor e2e.** Suite sudah memakai E21–E29 untuk fitur template, jadi skenario platform
+   bergeser ke E31–E37 dan idempotency mendapat nomor E30.
+3. **`migrate dev` tidak tersedia** di shell non-interaktif. Migrasi dibuat dengan
+   `prisma migrate diff` lalu diterapkan dengan `migrate deploy`; SQL hasil generate diedit untuk
+   cast `'active'::"TenantStatus"`, kolom `updatedAt`, backfill, dan CHECK.
+4. **Database test lama** berisi baris `platform_admin` manual dengan `tenantId` terisi, sehingga
+   CHECK membuat `migrate deploy` gagal. Database test dibuat ulang (data uji, bukan data bisnis).
+   Di environment lain, bersihkan baris semacam itu sebelum migrasi.
+5. **Bootstrap API key** juga memanggil `ensureTenant`; tanpa itu `ApiKey` gagal FK pada database
+   kosong.
+6. **`tenant_id` di body** tetap deprecated dan tidak berubah; belum ada endpoint platform (F2–F3).
+7. **`admin-api.md` D6 belum diubah.** `platform_admin` masih ditolak di lane tenant; surface
+   platform baru muncul di F2.
+
+Belum dikerjakan (F2–F5): lane auth platform, provisioning tenant, suspend enforcement, audit,
+`allowedOrigins`, dan console platform.
+

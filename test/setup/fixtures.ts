@@ -7,7 +7,11 @@ export const RECIPIENT = 'user-test-1';
 export interface Fixtures {
   /** Subscriber JWT secret of the second tenant; the env secret must NOT open it. */
   tenantBSecret: string;
+  /** Raw API key of the second tenant, so ingest can be exercised across tenants. */
+  tenantBApiKey: string;
 }
+
+const TENANT_B_API_KEY = 'nhk_e2e_tenant_b_key_0123456789';
 
 /**
  * Baseline rows for the suite. Runs after the Nest application bootstrapped the admin user and
@@ -15,6 +19,14 @@ export interface Fixtures {
  */
 export async function seedFixtures(prismaClient: PrismaClient, tenantB: string): Promise<Fixtures> {
   const tenantBSecret = randomBytes(32).toString('base64url');
+
+  await prismaClient.tenant.createMany({
+    data: [
+      { id: 'default', name: 'Default' },
+      { id: tenantB, name: tenantB },
+    ],
+    skipDuplicates: true,
+  });
 
   await prismaClient.notificationTemplate.createMany({
     data: [
@@ -44,6 +56,19 @@ export async function seedFixtures(prismaClient: PrismaClient, tenantB: string):
         status: TemplateStatus.published,
         publishedAt: new Date(),
       },
+      {
+        tenantId: tenantB,
+        key: TEMPLATE_KEY,
+        channel: Channel.inapp,
+        locale: 'id',
+        version: 1,
+        subject: null,
+        body: 'Halo {{nama}}, ini notifikasi tes tenant B.',
+        active: true,
+        format: TemplateFormat.text,
+        status: TemplateStatus.published,
+        publishedAt: new Date(),
+      },
     ],
   });
 
@@ -70,7 +95,7 @@ export async function seedFixtures(prismaClient: PrismaClient, tenantB: string):
   await prismaClient.apiKey.create({
     data: {
       name: 'tenant-b',
-      keyHash: createHash('sha256').update(randomBytes(16)).digest('hex'),
+      keyHash: createHash('sha256').update(TENANT_B_API_KEY).digest('hex'),
       tenantId: tenantB,
       allowedOrigins: [],
       subscriberJwtSecret: tenantBSecret,
@@ -78,5 +103,5 @@ export async function seedFixtures(prismaClient: PrismaClient, tenantB: string):
     },
   });
 
-  return { tenantBSecret };
+  return { tenantBSecret, tenantBApiKey: TENANT_B_API_KEY };
 }

@@ -108,7 +108,7 @@ export class AdminNotificationResendService {
     const idempotencyKey = requestKeyToIdempotencyKey(original.id, dto.requestKey);
     const requestId = RequestContext.getRequestId() ?? randomUUID();
     const existing = await this.prisma.notification.findUnique({
-      where: { idempotencyKey },
+      where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       include: { recipients: true },
     });
 
@@ -172,7 +172,7 @@ export class AdminNotificationResendService {
       // A concurrent request with the same requestKey won the unique constraint race.
       if (isUniqueConstraintError(error)) {
         const raced = await this.prisma.notification.findUnique({
-          where: { idempotencyKey },
+          where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
           include: { recipients: true },
         });
 

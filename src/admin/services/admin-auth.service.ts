@@ -47,7 +47,21 @@ export class AdminAuthService {
       throw new ForbiddenException('Admin account is inactive');
     }
 
-    const signed = this.tokens.sign(admin);
+    // Platform admins (tenantId = null) use the platform auth surface, not the tenant lane.
+    if (admin.tenantId === null) {
+      this.logger.warn(
+        { event: 'admin.login.failed', email, reason: 'tenant_missing' },
+        'admin login rejected: account has no tenant',
+      );
+      throw new ForbiddenException('Admin role is not permitted');
+    }
+
+    const signed = this.tokens.sign({
+      id: admin.id,
+      email: admin.email,
+      role: admin.role,
+      tenantId: admin.tenantId,
+    });
 
     await this.prisma.adminUser.update({
       where: { id: admin.id },
@@ -63,7 +77,12 @@ export class AdminAuthService {
       accessToken: signed.token,
       tokenType: 'Bearer',
       expiresIn: signed.expiresInSeconds,
-      admin: toProfile(admin),
+      admin: toProfile({
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        tenantId: admin.tenantId,
+      }),
     };
   }
 
@@ -74,7 +93,16 @@ export class AdminAuthService {
       throw new UnauthorizedException('Admin account is not available');
     }
 
-    return toProfile(admin);
+    if (admin.tenantId === null) {
+      throw new ForbiddenException('Admin role is not permitted');
+    }
+
+    return toProfile({
+      id: admin.id,
+      email: admin.email,
+      role: admin.role,
+      tenantId: admin.tenantId,
+    });
   }
 }
 

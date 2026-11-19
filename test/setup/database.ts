@@ -27,6 +27,7 @@ const TABLES = [
   'Topic',
   'ApiKey',
   'AdminUser',
+  'Tenant',
 ];
 
 /** Empties every application table. Call before bootstrapping the Nest application. */

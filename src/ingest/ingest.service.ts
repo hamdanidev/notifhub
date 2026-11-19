@@ -129,7 +129,9 @@ export class IngestService {
       // A concurrent request with the same idempotency key won the unique constraint race.
       if (isUniqueConstraintError(error)) {
         const existing = await this.prisma.notification.findUnique({
-          where: { idempotencyKey: dto.idempotency_key },
+          where: {
+            tenantId_idempotencyKey: { tenantId, idempotencyKey: dto.idempotency_key },
+          },
           select: { id: true },
         });
 
@@ -249,7 +251,9 @@ export class IngestService {
 
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.notification.findUnique({
-        where: { idempotencyKey: dto.idempotency_key },
+        where: {
+          tenantId_idempotencyKey: { tenantId, idempotencyKey: dto.idempotency_key },
+        },
         select: { id: true, idempotencyExpiresAt: true },
       });
 

@@ -61,11 +61,44 @@ enum TemplateAuditAction {
   test_sent
 }
 
+enum TenantStatus {
+  active
+  suspended
+}
+
+model Tenant {
+  id          String       @id
+  name        String
+  status      TenantStatus @default(active)
+  suspendedAt DateTime?    @db.Timestamptz
+  createdAt   DateTime     @default(now()) @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @db.Timestamptz
+
+  notifications         Notification[]
+  notificationTemplates NotificationTemplate[]
+  templateLayouts       TemplateLayout[]
+  templateThemes        TemplateTheme[]
+  templatePartials      TemplatePartial[]
+  templateAuditEvents   TemplateAuditEvent[]
+  templateTestSends     TemplateTestSend[]
+  templateImages        TemplateImage[]
+  preferences           NotificationPreference[]
+  billingEvents         BillingEvent[]
+  subscribers           Subscriber[]
+  topics                Topic[]
+  apiKeys               ApiKey[]
+  adminUsers            AdminUser[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
 model Notification {
   id                     String        @id @default(uuid())
-  idempotencyKey         String        @unique
+  idempotencyKey         String
   idempotencyExpiresAt   DateTime
   tenantId               String        @default("default")
+  tenant                 Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   templateKey            String
   payload                Json
   priority               Int           @default(3)
@@ -86,6 +119,7 @@ model Notification {
   billingEvents    BillingEvent[]
   deliveryAttempts DeliveryAttempt[]
 
+  @@unique([tenantId, idempotencyKey])
   @@index([createdAt])
   @@index([tenantId, createdAt])
   @@index([overallStatus])
@@ -95,23 +129,23 @@ model Notification {
 }
 
 model NotificationRecipient {
-  id                BigInt       @id @default(autoincrement())
-  notificationId    String
-  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  recipientId       String
-  channel           Channel
-  status            Status       @default(pending)
-  attempts          Int          @default(0)
-  lastError         String?
-  providerName      String?
-  providerMessageId String?
-  templateId        String?
-  templateVersion   Int?
-  templateResolvedAt DateTime?   @db.Timestamptz
-  sentAt            DateTime?    @db.Timestamptz
-  deliveredAt       DateTime?    @db.Timestamptz
-  readAt            DateTime?    @db.Timestamptz
-  acknowledgedAt    DateTime?    @db.Timestamptz
+  id                 BigInt       @id @default(autoincrement())
+  notificationId     String
+  notification       Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  recipientId        String
+  channel            Channel
+  status             Status       @default(pending)
+  attempts           Int          @default(0)
+  lastError          String?
+  providerName       String?
+  providerMessageId  String?
+  templateId         String?
+  templateVersion    Int?
+  templateResolvedAt DateTime?    @db.Timestamptz
+  sentAt             DateTime?    @db.Timestamptz
+  deliveredAt        DateTime?    @db.Timestamptz
+  readAt             DateTime?    @db.Timestamptz
+  acknowledgedAt     DateTime?    @db.Timestamptz
 
   @@unique([notificationId, recipientId, channel])
   @@index([recipientId, status])
@@ -122,6 +156,7 @@ model NotificationRecipient {
 model NotificationTemplate {
   id                 String            @id @default(uuid())
   tenantId           String            @default("default")
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   key                String
   channel            Channel
   locale             String            @default("id")
@@ -163,6 +198,7 @@ model NotificationTemplate {
 model TemplateLayout {
   id               String   @id @default(uuid())
   tenantId         String   @default("default")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   key              String
   version          Int
   name             String
@@ -179,6 +215,7 @@ model TemplateLayout {
 model TemplateTheme {
   id               String   @id @default(uuid())
   tenantId         String   @default("default")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   key              String
   version          Int
   name             String
@@ -195,6 +232,7 @@ model TemplateTheme {
 model TemplatePartial {
   id               String   @id @default(uuid())
   tenantId         String   @default("default")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   key              String
   version          Int
   name             String
@@ -221,6 +259,7 @@ model TemplatePartialLink {
 model TemplateAuditEvent {
   id              BigInt              @id @default(autoincrement())
   tenantId        String              @default("default")
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   templateId      String
   templateVersion Int
   action          TemplateAuditAction
@@ -240,6 +279,7 @@ model TemplateAuditEvent {
 model TemplateTestSend {
   id                 String   @id @default(uuid())
   tenantId           String   @default("default")
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   templateId         String
   templateVersion    Int
   channel            Channel
@@ -266,6 +306,7 @@ model TemplateTestSend {
 model TemplateImage {
   id               String   @id @default(uuid())
   tenantId         String   @default("default")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   mimeType         String
   size             Int
   width            Int
@@ -281,6 +322,7 @@ model TemplateImage {
 model NotificationPreference {
   id              String   @id @default(uuid())
   tenantId        String   @default("default")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   recipientId     String
   channel         Channel
   enabled         Boolean  @default(true)
@@ -332,6 +374,7 @@ model BillingEvent {
   notificationId String
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   tenantId       String       @default("default")
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   eventType      String
   occurredAt     DateTime     @default(now()) @db.Timestamptz
 
@@ -342,6 +385,7 @@ model BillingEvent {
 model Subscriber {
   id         String   @id @default(uuid())
   tenantId   String   @default("default")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   externalId String
   email      String?
   phone      String?
@@ -360,6 +404,7 @@ model Topic {
   id          String   @id @default(uuid())
   key         String
   tenantId    String   @default("default")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   displayName String?
   mode        String   @default("push")
   isTimeBound Boolean  @default(false)
@@ -390,6 +435,7 @@ model ApiKey {
   name                String
   keyHash             String    @unique
   tenantId            String    @default("default")
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   allowedOrigins      String[]  @default([])
   subscriberJwtSecret String?
   active              Boolean   @default(true)
@@ -405,11 +451,13 @@ model AdminUser {
   email        String    @unique
   passwordHash String
   role         String    @default("tenant_admin")
-  tenantId     String    @default("default")
+  tenantId     String?
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   active       Boolean   @default(true)
   lastLoginAt  DateTime? @db.Timestamptz
   createdAt    DateTime  @default(now()) @db.Timestamptz
   updatedAt    DateTime  @updatedAt @db.Timestamptz
 
   @@index([tenantId])
+  @@index([role])
 }

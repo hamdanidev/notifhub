@@ -22,6 +22,7 @@ const WEBHOOK_SECRET = process.env.WEBHOOK_SIGNING_SECRET as string;
 let app: NestExpressApplication;
 let server: Server;
 let tenantBSecret = '';
+let tenantBApiKey = '';
 let adminToken = '';
 let inAppNotificationId = '';
 
@@ -60,6 +61,7 @@ beforeAll(async () => {
 
   const fixtures = await seedFixtures(prisma, TEST_TENANT_B);
   tenantBSecret = fixtures.tenantBSecret;
+  tenantBApiKey = fixtures.tenantBApiKey;
 });
 
 afterAll(async () => {
@@ -142,7 +144,7 @@ describe('NotifHub e2e', () => {
     expect(String(response.body.message)).toContain('tenant_id');
   });
 
-  it('E6 login admin, password salah 401, platform_admin ditolak guard 403', async () => {
+  it('E6 login admin, password salah 401, platform_admin ditolak di lane tenant 403', async () => {
     const login = await request(server)
       .post('/api/v1/admin/auth/login')
       .send({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD });
@@ -161,21 +163,16 @@ describe('NotifHub e2e', () => {
         email: 'platform@test.local',
         passwordHash: bcrypt.hashSync('Platform123!', 4),
         role: 'platform_admin',
-        tenantId: 'default',
+        tenantId: null,
         active: true,
       },
     });
 
+    // Platform admins have no tenant claim; the tenant login lane refuses them.
     const platformLogin = await request(server)
       .post('/api/v1/admin/auth/login')
       .send({ email: 'platform@test.local', password: 'Platform123!' });
-    expect(platformLogin.status).toBe(200);
-
-    const me = await request(server)
-      .get('/api/v1/admin/auth/me')
-      .set('Authorization', bearer(platformLogin.body.accessToken));
-
-    expect(me.status).toBe(403);
+    expect(platformLogin.status).toBe(403);
   });
 
   it('E7 admin tenant A tidak bisa membaca data tenant B', async () => {
@@ -217,6 +214,41 @@ describe('NotifHub e2e', () => {
       .get('/api/v1/in-app/notifications')
       .set('Authorization', bearer(subscriberToken('default', SUBSCRIBER_SECRET)));
     expect(tenantA.status).toBe(200);
+  });
+
+  it('E30 idempotency key yang sama di dua tenant menghasilkan notifikasi berbeda', async () => {
+    const sharedKey = 'e2e-shared-idempotency-1';
+
+    const tenantA = await postNotify({
+      idempotency_key: sharedKey,
+      template_key: TEMPLATE_KEY,
+      recipients: [RECIPIENT],
+      channels: ['inapp'],
+      data: { nama: 'Budi' },
+    });
+
+    const tenantB = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', tenantBApiKey)
+      .send({
+        idempotency_key: sharedKey,
+        template_key: TEMPLATE_KEY,
+        recipients: ['only-in-tenant-b'],
+        channels: ['inapp'],
+        data: { nama: 'Budi' },
+      });
+
+    expect(tenantA.status).toBe(202);
+    expect(tenantB.status).toBe(202);
+    expect(tenantB.body.notification_id).not.toBe(tenantA.body.notification_id);
+
+    const rows = await prisma.notification.findMany({
+      where: { idempotencyKey: sharedKey },
+      select: { id: true, tenantId: true },
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((row) => row.tenantId))).toEqual(new Set(['default', TEST_TENANT_B]));
   });
 
   it('E9 preference center menonaktifkan email dan worker menghormatinya', async () => {

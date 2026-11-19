@@ -70,8 +70,9 @@ Yang perlu diingat dari alur ini:
    ada di `NotificationRecipient`.
 2. **Fan-out per recipient, per channel.** Satu notifikasi bisa `partial` bila sebagian recipient
    berhasil.
-3. **Idempotensi di ingest.** `idempotency_key` yang sama dalam `IDEMPOTENCY_TTL_DAYS` (default 7
-   hari) mengembalikan notification id yang sama.
+3. **Idempotensi di ingest, per tenant.** `idempotency_key` yang sama dalam `IDEMPOTENCY_TTL_DAYS`
+   (default 7 hari) mengembalikan notification id yang sama; key yang sama di tenant lain membuat
+   notifikasi terpisah.
 4. **Preferensi dicek di worker, bukan di ingest.** Kanal nonaktif ditandai `skipped`
    (`preference_disabled`); quiet hours menunda job non-kritis.
 5. **Template di-resolve saat eksekusi job.** Template yang hilang/tidak aktif menghasilkan
@@ -148,6 +149,7 @@ induknya. Ringkasan model di `prisma/schema.prisma`:
 | Preferensi | `NotificationPreference` | Per `tenantId + recipientId + channel`, termasuk quiet hours |
 | Penerima & topik | `Subscriber`, `Topic`, `TopicSubscriber` | Snapshot data dari consumer, membership topik (bisa time-bound) |
 | Auth | `ApiKey`, `AdminUser` | API key per tenant (hash), admin tenant |
+| Tenant | `Tenant` | Nama + status tenant; semua tabel ber-`tenantId` punya FK ke sini |
 
 Relasi penting: `NotificationRecipient` menyimpan `templateId`/`templateVersion`/
 `templateResolvedAt` yang diisi worker saat resolve, sehingga kiriman bisa ditelusuri ke versi

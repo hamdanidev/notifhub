@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import type { ApiKey } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ensureTenant } from '../../tenants/ensure-tenant';
 import type { ApiKeyPrincipal } from './api-key.types';
 
 const KEY_PREFIX = 'nhk_';
@@ -42,6 +43,16 @@ export class ApiKeyService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    const tenantId = this.config.getOrThrow<string>('DEFAULT_TENANT_ID');
+    const tenantState = await ensureTenant(this.prisma, tenantId);
+
+    if (tenantState === 'created') {
+      this.logger.info(
+        { event: 'tenant.bootstrap.created', tenant_id: tenantId },
+        'bootstrap tenant created',
+      );
+    }
+
     await this.ensureBootstrapKey();
     await this.warnOnBootstrapSubscriberSecretDrift();
   }

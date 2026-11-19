@@ -85,6 +85,7 @@ Aturan kerja:
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
+| Multi-tenant F1: entitas `Tenant` + FK, migrasi/backfill, idempotency per tenant | selesai & terverifikasi (e2e E30); F2–F5 belum |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -98,7 +99,7 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `routing/`, `preferences/`, `subscriber-preferences/`, `templates/`, `subscribers/`,
   `notifications/`, `cleanup/`, `queues/`, `metrics/`, `health/`, `config/`, `common/`.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
-- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (9 migrasi).
+- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (10 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
 - `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile`, `console/nginx.conf`,
   `docker-compose.prod.yml`, `.env.prod.example`.
@@ -170,13 +171,12 @@ npx prisma migrate status
 - WhatsApp hanya mengirim teks (`type: "text"`), belum approved-template Meta; inbound reply tidak
   ditangani.
 - `platform_admin` ditolak di Admin API (role tenant_admin saja); belum ada RBAC. Lane platform
-  sedang didesain di `docs/design/multi-tenant-platform-admin.md`.
-- Belum ada entitas/status tenant: `tenantId` hanya string dengan default `default`, provisioning
-  lewat seed/DB, dan suspend/offboard belum tersedia. Draf desain:
-  `docs/design/multi-tenant-platform-admin.md`.
-- Idempotency notifikasi masih unik **global** dan lookup-nya tidak memfilter tenant, sehingga
-  `idempotency_key` yang sama di dua tenant mengembalikan notification id tenant lain (bug lintas
-  tenant; lihat draf desain `docs/design/multi-tenant-platform-admin.md` §3.2).
+  baru dikerjakan sampai F2–F3 di `docs/design/multi-tenant-platform-admin.md`.
+- Entitas `Tenant` + FK sudah ada, tetapi belum ada provisioning/status tenant di API: tenant baru
+  masih lewat seed/DB sampai F2–F3. Lanjutan desain: `docs/design/multi-tenant-platform-admin.md`.
+- Idempotency notifikasi kini unik per tenant (`@@unique([tenantId, idempotencyKey])`, migrasi
+  `20261119131500_platform_tenants`); lookup ingest/resend memakai tenant. E2E E30 menguji dua
+  tenant dengan key yang sama.
 - Go SDK hanya mencakup endpoint consumer (notify, subscriber, topic membership); admin/in-app/
   webhook/preference center tidak masuk. Tidak ada publikasi registry untuk Go SDK.
 - Console saat ini disajikan sebagai image nginx statis; belum ada browser automation permanen.
@@ -229,9 +229,9 @@ npx prisma migrate status
    GitHub Actions hijau di setiap PR.
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
-3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log). Draf desain
-   sudah ada: `docs/design/multi-tenant-platform-admin.md` — menunggu persetujuan sebelum
-   implementasi.
+3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log). Disetujui
+   2026-11-19; F1 (entitas tenant, FK, migrasi, idempotency per tenant) selesai. Lanjut F2–F5 di
+   `docs/design/multi-tenant-platform-admin.md`.
 4. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
 5. Penegakan `allowedOrigins`/CORS per tenant, session/revocation token subscriber, dan upgrade
    dependensi untuk menutup temuan `npm audit`.
