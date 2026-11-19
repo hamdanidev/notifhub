@@ -102,7 +102,8 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
 - `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (11 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
-- `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile`, `console/nginx.conf`,
+- `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile` (target
+  `runner-tenant`/`runner-platform`), `console/nginx/*.template`, `console/nginx/check-platform-url.sh`,
   `docker-compose.prod.yml`, `.env.prod.example`.
 - `.github/workflows/ci.yml` — pipeline (backend/packages/go/docker).
 - `packages/js-sdk/` — `@notifhub/js`: client in-app, SSE transport, `NotifHubAdminClient`,
@@ -235,8 +236,8 @@ npx prisma migrate status
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
 3. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
-4. Pisahkan console platform ke host/origin sendiri (isolasi artifact + session). P1 (split build,
-   dua artifact) selesai; P2–P4 (Docker/nginx, CI, rollout) berikutnya di
-   `docs/design/platform-console-host-split.md`.
+4. Pisahkan console platform ke host/origin sendiri (isolasi artifact + session). P1 (split build)
+   dan P2 (Docker/nginx/compose dua console) selesai; sisa P3–P4 (CI build kedua target, rollout)
+   di `docs/design/platform-console-host-split.md`.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.

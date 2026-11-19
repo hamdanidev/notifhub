@@ -15,6 +15,12 @@ server {
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
+    # The platform console lives on its own origin. Keep old bookmarks working by redirecting
+    # /platform/* to that origin, preserving path and query string.
+    location ~ ^/platform(/|$) {
+        return 302 ${PLATFORM_CONSOLE_URL}$request_uri;
+    }
+
     # Single-page application: unknown paths fall back to index.html.
     location / {
         try_files $uri $uri/ /index.html;

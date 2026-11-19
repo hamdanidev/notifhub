@@ -353,7 +353,8 @@ Notes:
 npm run sdk:build
 npm run react:build
 npm run console:install    # once, installs console dependencies
-npm run console:dev        # http://localhost:5173
+npm run console:dev        # tenant console on http://localhost:5173
+npm --prefix console run dev:platform   # platform console on http://localhost:5174
 ```
 
 Login with the bootstrapped admin (`ADMIN_EMAIL` and the password whose bcrypt hash is stored in
@@ -383,9 +384,13 @@ Notes:
   di-ignore git). Maksimum `TEMPLATE_IMAGE_MAX_BYTES` (default 5 MB). Set
   `TEMPLATE_IMAGE_BASE_URL` di belakang reverse proxy agar URL gambar di email absolut dan
   stabil. Docker smoke stack memakai volume `notifhub_prod_uploads`.
-- Production build: `npm run console:build` (output `console/dist`), preview with
-  `npm --prefix console run preview`.
-- Register the console origin in `CORS_ORIGINS` outside development.
+- Production build: `npm run console:build` menghasilkan dua artifact, `console/dist/tenant` dan
+  `console/dist/platform`. Preview dengan `npm --prefix console run preview` (tenant) dan
+  `npm --prefix console run preview:platform` (platform).
+- Build tenant dapat mengarahkan `/platform/*` ke console platform dengan
+  `VITE_PLATFORM_CONSOLE_URL=http://localhost:5174`; tanpa nilai itu route tersebut 404.
+- Register **kedua** origin console (`http://localhost:5173` dan `http://localhost:5174`,
+  atau origin produksinya) di `CORS_ORIGINS` di luar development.
 
 ## Verify WhatsApp
 
@@ -502,13 +507,22 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 ```
 
-- Services: `postgres`, `redis`, one-shot `migrate`, `backend` (`:3000`), `console` (`:8080`).
+- Services: `postgres`, `redis`, one-shot `migrate`, `backend` (`:3000`), tenant console
+  (`console`, `:8080`), dan platform console (`platform-console`, `:8081`).
 - Expected: `migrate` exits with code 0, `backend` becomes `healthy`, `GET /health/ready` returns
-  `200`, `POST /api/v1/notify` returns `202`, and the console serves the SPA.
+  `200`, `POST /api/v1/notify` returns `202`, tenant console serves its SPA at `:8080`, dan
+  platform console menyajikan login platform di `:8081/platform/login` (`/` diarahkan ke
+  `/platform/tenants`). `GET :8080/platform/*` diarahkan `302` ke `PLATFORM_CONSOLE_URL`.
+- Isi `PLATFORM_CONSOLE_URL=http://localhost:8081` dan
+  `CORS_ORIGINS=http://localhost:8080,http://localhost:8081` di `.env.prod` (contoh sudah ada di
+  `.env.prod.example`).
 - Tear down with `... down -v` (removes the volumes and all data).
 - This stack is for verification, not production: no TLS and secrets live in `.env.prod`.
-- Image targets: `docker build --target runner .` (backend), `docker build -f console/Dockerfile .`
-  (console), `docker build --target migrator .` (one-shot migration job).
+- Image targets: `docker build --target runner .` (backend),
+  `docker build --target runner-tenant -f console/Dockerfile .` (tenant console),
+  `docker build --target runner-platform -f console/Dockerfile .` (platform console),
+  `docker build --target migrator .` (one-shot migration job). Tanpa `--target`, console image
+  default tetap tenant.
 
 ## Notes
 

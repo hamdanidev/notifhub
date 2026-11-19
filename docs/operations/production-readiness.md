@@ -162,15 +162,23 @@ runner   node:24-bookworm-slim + openssl, copy /app, USER node,
 ### 5.2 Console (`console/Dockerfile`)
 
 - Build stage memakai konteks repo root karena console bergantung pada `@notifhub/js`
-  (`file:../packages/js-sdk`): `npm ci` root → `npm run sdk:build` → `npm --prefix console ci` →
-  `npm run console:build` dengan `ARG VITE_NOTIFHUB_API_URL`.
-- Runtime: `nginx:1.27-alpine` + `console/nginx.conf` (SPA fallback `try_files`, gzip, cache aset).
+  (`file:../packages/js-sdk`): `npm ci` root → `npm run sdk:build` → `npm --prefix console ci`.
+- Dua target image dari satu Dockerfile: `runner-tenant` (default, `dist/tenant`) dan
+  `runner-platform` (`dist/platform`), keduanya `nginx:1.27-alpine` dengan SPA fallback
+  `try_files`, gzip, dan cache aset. Build arg `VITE_NOTIFHUB_API_URL` dipakai kedua target;
+  `VITE_PLATFORM_CONSOLE_URL` hanya untuk tenant.
+- Config nginx berupa template (`console/nginx/tenant.conf.template`,
+  `console/nginx/platform.conf.template`) yang diproses envsubst saat container start. Tenant image
+  mewajibkan `PLATFORM_CONSOLE_URL` (entrypoint gagal cepat bila kosong) dan mengarahkan
+  `/platform/*` ke origin platform; platform image mengarahkan `/` ke `/platform/tenants`.
 
 ### 5.3 Compose smoke stack (`docker-compose.prod.yml`)
 
 `postgres` (healthcheck `pg_isready`) → `redis` (healthcheck `redis-cli ping`) → `migrate`
-(`service_completed_successfully`) → `backend` → `console` (port 8080). Semua kredensial dari
-`.env.prod` (`--env-file .env.prod`), contoh tersedia di `.env.prod.example` tanpa secret nyata.
+(`service_completed_successfully`) → `backend` → `console` (port 8080) dan `platform-console`
+(port 8081). Semua kredensial dari `.env.prod` (`--env-file .env.prod`), contoh tersedia di
+`.env.prod.example` tanpa secret nyata. Isi `PLATFORM_CONSOLE_URL` dan daftarkan kedua origin di
+`CORS_ORIGINS`.
 
 ---
 

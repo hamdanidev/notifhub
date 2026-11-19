@@ -206,7 +206,7 @@ Bentuk error seragam (`statusCode`, `message`, `error`, `timestamp`, `path`, `re
 |---|---|---|
 | `packages/js-sdk/` (`@notifhub/js`) | Klien in-app, transport SSE, `NotifHubAdminClient`, method preferensi | Aplikasi end-user dan console |
 | `packages/react/` (`@notifhub/react`) | Provider, hook, bell, inbox, `usePreferences` | Aplikasi React end-user |
-| `console/` (`notifhub-console`) | Console tenant admin (login, dashboard, notifikasi, template, subscriber, topik, API key) + halaman platform (`/platform/tenants`, `/platform/audit`) | Operator tenant dan platform admin |
+| `console/` (`notifhub-console`) | Console tenant admin + halaman platform (`/platform/*`); dua artifact (`dist/tenant`, `dist/platform`) untuk origin terpisah | Operator tenant dan platform admin |
 | `sdk/go/` (`github.com/hamdanidev/notifhub-go`) | Klien Go untuk endpoint consumer | Service konsumen |
 | `sample/in-app-web/` | Sample React 18 untuk in-app + preferensi (dev-only) | Referensi integrasi |
 

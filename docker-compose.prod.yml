@@ -75,10 +75,30 @@ services:
     build:
       context: .
       dockerfile: console/Dockerfile
+      target: runner-tenant
+      args:
+        VITE_NOTIFHUB_API_URL: ${CONSOLE_API_URL:-http://localhost:3000}
+        VITE_PLATFORM_CONSOLE_URL: ${PLATFORM_CONSOLE_URL:-http://localhost:8081}
+    environment:
+      # Runtime value used by nginx to redirect /platform/* to the platform origin.
+      PLATFORM_CONSOLE_URL: ${PLATFORM_CONSOLE_URL:-http://localhost:8081}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Platform console on its own origin. It shares the backend/API and CORS allowlist with the
+  # tenant console but serves a separate artifact (dist/platform).
+  platform-console:
+    build:
+      context: .
+      dockerfile: console/Dockerfile
+      target: runner-platform
       args:
         VITE_NOTIFHUB_API_URL: ${CONSOLE_API_URL:-http://localhost:3000}
     ports:
-      - "8080:80"
+      - "8081:80"
     depends_on:
       - backend
     restart: unless-stopped

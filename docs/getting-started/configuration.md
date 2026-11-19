@@ -111,8 +111,10 @@ Variabel ini tidak dibaca oleh schema backend:
 | Variabel | Dipakai oleh | Catatan |
 |---|---|---|
 | `CONSOLE_API_URL` | Build image console | URL API yang dipanggil browser |
+| `PLATFORM_CONSOLE_URL` | nginx tenant (runtime) dan build arg tenant | URL publik console platform; dipakai redirect `/platform/*`. Tanpa nilai ini container tenant gagal start |
+| `VITE_PLATFORM_CONSOLE_URL` | Build tenant | Nilai build-time untuk redirect sisi klien; isi sama dengan `PLATFORM_CONSOLE_URL` |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Service `postgres` di compose | Hindari `@ : / #` pada password agar URL valid |
-| `VITE_NOTIFHUB_API_URL` | `console/.env` | Default `http://localhost:3000` |
+| `VITE_NOTIFHUB_API_URL` | `console/.env` | Default `http://localhost:3000`; dipakai kedua artifact console |
 
 ## Syarat per mode
 

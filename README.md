@@ -58,7 +58,7 @@ Full setup, per-feature verification, and troubleshooting:
 | `packages/js-sdk/` | `@notifhub/js`: in-app client, SSE transport, `NotifHubAdminClient`, preference center methods |
 | `packages/react/` | `@notifhub/react`: provider, bell, inbox, `usePreferences` |
 | `sample/in-app-web/` | Sample lokal React 18 + Vite untuk in-app/SSE/preference center, memakai SDK npm terbit dan middleware dev-only |
-| `console/` | Console React 18 + Vite + Bootstrap 5: tenant admin, plus platform pages (`/platform/*`) for tenant provisioning and audit |
+| `console/` | Console React 18 + Vite + Bootstrap 5: tenant admin and platform pages; builds two artifacts (`dist/tenant`, `dist/platform`) deployed to separate origins |
 | `sdk/go/` | Go SDK (`github.com/hamdanidev/notifhub-go`) generated from the public OpenAPI document |
 | `openapi/notifhub.json` | Public consumer OpenAPI subset used for SDK generation |
 | `scripts/` | OpenAPI export, local provider stubs, development token helper, end-to-end verification |
@@ -111,8 +111,9 @@ cp .env.prod.example .env.prod           # fill every CHANGE_ME
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 ```
 
-The stack runs Postgres, Redis, a one-shot `migrate` job, the backend (`:3000`), and the console
-(`:8080`). It is meant for verification, not as a production deployment; see
+The stack runs Postgres, Redis, a one-shot `migrate` job, the backend (`:3000`), and two console
+images: tenant console (`:8080`) and platform console (`:8081`, separate artifact/origin). It is
+meant for verification, not as a production deployment; see
 [docs/getting-started/local-setup.md](docs/getting-started/local-setup.md#run-the-docker-smoke-stack).
 
 ## Versions

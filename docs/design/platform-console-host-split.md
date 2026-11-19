@@ -1,8 +1,9 @@
 # Desain pemisahan console platform ke host terpisah
 
-Status: **P1 terimplementasi dan terverifikasi** (split build: dua entry + dua artifact) pada
-2026-11-19; P2–P4 (Docker/nginx, CI, rollout) belum. Draf disetujui 2026-11-19. Lihat §18 untuk
-catatan implementasi P1.
+Status: **P1–P2 terimplementasi dan terverifikasi** (split build dua artifact, image/stage Docker
+ganda, nginx template + guard, compose dua console) pada 2026-11-19; P3–P4 (CI build kedua
+artifact/image, dokumentasi deploy akhir, rollout) belum. Draf disetujui 2026-11-19. Lihat §18
+untuk catatan implementasi.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `console/` (React 18 + Vite), `console/Dockerfile`, `console/nginx.conf`,
@@ -351,7 +352,7 @@ login ulang di origin baru.
 | Fase | Isi | Verifikasi |
 |---|---|---|
 | P1 | Entry `platform.html`/`platform-main.tsx`, router split, redirect tenant, Vite mode/outDir, script build | `console:typecheck`; kedua build; grep bundel; unit/e2e backend tidak berubah |
-| P2 | Dockerfile stage ganda, template nginx, compose `platform-console`, env/CORS | `docker build` kedua target; compose up; curl origin/redirect; login platform dari `:8081` |
+| **P2 (selesai)** | Dockerfile stage ganda, template nginx, compose `platform-console`, env/CORS | `docker build` kedua target; container tenant/platform; redirect; guard env; compose config |
 | P3 | CI build kedua target, dokumentasi (README, configuration, local-setup, production-readiness, desain ini) | `npm run ci`; job `packages`/`docker` lokal; `npm run docs:check` |
 | P4 | Rollout host platform + redirect, verifikasi manual dan regresi penuh | Checklist §13 |
 
@@ -489,7 +490,49 @@ Catatan:
    kedua bundle. Ini halaman shared, bukan halaman tenant.
 3. **Redirect hanya aktif bila env diisi saat build tenant**; tanpa env, route `/platform/*`
    menampilkan 404 (perilaku aman untuk deployment satu host).
-4. **Dockerfile tenant** sementara diarahkan ke `dist/tenant` agar image console yang ada tetap
-   berfungsi setelah split build; stage `runner-platform` dan nginx template ditambahkan di P2.
-5. Belum dikerjakan: Docker stage ganda + nginx template/guard, compose service, CI build kedua
-   target, dokumentasi deployment, dan rollout (P2–P4).
+4. **Dockerfile** sekarang memiliki dua target (`runner-tenant`, `runner-platform`) dengan
+   `runner-tenant` sebagai target terakhir/default; P2 menambahkan stage platform dan nginx
+   template.
+5. Belum dikerjakan: CI membangun/memeriksa kedua artifact + kedua image (P3), dokumentasi deploy
+   akhir, dan rollout host platform (P4).
+
+### 18.2 P2 (2026-11-19)
+
+Yang sudah berjalan:
+
+- `console/Dockerfile`: stage `build`, `build-tenant`, `build-platform`, `runner-platform`, dan
+  `runner-tenant` (terakhir). Build arg `VITE_NOTIFHUB_API_URL` untuk kedua target dan
+  `VITE_PLATFORM_CONSOLE_URL` untuk tenant.
+- `console/nginx/tenant.conf.template`: SPA + redirect `^/platform(/|$)` ke
+  `${PLATFORM_CONSOLE_URL}$request_uri`; `console/nginx/platform.conf.template`: SPA + `/` →
+  `/platform/tenants` dengan `absolute_redirect off`.
+- `console/nginx/check-platform-url.sh` (entrypoint tenant) menolak start bila
+  `PLATFORM_CONSOLE_URL` kosong atau berakhiran `/`.
+- `docker-compose.prod.yml`: `console` memakai target `runner-tenant` + env
+  `PLATFORM_CONSOLE_URL`; service baru `platform-console` (target `runner-platform`, port `8081`).
+- `.env.prod.example`: `PLATFORM_CONSOLE_URL=http://localhost:8081` dan
+  `CORS_ORIGINS=http://localhost:8080,http://localhost:8081`.
+- `console/nginx.conf` lama dihapus (diganti dua template).
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `docker build --target runner-tenant` | berhasil |
+| `docker build --target runner-platform` | berhasil |
+| Container tenant (`:8080`) | `/` → `200` (title `NotifHub Console`); `/platform/login?x=1` → `302` `http://localhost:8081/platform/login?x=1` |
+| Container platform (`:8081`) | `/` → `302` `Location: /platform/tenants`; mengikuti redirect → `200`; `/platform/login` → `200` (title `NotifHub Platform`) |
+| Guard tenant tanpa env | container exit `1` dengan pesan `PLATFORM_CONSOLE_URL is required for the tenant console image` |
+| `docker compose ... config` | valid; service mencakup `console` dan `platform-console` |
+
+Catatan:
+
+1. **Redirect root platform** awalnya absolut menjadi `http://localhost/platform/tenants` (port
+   hilang). Diperbaiki dengan `absolute_redirect off` sehingga `Location` relatif dan tetap benar
+   di port/subdomain apa pun.
+2. Verifikasi image dilakukan dengan `docker run` terpisah, bukan `compose up` penuh — console
+   statis tidak membutuhkan Postgres/Redis/backend untuk menguji routing dan guard. Smoke stack
+   penuh tetap diverifikasi di P4/roadmap.
+3. CI baru membangun image console default (tenant); penambahan build kedua target di job
+   `docker`/`packages` adalah bagian P3.
+4. Belum dikerjakan: P3 (CI + dokumentasi deploy akhir) dan P4 (rollout host platform).

@@ -1,0 +1,34 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Keep redirects relative so a port/subdomain in front of nginx is preserved.
+    absolute_redirect off;
+
+    gzip on;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Hashed Vite assets never change: cache them aggressively.
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # The platform console only serves /platform/*; send the root to the tenant list.
+    location = / {
+        return 302 /platform/tenants;
+    }
+
+    # Single-page application: unknown paths fall back to index.html.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+}
