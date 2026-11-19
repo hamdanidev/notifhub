@@ -58,7 +58,7 @@ Full setup, per-feature verification, and troubleshooting:
 | `packages/js-sdk/` | `@notifhub/js`: in-app client, SSE transport, `NotifHubAdminClient`, preference center methods |
 | `packages/react/` | `@notifhub/react`: provider, bell, inbox, `usePreferences` |
 | `sample/in-app-web/` | Sample lokal React 18 + Vite untuk in-app/SSE/preference center, memakai SDK npm terbit dan middleware dev-only |
-| `console/` | Tenant admin console (React 18 + Vite + Bootstrap 5) |
+| `console/` | Console React 18 + Vite + Bootstrap 5: tenant admin, plus platform pages (`/platform/*`) for tenant provisioning and audit |
 | `sdk/go/` | Go SDK (`github.com/hamdanidev/notifhub-go`) generated from the public OpenAPI document |
 | `openapi/notifhub.json` | Public consumer OpenAPI subset used for SDK generation |
 | `scripts/` | OpenAPI export, local provider stubs, development token helper, end-to-end verification |

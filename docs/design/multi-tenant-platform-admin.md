@@ -1,9 +1,9 @@
 # Desain multi-tenant: entitas tenant, platform admin, dan provisioning
 
-Status: **F1–F3 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill,
-idempotency per tenant, lane auth platform, provisioning tenant + admin, suspend, audit, dan
-`allowedOrigins`) pada 2026-11-19; F4–F5 belum. Draf disetujui 2026-11-19. Lihat §19 untuk catatan
-implementasi.
+Status: **F1–F4 terimplementasi dan terverifikasi** (entitas `Tenant`, FK, migrasi/backfill,
+idempotency per tenant, lane auth platform, provisioning tenant + admin, suspend, audit,
+`allowedOrigins`, dan console platform) pada 2026-11-19; F5 (dokumentasi akhir + regresi penuh)
+belum. Draf disetujui 2026-11-19. Lihat §19 untuk catatan implementasi.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `docs/architecture/project-brief.md`, `docs/design/admin-api.md` (terutama §2 dan D6),
@@ -612,7 +612,7 @@ Perubahan teknis:
 | **F1 (selesai)** | Schema `Tenant`, FK, CHECK, migrasi + backfill, seed, bootstrap tenant, perbaikan idempotency (D16) | `npm run test:e2e` (E1–E29 + E30 hijau), typecheck, unit |
 | **F2 (selesai)** | Klaim JWT opsional, `PlatformAdminGuard`, endpoint platform auth, env bootstrap platform admin | `npm run test:unit` (28 test) + e2e E31 |
 | **F3 (selesai)** | API tenant & admin, audit, suspend enforcement di tiga lane, `allowedOrigins` | e2e E32–E37 |
-| F4 | Console platform (login, tenant, admin, audit) | `console:typecheck`, `console:build`, verifikasi manual |
+| **F4 (selesai)** | Console platform (login, tenant, admin, audit) | `console:typecheck`, `console:build`, verifikasi manual (SPA + API) |
 | F5 | Dokumentasi (dokumen ini → status terimplementasi, indeks, project-brief, overview, usage, configuration) + e2e lengkap | `npm run ci`, `npm run docs:check` |
 
 F1 sengaja tidak menambah endpoint: migrasi besar dan bug fix idempotency diverifikasi lebih dulu
@@ -727,7 +727,7 @@ terhadap suite yang ada.
 - [x] Audit tercatat untuk semua mutasi platform dan bisa dibaca dengan filter (e2e E35).
 - [x] `DELETE` tenant mengikuti aturan §8.2 (e2e E36).
 - [x] E1–E29 tetap hijau; `npm run ci` dan `npm run docs:check` hijau.
-- [ ] Console platform lolos `typecheck`/`build` dan diverifikasi manual.
+- [x] Console platform lolos `typecheck`/`build` dan diverifikasi manual.
 - [ ] Dokumentasi diperbarui (indeks, project-brief, overview, usage, configuration).
 
 ## 18. Pertanyaan keputusan
@@ -868,5 +868,43 @@ Deviasi dan catatan:
 5. **Snapshot tenant** (`adminCount`, `apiKeyCount`) memakai `_count`; jumlah notifikasi tidak
    diekspos di v1 sesuai Q7.
 
-Belum dikerjakan: console platform (F4) dan pembaruan dokumentasi akhir (F5).
+Belum dikerjakan: pembaruan dokumentasi akhir dan regresi penuh (F5).
+
+### 19.4 F4 (2026-11-19)
+
+Yang sudah berjalan (console React di `console/`):
+
+- `/platform/login` memakai `POST /platform/auth/login`; session disimpan terpisah di
+  `sessionStorage` (`notifhub.console.platform-session`) dengan profil platform tanpa `tenantId`.
+  Login tenant (`/login`) menampilkan tautan ke login platform dan sebaliknya.
+- Rute `/platform/*` dilindungi `PlatformProtectedRoute` (butuh role `platform_admin`); rute tenant
+  memakai `ProtectedRoute` yang mengarahkan platform admin ke `/platform/tenants`. Handler 401
+  global membedakan jalur `/platform` (hapus session platform, arahkan ke `/platform/login`).
+- Halaman:
+  - `/platform/tenants`: daftar + filter status/pencarian + pagination, form buat tenant, aksi
+    suspend (dengan konfirmasi) / resume, tautan detail.
+  - `/platform/tenants/:id`: info & status tenant, ubah nama, suspend/resume, daftar admin tenant
+    (tambah, reset password, aktif/nonaktif), dan zona hapus tenant (nonaktif bila masih ada data).
+  - `/platform/audit`: filter tenant/aksi/rentang tanggal + pagination.
+- Transport memakai `HttpTransport` dari `@notifhub/js` dengan `auth: false` untuk login; SDK
+  terbit tidak diubah (pola yang sama dengan `console/src/lib/adminResend.ts`).
+- Tidak ada tenant switcher/impersonation, sesuai §2.
+
+Verifikasi:
+
+- `npm run console:typecheck` dan `npm run console:build` lulus.
+- Verifikasi manual (tanpa browser automation): backend dijalankan dengan
+  `PLATFORM_ADMIN_EMAIL`/`PASSWORD_HASH`, lalu alur API dijalankan — login platform, list tenant,
+  buat tenant `manual-check`, suspend, resume, hapus (204), dan audit menampilkan empat aksi.
+  `vite preview` menyajikan `/` dan `/platform/tenants` dengan `200`.
+- Backend/e2e tidak berubah di F4; suite E1–E37 tetap hijau dari F3.
+
+Catatan:
+
+1. **Tanpa browser automation.** Interaksi visual (klik dialog, validasi form) belum diotomasi;
+   verifikasi UI masih manual, sama seperti batasan console yang sudah ada.
+2. **Tidak ada rilis SDK.** `@notifhub/js` tetap `0.3.0`; pemindahan method platform ke SDK
+   dijadwalkan pada rilis minor berikutnya.
+3. **Bahasa UI** mengikuti console yang ada: label navigasi Inggris (Tenants/Audit), pesan bantuan
+   dan konfirmasi Bahasa Indonesia.
 

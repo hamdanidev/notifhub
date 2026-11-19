@@ -45,8 +45,9 @@ platform notifikasi yang sudah berjalan (lihat `docs/getting-started/local-setup
 
 ### Tidak termasuk (di luar cakupan)
 
-- WhatsApp provider/worker (lihat `docs/design/whatsapp.md`), Go SDK (lihat `docs/sdk/go-sdk.md`), platform
-  admin lintas tenant (lihat `docs/design/preference-center.md`).
+- WhatsApp provider/worker (lihat `docs/design/whatsapp.md`), Go SDK (lihat `docs/sdk/go-sdk.md`).
+- Console platform (`/platform/*`): di luar dokumen ini, dirancang dan diimplementasikan di
+  `docs/design/multi-tenant-platform-admin.md` (F4).
 - Refresh token, SSO/OIDC, RBAC granular, audit log UI.
 - End-user preference center (lihat `docs/design/preference-center.md`), self-service subscription UI.
 - Containerisasi console/backend (Dockerfile/production compose belum diminta).

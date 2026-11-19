@@ -1,12 +1,18 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { LoginPage } from './auth/LoginPage';
+import { PlatformLoginPage } from './auth/PlatformLoginPage';
+import { PlatformProtectedRoute } from './auth/PlatformProtectedRoute';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './layout/AppLayout';
+import { PlatformLayout } from './layout/PlatformLayout';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { NotificationDetailPage } from './pages/NotificationDetailPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { PlatformAuditPage } from './pages/platform/PlatformAuditPage';
+import { PlatformTenantDetailPage } from './pages/platform/PlatformTenantDetailPage';
+import { PlatformTenantsPage } from './pages/platform/PlatformTenantsPage';
 import { SubscriberDetailPage } from './pages/SubscriberDetailPage';
 import { SubscribersPage } from './pages/SubscribersPage';
 import { TemplateAssetsPage } from './pages/TemplateAssetsPage';
@@ -24,6 +30,24 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/platform/login',
+    element: <PlatformLoginPage />,
+  },
+  {
+    path: '/platform',
+    element: (
+      <PlatformProtectedRoute>
+        <PlatformLayout />
+      </PlatformProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/platform/tenants" replace /> },
+      { path: 'tenants', element: <PlatformTenantsPage /> },
+      { path: 'tenants/:id', element: <PlatformTenantDetailPage /> },
+      { path: 'audit', element: <PlatformAuditPage /> },
+    ],
   },
   {
     element: (
