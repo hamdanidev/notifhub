@@ -35,6 +35,7 @@ selesai · **rencana** = belum dikerjakan.
 | [templates/email-authoring-ui-design.md](templates/email-authoring-ui-design.md) | Bagaimana admin non-teknis mengubah theme dan layout tanpa menulis JSON/HTML? | terimplementasi | §2 keputusan, §3 UX, §5 batasan |
 | [templates/email-block-builder-design.md](templates/email-block-builder-design.md) | Bagaimana body email disusun dari block, dan bagaimana `builderData` divalidasi? | terimplementasi | §3 model data, §4 UX, §7 verifikasi |
 | [templates/template-limitations-roadmap.md](templates/template-limitations-roadmap.md) | Batasan template mana yang paling berisiko, dan apa prioritas serta statusnya? | P0, P1, sebagian P2 selesai | §2 tabel batasan, §3 prioritas, §11–§14 hasil |
+| [multi-tenant-platform-admin.md](multi-tenant-platform-admin.md) | Bagaimana tenant dikelola sebagai entitas: provisioning, platform admin, suspend, audit, dan isolasi antar tenant? | draf — menunggu persetujuan | §3 gap, §5 keputusan, §6 migrasi, §8 API |
 
 ## Arah baca menurut pekerjaan
 
@@ -43,6 +44,7 @@ selesai · **rencana** = belum dikerjakan.
 | Menambah atau mengubah kanal | [in-app](in-app.md) → [email-and-preferences](email-and-preferences.md) → [whatsapp](whatsapp.md), lalu [webhooks](webhooks.md) untuk status |
 | Menyentuh template atau render | [template-system-design](templates/template-system-design.md) → [block builder](templates/email-block-builder-design.md) → [limitations roadmap](templates/template-limitations-roadmap.md) |
 | Menyentuh auth, tenant, atau endpoint admin | [admin-api](admin-api.md) → [preference-center](preference-center.md) §6 → [in-app](in-app.md) §4 |
+| Menyentuh tenancy, provisioning, atau peran platform | [multi-tenant-platform-admin](multi-tenant-platform-admin.md) → [admin-api](admin-api.md) §2 |
 | Menyentuh console atau SDK frontend | [react-and-console](react-and-console.md) → [console-needs-analysis](console-needs-analysis.md) → [sample-in-app-design](sample-in-app-design.md) |
 | Mencari alasan sebuah keputusan | Cari `D<n>` di dokumen terkait; keputusan diberi nomor dan alasannya ditulis di tabel |
 

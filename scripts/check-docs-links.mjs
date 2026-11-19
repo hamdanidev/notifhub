@@ -103,7 +103,8 @@ function stripFences(text) {
         }
         return '';
       }
-      return inFence ? '' : line;
+      // Inline code is not Markdown link syntax: `foo[a](b)` must not look like a link.
+      return inFence ? '' : line.replace(/`[^`]*`/g, '');
     })
     .join('\n');
 }

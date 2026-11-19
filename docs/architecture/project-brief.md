@@ -169,7 +169,14 @@ npx prisma migrate status
 
 - WhatsApp hanya mengirim teks (`type: "text"`), belum approved-template Meta; inbound reply tidak
   ditangani.
-- `platform_admin` ditolak di Admin API (role tenant_admin saja); belum ada RBAC.
+- `platform_admin` ditolak di Admin API (role tenant_admin saja); belum ada RBAC. Lane platform
+  sedang didesain di `docs/design/multi-tenant-platform-admin.md`.
+- Belum ada entitas/status tenant: `tenantId` hanya string dengan default `default`, provisioning
+  lewat seed/DB, dan suspend/offboard belum tersedia. Draf desain:
+  `docs/design/multi-tenant-platform-admin.md`.
+- Idempotency notifikasi masih unik **global** dan lookup-nya tidak memfilter tenant, sehingga
+  `idempotency_key` yang sama di dua tenant mengembalikan notification id tenant lain (bug lintas
+  tenant; lihat draf desain `docs/design/multi-tenant-platform-admin.md` §3.2).
 - Go SDK hanya mencakup endpoint consumer (notify, subscriber, topic membership); admin/in-app/
   webhook/preference center tidak masuk. Tidak ada publikasi registry untuk Go SDK.
 - Console saat ini disajikan sebagai image nginx statis; belum ada browser automation permanen.
@@ -222,7 +229,9 @@ npx prisma migrate status
    GitHub Actions hijau di setiap PR.
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
-3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log).
+3. Platform admin lintas tenant + RBAC (`platform_admin`, manajemen tenant, audit log). Draf desain
+   sudah ada: `docs/design/multi-tenant-platform-admin.md` — menunggu persetujuan sebelum
+   implementasi.
 4. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
 5. Penegakan `allowedOrigins`/CORS per tenant, session/revocation token subscriber, dan upgrade
    dependensi untuk menutup temuan `npm audit`.
