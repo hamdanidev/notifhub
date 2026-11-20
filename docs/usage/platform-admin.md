@@ -9,7 +9,7 @@ tidak membawa klaim tenant, dan tenant admin tidak bisa memakai lane ini.
 | Endpoint | `/api/v1/platform/*` |
 | Kredensial | `Authorization: Bearer <platform admin JWT>` |
 | Mendapatkan token | `POST /api/v1/platform/auth/login` |
-| Console | `/platform/login` di host/platform console terpisah (produksi: `platform.<domain>`; smoke stack: `http://localhost:8081/platform/login`); tidak ditautkan dari login tenant |
+| Console | `/platform/login` di host platform terpisah (produksi: `platform.<domain>`; smoke stack: `http://localhost:8081/platform/login`); tidak ditautkan dari login tenant |
 | Role | `platform_admin` (akun dengan `tenantId = NULL`) |
 
 Kontrak lengkap: Swagger `GET /api/docs` (basic auth di luar development). Desain dan alasan

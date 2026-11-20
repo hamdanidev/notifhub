@@ -629,7 +629,7 @@ Verifikasi:
 | Token tenant di lane platform (`/platform/tenants`) | `403` |
 | Kredensial platform di login tenant | `403` |
 | `POST /api/v1/platform/tenants` (`p4-smoke`) | `201`; `Tenant` dibuat |
-| `GET /platform/audit?action=tenant.created&tenantId=p4-smoke` | 1 event; actor `platform@notifhub.local`, IP `::ffff:172.23.0.1`, metadata `{"name":"P4 Smoke"}` |
+| `GET /api/v1/platform/audit?action=tenant.created&tenantId=p4-smoke` | 1 event; actor `platform@notifhub.local`, IP `::ffff:172.23.0.1`, metadata `{"name":"P4 Smoke"}` |
 | `DELETE /api/v1/platform/tenants/p4-smoke` | `204`; audit `tenant.deleted`; sisa tenant `default` |
 | DB `PlatformAuditEvent` | 2 baris (`tenant.created`, `tenant.deleted`); `_prisma_migrations` 11 applied |
 | CORS preflight origin `:8080` dan `:8081` | `204` + `Access-Control-Allow-Origin` sesuai origin |
