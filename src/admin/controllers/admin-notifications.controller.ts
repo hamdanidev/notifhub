@@ -22,10 +22,12 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
 import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
+import { ComposeNotificationDto } from '../dto/compose-notification.dto';
 import { ExportNotificationsQueryDto } from '../dto/export-notifications.dto';
 import { NotificationListQueryDto } from '../dto/list-query.dto';
 import { ResendNotificationDto } from '../dto/resend-notification.dto';
@@ -33,6 +35,10 @@ import {
   AdminNotificationResendService,
   type ResendNotificationResult,
 } from '../services/admin-notification-resend.service';
+import {
+  AdminNotificationComposeService,
+  type ComposeNotificationResult,
+} from '../services/admin-notification-compose.service';
 import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 import {
   AdminNotificationsService,
@@ -49,8 +55,44 @@ export class AdminNotificationsController {
   constructor(
     private readonly notifications: AdminNotificationsService,
     private readonly resendService: AdminNotificationResendService,
+    private readonly composeService: AdminNotificationComposeService,
     private readonly audit: AdminAuditService,
   ) {}
+
+  @Post()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Compose and send a notification from the console',
+    description:
+      'Uses the ingest pipeline with the tenant from the admin JWT. requestKey is the idempotency ' +
+      'key; a replay returns the same notification. Creates a normal billing event.',
+  })
+  @ApiAcceptedResponse({ description: 'Notification accepted' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
+  async compose(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Body() dto: ComposeNotificationDto,
+    @Req() request: RequestWithId,
+  ): Promise<ComposeNotificationResult> {
+    const result = await this.composeService.compose(admin.tenantId, dto);
+    await this.audit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action: 'admin.notification.composed',
+      targetType: 'notification',
+      targetId: result.notification_id,
+      metadata: {
+        template_key: dto.templateKey,
+        channels: dto.channels,
+        recipients: dto.recipients?.length ?? 0,
+        topics: dto.topics?.length ?? 0,
+      },
+      context: adminAuditContextFrom(request),
+    });
+    return result;
+  }
 
   @Get()
   @ApiOperation({ summary: 'List notifications for the tenant (filter by status/template/date)' })

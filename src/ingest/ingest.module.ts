@@ -30,5 +30,6 @@ import { IngestService } from './ingest.service';
   controllers: [IngestController],
   // ThrottlerGuard is a provider so its onModuleInit lifecycle hook runs.
   providers: [IngestService, ThrottlerGuard],
+  exports: [IngestService],
 })
 export class IngestModule {}

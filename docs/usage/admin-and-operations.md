@@ -164,6 +164,11 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"mode":"all","requestKey":"<uuid>"}' \
   http://localhost:3000/api/v1/admin/notifications/<uuid>/resend
+
+# Compose dari admin lane (tenant dari JWT)
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"requestKey":"<uuid>","templateKey":"order.shipped","recipients":["user-1"],"channels":["inapp"],"data":{"nama":"Budi"}}' \
+  http://localhost:3000/api/v1/admin/notifications
 ```
 
 Parameter list: `limit` (default 20, maks 100), `offset`, `status` (`pending|partial|sent|failed`),
@@ -173,7 +178,9 @@ Parameter list: `limit` (default 20, maks 100), `offset`, `status` (`pending|par
 `GET /admin/notifications/export` memakai filter yang sama (plus `search`) dan mengembalikan JSON
 maksimum 5.000 baris; console mengubahnya menjadi CSV. `POST .../resend` default `mode: failed`;
 `mode: all` mengirim semua baris non-`sms` (termasuk yang sudah sukses), membuat notification baru,
-dan tidak membuat `BillingEvent` baru.
+dan tidak membuat `BillingEvent` baru. `POST /admin/notifications` adalah compose dari console:
+`requestKey` menjadi idempotency key, tenant dari JWT, dan notifikasi mengikuti jalur ingest biasa
+(termasuk `BillingEvent`).
 
 Detail mengembalikan `{ notification, recipients, deliveryAttempts, deliveryEvents }` — dipakai
 console untuk menelusuri kenapa sebuah pengiriman gagal atau di-skip.
@@ -198,8 +205,9 @@ npm run console:install
 npm run console:dev        # http://localhost:5173
 ```
 
-Halaman: Dashboard, Notifications (+detail), Templates (+form), Subscribers (+detail & editor
-preferensi), Topics (+detail & membership), API Keys, Audit, dan Akun (profil + ganti password).
+Halaman: Dashboard, Notifications (+detail, +kirim), Templates (+form), Subscribers (+detail &
+editor preferensi), Topics (+detail & membership), API Keys, Audit, dan Akun (profil + ganti
+password).
 
 - Login memakai `ADMIN_EMAIL` / password yang hash-nya ada di `ADMIN_PASSWORD_HASH`.
 - Admin JWT disimpan di `sessionStorage`; `401` menghapus sesi dan mengarahkan ke `/login`.

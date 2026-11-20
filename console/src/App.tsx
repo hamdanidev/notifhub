@@ -7,6 +7,7 @@ import { AppLayout } from './layout/AppLayout';
 import { AccountPage } from './pages/AccountPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { AuditPage } from './pages/AuditPage';
+import { ComposeNotificationPage } from './pages/ComposeNotificationPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { NotificationDetailPage } from './pages/NotificationDetailPage';
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: '/notifications', element: <NotificationsPage /> },
+      { path: '/notifications/new', element: <ComposeNotificationPage /> },
       { path: '/notifications/:id', element: <NotificationDetailPage /> },
       { path: '/templates', element: <TemplatesPage /> },
       { path: '/templates/new', element: <TemplateFormPage /> },

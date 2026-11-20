@@ -1,6 +1,6 @@
 # Operasi console P2: export, resend all, audit, compose
 
-Status: **P2a–P2b terimplementasi dan terverifikasi** (2026-11-20); P2c belum. Lihat §13–§14.
+Status: **P2a–P2c terimplementasi dan terverifikasi** (2026-11-20). Lihat §13–§15.
 Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/console-admin-hardening.md`,
 `docs/design/admin-api.md`, `src/admin`, `src/ingest`, `prisma/schema.prisma`, dan `console/src`.
 
@@ -20,6 +20,7 @@ Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/console-admi
 - [12. Pertanyaan persetujuan](#12-pertanyaan-persetujuan)
 - [13. Catatan implementasi P2a](#13-catatan-implementasi-p2a)
 - [14. Catatan implementasi P2b](#14-catatan-implementasi-p2b)
+- [15. Catatan implementasi P2c](#15-catatan-implementasi-p2c)
 
 ---
 
@@ -473,3 +474,36 @@ Catatan:
 3. Login/logout dan export tidak dicatat; password/API key/template/preference/topic/resend ya.
 4. Audit bersifat best-effort: kegagalan insert tidak menggagalkan mutasi (desain/log; E2E
    memastikan alur normal).
+
+## 15. Catatan implementasi P2c
+
+P2c (compose/send dari console) selesai dan terverifikasi pada 2026-11-20. P2 selesai.
+
+Yang sudah berjalan:
+
+- `POST /api/v1/admin/notifications` menerima `requestKey`, `templateKey`, `recipients`/`topics`,
+  `channels`, `data`, dan `priority` (`low|normal|high`).
+- `AdminNotificationComposeService` memetakan ke `NotifyDto` dan memanggil `IngestService.enqueue`
+  (tenant dari JWT), sehingga idempotensi, fan-out, billing event, dan queue sama dengan ingest.
+- Throttle 30/menit; audit `admin.notification.composed` dengan template/channel/jumlah target.
+- Halaman `/notifications/new`: template aktif (datalist), recipients/topics, channel, data JSON,
+  priority, tombol **Kirim notifikasi** di halaman Notifications.
+- Wrapper console `adminCompose.ts` memakai `HttpTransport`.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run test:e2e` | **44** test lulus; E44 compose `202`, billing event 1, idempotent replay, audit, validasi recipients/channels, isolasi tenant (acme tidak terlihat dari admin default) |
+| `npm run console:typecheck` / `console:build` | lulus |
+| `npm run ci` | lulus 70 s: typecheck, build, 29 unit, 44 e2e, 14 migrasi, `Database schema is up to date!` |
+| `npm run docs:check` | lulus |
+
+Catatan:
+
+1. Compose memakai template aktif saat worker memproses; perubahan template setelah submit dapat
+   mengubah hasil (sama seperti ingest).
+2. Belum ada preview/penjadwalan/inline override recipient di form; semua tenant admin boleh
+   mengirim (belum ada RBAC/approval).
+3. Idempotensi memakai `requestKey` UUID; replay mengembalikan notification yang sama.
+4. P2 selesai; sisa P3 adalah test/browser automation dan pemindahan wrapper ke SDK terbit.

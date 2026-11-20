@@ -133,6 +133,9 @@ export function NotificationsPage(): JSX.Element {
         subtitle="Semua notifikasi tenant ini."
         actions={
           <>
+            <Link to="/notifications/new" className="btn btn-sm btn-primary">
+              Kirim notifikasi
+            </Link>
             <Button
               type="button"
               size="sm"

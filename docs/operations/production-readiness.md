@@ -400,3 +400,7 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     password/API key/template/preference/topic/resend, dengan `GET /admin/audit` dan halaman
     `/audit`. E43 menambah cakupan e2e menjadi 43 test. Audit belum punya retensi otomatis. Detail:
     `docs/design/console-operations-p2.md` §14.
+20. **Console P2c (2026-11-20).** `POST /admin/notifications` compose/send memakai `IngestService`
+    (tenant dari JWT, `requestKey` sebagai idempotency key), throttle 30/menit, audit
+    `admin.notification.composed`, dan halaman `/notifications/new`. E44 menambah cakupan e2e
+    menjadi 44 test. Detail: `docs/design/console-operations-p2.md` §15.

@@ -538,7 +538,7 @@ Gap yang tersisa dan prioritas:
 | P1 (selesai) | CSP header untuk console | Mitigasi XSS belum ada di konfigurasi nginx/Caddy | Tidak (config) |
 | P2 (selesai) | Export CSV notification/recipient | Pelaporan manual | Ya |
 | P2 (selesai) | Resend all dengan konfirmasi | Pengingat massal belum bisa | Ya |
-| P2 | Compose/send dari console | Admin masih lewat API/curl | Ya |
+| P2 (selesai) | Compose/send dari console | Admin masih lewat API/curl | Ya |
 | P2 (selesai) | Audit aksi admin tenant | Tidak ada jejak aksi admin tenant | Ya (tabel audit) |
 | P3 | Test/browser automation console | Regresi UI tidak otomatis | Tidak (tooling) |
 | P3 | Pindahkan wrapper `adminTemplates`/`adminResend`/platform ke SDK terbit | Dua jalur pemanggilan | Ya (rilis SDK) |
@@ -547,7 +547,7 @@ Catatan: compose/send bukan blocker single tenant bila pengiriman memang dilakuk
 API/SDK. Untuk operator yang ingin mengirim manual dari console, ini gap utama.
 
 P1 sudah diimplementasikan dan diverifikasi pada 2026-11-20:
-[console-admin-hardening.md](console-admin-hardening.md) §16. P2a (export CSV + resend all) dan P2b
-(audit admin tenant) selesai: [console-operations-p2.md](console-operations-p2.md) §13–§14. Sisa
-gap P2 (compose/send) dan P3 (test/browser automation, pemindahan wrapper ke SDK terbit) belum
-dikerjakan.
+[console-admin-hardening.md](console-admin-hardening.md) §16. P2a (export CSV + resend all), P2b
+(audit admin tenant), dan P2c (compose/send) selesai:
+[console-operations-p2.md](console-operations-p2.md) §13–§15. Sisa P3 (test/browser automation,
+pemindahan wrapper ke SDK terbit) belum dikerjakan.

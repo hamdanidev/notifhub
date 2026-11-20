@@ -91,6 +91,7 @@ Aturan kerja:
 | Hardening console P1: ganti password + `tokenVersion`, secret API key, search notifikasi, CSP | selesai & terverifikasi (E38–E40; 40 e2e, 29 unit, CSP pada image) |
 | Console P2a: export CSV + resend all non-SMS | selesai & terverifikasi (E41–E42; 42 e2e) |
 | Console P2b: audit aksi admin tenant (tabel + API + halaman) | selesai & terverifikasi (E43; 43 e2e) |
+| Console P2c: compose/send dari console (reuse ingest) | selesai & terverifikasi (E44; 44 e2e) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -197,11 +198,11 @@ npx prisma migrate status
   diotomasi; verifikasi memakai HTTP/SSE/DB serta `typecheck`/`build`.
 - Console tenant sudah mendukung ganti password (invalidasi semua sesi lewat `tokenVersion`),
   secret subscriber per API key saat create, search notifikasi **exact** ID/recipient + page size
-  20/50/100, CSP, export CSV, re-send `failed`/`all` non-SMS, dan halaman audit aksi admin tenant.
-  Compose/send belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override
-  dari ingest awal tidak tersimpan. Endpoint console yang belum ada di SDK terbit memakai wrapper
+  20/50/100, CSP, export CSV, re-send `failed`/`all` non-SMS, audit aksi admin tenant, dan
+  compose/send. Re-send memakai template aktif/data Subscriber saat ini; inline override dari
+  ingest awal tidak tersimpan. Endpoint console yang belum ada di SDK terbit memakai wrapper
   `HttpTransport` sementara. Lihat `docs/design/console-admin-hardening.md` §16 dan
-  `docs/design/console-operations-p2.md` §13–§14.
+  `docs/design/console-operations-p2.md` §13–§15.
 - Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
   WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
   ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage count/proteksi hapus aset,
@@ -255,5 +256,6 @@ npx prisma migrate status
    di `docs/design/platform-console-host-split.md` §10/§18.4.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
-6. Sisa hardening console P2: compose/send. P2a (export + resend all) dan P2b (audit admin tenant)
-   sudah selesai: `docs/design/console-operations-p2.md` §13–§14.
+6. P3 console: test/browser automation dan pemindahan wrapper `HttpTransport` console
+   (`adminResend`, `adminTemplates`, `adminPlatform`, `adminExport`, `adminAudit`, `adminCompose`,
+   `adminAccount`) ke `@notifhub/js` saat rilis SDK berikutnya.

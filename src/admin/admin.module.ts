@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from '../auth/auth.module';
+import { IngestModule } from '../ingest/ingest.module';
 import { ProvidersModule } from '../providers/providers.module';
 import { QueuesModule } from '../queues/queues.module';
 import { TemplatesModule } from '../templates/templates.module';
@@ -17,6 +18,7 @@ import { AdminApiKeysService } from './services/admin-api-keys.service';
 import { AdminAuditService } from './services/admin-audit.service';
 import { AdminAuthService } from './services/admin-auth.service';
 import { AdminNotificationResendService } from './services/admin-notification-resend.service';
+import { AdminNotificationComposeService } from './services/admin-notification-compose.service';
 import { AdminNotificationsService } from './services/admin-notifications.service';
 import { AdminSubscribersService } from './services/admin-subscribers.service';
 import { AdminTemplateAssetsService } from './services/admin-template-assets.service';
@@ -33,6 +35,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
 @Module({
   imports: [
     AuthModule,
+    IngestModule,
     TopicsModule,
     QueuesModule,
     TemplatesModule,
@@ -62,6 +65,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
     AdminTopicsService,
     AdminNotificationsService,
     AdminNotificationResendService,
+    AdminNotificationComposeService,
     ThrottlerGuard,
   ],
 })

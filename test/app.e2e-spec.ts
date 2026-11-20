@@ -2352,4 +2352,128 @@ describe('Console operations e2e', () => {
     expect(passwordAudit.status).toBe(200);
     expect(passwordAudit.body.total).toBeGreaterThanOrEqual(2);
   });
+
+  it('E44 compose mengirim lewat ingest, idempoten, dan tenant-scoped', async () => {
+    const recipient = `compose-${randomUUID()}`;
+    const requestKey = randomUUID();
+    const payload = {
+      requestKey,
+      templateKey: TEMPLATE_KEY,
+      recipients: [recipient],
+      channels: ['inapp'],
+      data: { nama: 'Budi' },
+      priority: 'normal',
+    };
+
+    const created = await request(server)
+      .post('/api/v1/admin/notifications')
+      .set('Authorization', bearer(adminToken))
+      .send(payload);
+    expect(created.status).toBe(202);
+    const notificationId = created.body.notification_id as string;
+
+    const notification = await prisma.notification.findUniqueOrThrow({
+      where: { id: notificationId },
+      include: { recipients: true },
+    });
+    expect(notification.tenantId).toBe('default');
+    expect(notification.recipients).toHaveLength(1);
+    expect(await prisma.billingEvent.count({ where: { notificationId } })).toBe(1);
+
+    await waitFor(
+      async () => {
+        const row = await prisma.notificationRecipient.findFirst({
+          where: { notificationId, recipientId: recipient, channel: Channel.inapp },
+          select: { status: true },
+        });
+
+        return row !== null && row.status !== 'pending' ? row : null;
+      },
+      'compose selesai diproses worker',
+    );
+
+    const replay = await request(server)
+      .post('/api/v1/admin/notifications')
+      .set('Authorization', bearer(adminToken))
+      .send(payload);
+    expect(replay.status).toBe(202);
+    expect(replay.body.notification_id).toBe(notificationId);
+    expect(await prisma.billingEvent.count({ where: { notificationId } })).toBe(1);
+
+    const audit = await request(server)
+      .get('/api/v1/admin/audit?action=admin.notification.composed&limit=100')
+      .set('Authorization', bearer(adminToken));
+    expect(audit.status).toBe(200);
+    const event = (audit.body.items as Array<Record<string, unknown>>).find(
+      (item) => item.targetId === notificationId,
+    );
+    expect(event).toMatchObject({
+      actorEmail: TEST_ADMIN_EMAIL,
+      targetType: 'notification',
+      metadata: { template_key: TEMPLATE_KEY, channels: ['inapp'] },
+    });
+
+    const missingTarget = await request(server)
+      .post('/api/v1/admin/notifications')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        requestKey: randomUUID(),
+        templateKey: TEMPLATE_KEY,
+        channels: ['inapp'],
+      });
+    expect(missingTarget.status).toBe(400);
+
+    const emptyChannels = await request(server)
+      .post('/api/v1/admin/notifications')
+      .set('Authorization', bearer(adminToken))
+      .send({ ...payload, requestKey: randomUUID(), channels: [] });
+    expect(emptyChannels.status).toBe(400);
+
+    const acmeTemplate = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(acmeAdminToken))
+      .send({
+        key: TEMPLATE_KEY,
+        channel: Channel.inapp,
+        locale: 'id',
+        body: 'Halo {{nama}}',
+        active: true,
+      });
+    expect(acmeTemplate.status).toBe(201);
+
+    const acmeRecipient = `acme-compose-${randomUUID()}`;
+    const acmeCompose = await request(server)
+      .post('/api/v1/admin/notifications')
+      .set('Authorization', bearer(acmeAdminToken))
+      .send({
+        requestKey: randomUUID(),
+        templateKey: TEMPLATE_KEY,
+        recipients: [acmeRecipient],
+        channels: ['inapp'],
+        data: { nama: 'Acme' },
+      });
+    expect(acmeCompose.status).toBe(202);
+    const acmeNotificationId = acmeCompose.body.notification_id as string;
+
+    const foreign = await request(server)
+      .get(`/api/v1/admin/notifications/${acmeNotificationId}`)
+      .set('Authorization', bearer(adminToken));
+    expect(foreign.status).toBe(404);
+
+    await waitFor(
+      async () => {
+        const row = await prisma.notificationRecipient.findFirst({
+          where: {
+            notificationId: acmeNotificationId,
+            recipientId: acmeRecipient,
+            channel: Channel.inapp,
+          },
+          select: { status: true },
+        });
+
+        return row !== null && row.status !== 'pending' ? row : null;
+      },
+      'compose acme selesai diproses worker',
+    );
+  });
 });
