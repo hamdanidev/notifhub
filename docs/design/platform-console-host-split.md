@@ -565,6 +565,7 @@ Verifikasi:
 | `docker build --target runner-platform` | berhasil, tag `notifhub-console-platform:ci` |
 | Negative test guard | file uji berisi `NotifHub Platform` di `dist/tenant/assets` membuat guard gagal (exit `1`); file dihapus setelah uji |
 | Runtime image (manual, `docker run` :18080/:18081) | tenant `/platform/login?x=1` → `302` ke `http://localhost:18081/platform/login?x=1`; platform `/` → `302` `Location: /platform/tenants`; `/platform/login` → `200`; tenant `/` → `200` |
+| GitHub Actions run #34 (`e0088d0`) | `success`; kelima job (`backend`, `packages`, `go`, `docs`, `docker`) hijau, termasuk langkah guard artifact dan dua build image console |
 
 Catatan:
 
@@ -579,6 +580,6 @@ Catatan:
    tetapi smoke stack penuh dengan Postgres/Redis/backend dan login platform tetap bagian P4; build
    arg `VITE_PLATFORM_CONSOLE_URL=http://localhost:8081` dipakai agar image tenant CI mencerminkan
    konfigurasi smoke stack.
-5. **Workflow GitHub Actions belum dijalankan ulang dari sesi ini** untuk commit P3; padanan
-   lokalnya dijalankan dengan perintah yang sama (tabel di atas). Status hijau di GitHub tetap perlu
-   diperiksa setelah push.
+5. **Workflow GitHub Actions untuk commit P3 hijau**: run #34 (`e0088d0`) selesai `success` untuk
+   kelima job, termasuk langkah guard artifact di job `packages` dan dua build image console di job
+   `docker`.
