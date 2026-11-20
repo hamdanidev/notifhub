@@ -80,7 +80,7 @@ describe('WahaProvider', () => {
   });
 
   it('mengirim ke /api/sendText dengan header dan chatId yang benar', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ id: 'true_628123456789@c.us_ABC' }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ key: { id: '3EB0ABC123' } }));
 
     const { provider } = createProvider('production');
     const result = await provider.send(input);
@@ -100,7 +100,19 @@ describe('WahaProvider', () => {
       text: 'Halo Budi',
       linkPreview: false,
     });
-    expect(result.providerMessageId).toBe('true_628123456789@c.us_ABC');
+    expect(result.providerMessageId).toBe('3EB0ABC123');
+  });
+
+  it('menormalkan id komposit dari engine berbasis id penuh', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ id: 'true_628123456789@c.us_3EB0FULLID' }),
+    );
+
+    const { provider } = createProvider('production');
+
+    await expect(provider.send(input)).resolves.toEqual({
+      providerMessageId: '3EB0FULLID',
+    });
   });
 
   it('menerima id dari _data sebagai fallback engine', async () => {
@@ -111,7 +123,7 @@ describe('WahaProvider', () => {
     const { provider } = createProvider('production');
 
     await expect(provider.send(input)).resolves.toEqual({
-      providerMessageId: 'true_628123456789@c.us_FALLBACK',
+      providerMessageId: 'FALLBACK',
     });
   });
 

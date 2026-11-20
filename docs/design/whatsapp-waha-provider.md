@@ -1,7 +1,7 @@
 # Provider WhatsApp WAHA
 
-Status: **terimplementasi; verifikasi otomatis lulus; smoke test WAHA nyata belum dijalankan**
-(2026-11-20). Lihat §15.
+Status: **terimplementasi; verifikasi otomatis lulus; smoke WAHA nyata: kirim + ack `sent` OK,
+`delivered`/`read` menunggu nomor kedua** (2026-11-20). Lihat §15.
 Basis: `docs/design/whatsapp.md` (provider Meta, worker, webhook), `docs/design/webhooks.md`
 (pipeline status), `src/providers/`, `src/workers/whatsapp.processor.ts`, dan dokumentasi resmi
 WAHA: [Send messages](https://waha.devlike.pro/docs/how-to/send-messages/),
@@ -153,7 +153,11 @@ Body:
 
 ### 5.2 Response dan error
 
-- Response 2xx dianggap sukses; ambil `id` (string) sebagai `providerMessageId`.
+- Response 2xx dianggap sukses. Id pesan dibaca dari `key.id` (NOWEB), lalu `id`, lalu `_data.id`
+  (fallback engine lain), dan dinormalkan menjadi **bare message id** (`3EB0…`).
+- `message.ack` mengirim id komposit (`true_<jid>_<id>` atau `true__<id>`); parser menormalkannya
+  dengan aturan yang sama sebelum lookup `providerMessageId`, sehingga provider dan webhook tetap
+  cocok meskipun bentuk id berbeda antar-engine.
   Jika `id` tidak ada → error 502 retryable (kontrak WAHA tidak terpenuhi).
 - Bentuk error WAHA: `{ "message": "...", "statusCode": 4xx|5xx }`; pesan dipotong 500 karakter
   sebelum masuk log/`lastError`.
@@ -210,7 +214,8 @@ Envelope WAHA:
 ```
 
 - Hanya `event = "message.ack"` yang diproses. Event lain diabaikan dan tetap dibalas `202`.
-- `providerMessageId` = `payload.id`; `occurredAt` = envelope `timestamp` (milidetik) atau `now`
+- `providerMessageId` = bare id hasil normalisasi `payload.id`; `occurredAt` = envelope `timestamp`
+  (milidetik) atau `now`
   bila tidak ada.
 - `ackName` dipakai bila ada; fallback ke angka `ack` (kompatibilitas engine).
 - `rawPayload` yang disimpan: `{ event, session, id, ack, ackName, from, fromMe, timestamp }` —
@@ -429,8 +434,8 @@ smoke test manual dan dokumentasi status.
 ## 15. Catatan implementasi
 
 Implementasi selesai pada 2026-11-20 dan disetujui dengan D1–D11. Status verifikasi: **otomatis
-lulus**; smoke test WAHA nyata belum dijalankan karena membutuhkan nomor WhatsApp dan scan QR
-(lihat §15.3).
+lulus**; smoke WAHA nyata berhasil untuk pengiriman + ack `sent`, sedangkan `delivered`/`read`
+menunggu nomor kedua (lihat §15.3).
 
 Yang sudah berjalan:
 
@@ -446,14 +451,17 @@ Yang sudah berjalan:
 - Env `WHATSAPP_PROVIDER`, `WAHA_BASE_URL`, `WAHA_API_KEY`, `WAHA_SESSION`, dan
   `WAHA_WEBHOOK_HMAC_KEY` masuk schema (validasi wajib bila provider `waha`, HMAC minimal 32
   karakter), `.env.example`, `.env.prod.example`, dan `docs/getting-started/configuration.md`.
+- **Normalisasi id pesan**: `sendText` NOWEB mengembalikan `key.id`, sedangkan webhook mengirim
+  `true_<jid>_<id>`; keduanya dinormalkan ke bare id agar pencocokan `providerMessageId` bekerja
+  lintas engine (temuan smoke nyata, lihat §15.3).
 
 Verifikasi:
 
 | Pemeriksaan | Hasil |
 |---|---|
-| `npm run test:unit` | **62** test lulus (13 suite); 32 test baru untuk WAHA |
+| `npm run test:unit` | **64** test lulus (13 suite); 34 test baru untuk WAHA |
 | `npm run test:e2e` | **46** test lulus; E46 lulus (ack DEVICE/READ, duplikat, PENDING, event asing, id tak dikenal, HMAC salah, algoritma hilang) |
-| `npm run ci` | lulus **95 s**; typecheck, build, 62 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
+| `npm run ci` | lulus **85 s**; typecheck, build, 64 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
 | Perubahan schema/migrasi | tidak ada (tetap 14) |
 | Dependency baru | tidak ada |
 | `npm run docs:check` | lulus (511 tautan/anchor, 42 file) |
@@ -461,16 +469,50 @@ Verifikasi:
 
 Deviasi dan catatan:
 
-1. **Fallback `_data.id`.** Respon `sendText` diambil dari `id`; bila engine tidak menyediakannya,
-   `_data.id` dipakai sebagai fallback sebelum dianggap gagal 502. Ini defensif terhadap perbedaan
-   engine yang didokumentasikan WAHA.
+1. **Bentuk id antar-engine.** Respon `sendText` dibaca dari `key.id` (NOWEB), lalu `id`, lalu
+   `_data.id`; semua dinormalkan ke bare id. Sebelum perbaikan ini, smoke nyata gagal dengan
+   `waha response did not include a message id` karena NOWEB hanya mengembalikan `key.id`.
 2. **Log boot** `provider.whatsapp.selected` ditambahkan agar operator bisa memastikan provider
    yang aktif tanpa membaca secret.
 3. **E2E tidak memanggil WAHA nyata.** E46 membuat notification/recipient langsung lewat Prisma,
    lalu mengirim webhook bertanda tangan; provider HTTP diuji unit dengan `fetch` mock. Ini
    menghindari ketergantungan pada nomor WhatsApp di CI.
-4. **Smoke test WAHA nyata belum dijalankan.** Langkah §12.2 tetap menjadi gate operator: jalankan
-   container WAHA, scan QR, isi env, kirim pesan uji, dan amati `waha.sent` serta `message.ack`.
-   Status dokumen ini akan diperbarui setelah smoke test dilakukan.
+4. **Engine:** smoke pertama memakai WEBJS dan gagal setelah sesi logout (`FAILED`, browser
+   ditutup); sesi dibuat ulang dengan **NOWEB** yang lebih ringan dan berhasil. Pilihan engine tetap
+   konfigurasi container operator (`WHATSAPP_DEFAULT_ENGINE`).
 5. Tidak ada perubahan kontrak HTTP publik, console, SDK, atau `docker-compose.prod.yml`; deployment
    WAHA tetap terpisah di sisi operator.
+
+### 15.3 Smoke WAHA nyata (2026-11-20)
+
+Lingkungan:
+
+- Container `devlikeapro/waha` (WAHA `2026.10.1`) di `localhost:3001`, engine **NOWEB**, sesi
+  `default` berstatus `WORKING`, webhook global ke NotifHub dengan HMAC-SHA512.
+- Instance NotifHub smoke di port `3199` dengan `WHATSAPP_PROVIDER=waha`, database `notifhub_test`,
+  Redis DB terpisah (14), dan mode `staging` (catch-all ke nomor tertaut).
+- Template `waha.smoke` (text) dan subscriber `waha-smoke` dengan nomor tertaut.
+
+Hasil pengiriman:
+
+| Bukti | Nilai |
+|---|---|
+| `POST /api/v1/notify` | `202`, notification `6763c79d-bdfe-4e1d-a6db-6cbabe6d2181` |
+| `delivery_attempts` | 1 baris sukses, provider `waha`, 150 ms |
+| `providerMessageId` | `3EB0562753159398CE6459` |
+| `message.ack` pertama | `SERVER`/`ack=1`, raw id `true_251680805396688@lid_3EB0562753159398CE6459` |
+| Status recipient | `sent`, `sentAt=2026-11-20T16:59:35.863Z` |
+| `delivery_events` | 1 baris `provider=waha`, `eventType=sent` |
+
+Catatan smoke:
+
+1. Percobaan pertama gagal karena provider mengharapkan `id`/`_data.id`, sedangkan NOWEB
+   mengembalikan `key.id`; perbaikan normalisasi id dilakukan dan diuji ulang berhasil.
+2. `DEVICE`/`READ` belum teramati karena pesan dikirim ke **nomor sendiri** (self-chat) dan WAHA
+   NOWEB melaporkan `ack=0`/`PENDING` untuk pesan tersebut. Untuk menutup pemetaan
+   `delivered`/`read`, kirim ke nomor WhatsApp kedua lalu buka pesannya; status akan diperbarui di
+   dokumen ini.
+3. WEBJS sempat `FAILED` setelah logout dan browser ditutup; sesi NOWEB dibuat baru. Tidak ada
+   perubahan kode yang diperlukan untuk itu, tetapi engine sebaiknya dipatok di deployment.
+4. Instance smoke, container WAHA, dan file env sementara berada di `var/` (gitignored) dan tidak
+   menjadi bagian dari repo; hentikan dengan `docker rm -f notifhub-waha-smoke` setelah selesai.

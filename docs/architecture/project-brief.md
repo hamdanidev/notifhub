@@ -82,7 +82,7 @@ Aturan kerja:
 | Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode + block builder email (heading/teks/gambar/tombol/divider/spacer/dua kolom) | selesai & terverifikasi (E12–E20, UI manual tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
-| Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46; smoke WAHA nyata pending) |
+| Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46); smoke nyata: kirim + `sent` OK, `delivered`/`read` pending nomor kedua |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E40), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |

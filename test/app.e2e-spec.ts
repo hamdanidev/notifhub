@@ -2560,7 +2560,8 @@ describe('WhatsApp WAHA e2e', () => {
 
   it('E46 webhook WAHA memetakan ack, menolak signature salah, dan mengabaikan event asing', async () => {
     const recipientId = `waha-${randomUUID()}`;
-    const providerMessageId = `true_${recipientId}@c.us_${randomUUID().replace(/-/g, '')}`;
+    const messageKey = randomUUID().replace(/-/g, '');
+    const providerMessageId = `true_${recipientId}@c.us_${messageKey}`;
     const notification = await prisma.notification.create({
       data: {
         tenantId: 'default',
@@ -2577,7 +2578,7 @@ describe('WhatsApp WAHA e2e', () => {
               status: Status.sent,
               sentAt: new Date(),
               providerName: 'waha',
-              providerMessageId,
+              providerMessageId: messageKey,
             },
           ],
         },

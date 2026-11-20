@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Channel } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
 import { WebhooksService } from '../webhooks.service';
-import { isRecord } from '../../providers/waha/waha.types';
+import { isRecord, normalizeWahaMessageId } from '../../providers/waha/waha.types';
 
 const ACK_NAME_TO_CODE: Record<string, number> = {
   ERROR: -1,
@@ -132,7 +132,7 @@ function parseAck(envelope: Record<string, unknown>): ParsedAck | null {
   const ackName = typeof payload.ackName === 'string' ? payload.ackName.toUpperCase() : null;
 
   return {
-    providerMessageId: payload.id,
+    providerMessageId: normalizeWahaMessageId(payload.id),
     eventType,
     occurredAt: parseOccurredAt(envelope.timestamp),
     errorMessage: eventType === 'failed' ? extractAckError(payload) : null,

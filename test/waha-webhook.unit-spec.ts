@@ -1,7 +1,7 @@
 import { Channel } from '@prisma/client';
 import { WahaWebhookService } from '../src/webhooks/waha/waha-webhook.service';
 
-const messageId = 'true_628123456789@c.us_ABC';
+const messageId = '3EB0ACKTEST';
 
 function createService(result: 'applied' | 'unmatched' | 'deleted' = 'applied') {
   const applyDeliveryStatus = jest.fn().mockResolvedValue(result);
@@ -131,6 +131,25 @@ describe('WahaWebhookService', () => {
     expect(applyDeliveryStatus).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'read' }),
     );
+  });
+
+  it('menormalkan ack id komposit agar cocok dengan providerMessageId tersimpan', async () => {
+    const { service, applyDeliveryStatus } = createService();
+
+    await service.handle(
+      ackEnvelope({
+        payload: { id: 'true_251680805396688@lid_3EB0341E59F1A2467B714E' },
+      }),
+    );
+
+    expect(applyDeliveryStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerMessageId: '3EB0341E59F1A2467B714E',
+      }),
+    );
+
+    const args = applyDeliveryStatus.mock.calls[0]?.[0] as { rawPayload: Record<string, unknown> };
+    expect(args.rawPayload.id).toBe('true_251680805396688@lid_3EB0341E59F1A2467B714E');
   });
 
   it('id tak dikenal dihitung ignored', async () => {
