@@ -1,8 +1,10 @@
 import { Alert, Button, Modal } from 'react-bootstrap';
+import type { ResendMode } from '../lib/adminResend';
 import { ChannelBadge } from './ChannelBadge';
 
-export interface ResendFailedDialogProps {
+export interface ResendDialogProps {
   show: boolean;
+  mode: ResendMode;
   recipientCount: number;
   channels: string[];
   busy: boolean;
@@ -11,15 +13,18 @@ export interface ResendFailedDialogProps {
   onConfirm: () => void;
 }
 
-export function ResendFailedDialog({
+export function ResendDialog({
   show,
+  mode,
   recipientCount,
   channels,
   busy,
   error,
   onCancel,
   onConfirm,
-}: ResendFailedDialogProps): JSX.Element {
+}: ResendDialogProps): JSX.Element {
+  const all = mode === 'all';
+
   return (
     <Modal
       show={show}
@@ -31,12 +36,25 @@ export function ResendFailedDialog({
       centered
     >
       <Modal.Header closeButton={!busy}>
-        <Modal.Title className="h6 mb-0">Kirim ulang yang gagal</Modal.Title>
+        <Modal.Title className="h6 mb-0">
+          {all ? 'Kirim ulang semua penerima' : 'Kirim ulang yang gagal'}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <p className="mb-2">
           Akan dibuat <strong>notification baru</strong> untuk {recipientCount} pasangan
-          recipient/channel yang berstatus <code>failed</code>.
+          recipient/channel
+          {all ? (
+            <>
+              {' '}
+              non-SMS, <strong>termasuk yang sudah berhasil</strong>.
+            </>
+          ) : (
+            <>
+              {' '}
+              yang berstatus <code>failed</code>.
+            </>
+          )}
         </p>
         <div className="d-flex gap-1 flex-wrap mb-3">
           {channels.map((channel) => (
@@ -54,6 +72,12 @@ export function ResendFailedDialog({
               Subscriber saat ini yang dipakai.
             </li>
             <li>Notification asli tidak berubah dan tetap menjadi jejak audit.</li>
+            {all ? (
+              <li>
+                Penerima yang sebelumnya sudah menerima notifikasi ini akan menerima lagi. Pastikan
+                ini memang diinginkan.
+              </li>
+            ) : null}
           </ul>
         </Alert>
 
@@ -67,8 +91,12 @@ export function ResendFailedDialog({
         <Button variant="outline-secondary" onClick={onCancel} disabled={busy}>
           Batal
         </Button>
-        <Button variant="primary" onClick={onConfirm} disabled={busy || recipientCount === 0}>
-          {busy ? 'Mengirim…' : 'Kirim ulang yang gagal'}
+        <Button
+          variant={all ? 'danger' : 'primary'}
+          onClick={onConfirm}
+          disabled={busy || recipientCount === 0}
+        >
+          {busy ? 'Mengirim…' : all ? 'Kirim ulang semua' : 'Kirim ulang yang gagal'}
         </Button>
       </Modal.Footer>
     </Modal>

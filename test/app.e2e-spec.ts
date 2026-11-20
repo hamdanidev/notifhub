@@ -2118,5 +2118,176 @@ describe('Admin hardening e2e', () => {
         tokenVersion: { increment: 1 },
       },
     });
+
+    // The password change invalidated the original token; sign a fresh one so later suites
+    // (export/resend) can keep using the same admin without another throttled login.
+    const restored = await prisma.adminUser.findUniqueOrThrow({ where: { id: afterBootstrap.id } });
+    adminToken = jwt.sign(
+      {
+        sub: restored.id,
+        email: TEST_ADMIN_EMAIL,
+        role: 'tenant_admin',
+        tenant: 'default',
+        tokenVersion: restored.tokenVersion,
+      },
+      process.env.ADMIN_JWT_SECRET as string,
+      { algorithm: 'HS256', expiresIn: '1h' },
+    );
+  });
+});
+
+describe('Console operations e2e', () => {
+  it('E41 export notifikasi memakai filter, batas, dan tenant isolation', async () => {
+    const recipient = `export-${randomUUID()}`;
+    const created = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', TEST_SERVICE_API_KEY)
+      .send({
+        idempotency_key: `e2e-export-${randomUUID()}`,
+        template_key: TEMPLATE_KEY,
+        recipients: [recipient],
+        channels: ['inapp'],
+        data: { nama: 'Budi' },
+      });
+    expect(created.status).toBe(202);
+    const notificationId = created.body.notification_id as string;
+
+    const byId = await request(server)
+      .get(`/api/v1/admin/notifications/export?search=${encodeURIComponent(notificationId)}`)
+      .set('Authorization', bearer(adminToken));
+    expect(byId.status).toBe(200);
+    expect(byId.body.total).toBe(1);
+    expect(byId.body.limit).toBe(5000);
+    expect(byId.body.truncated).toBe(false);
+    expect(byId.body.items[0]).toMatchObject({ id: notificationId, templateKey: TEMPLATE_KEY });
+
+    const invalidLimit = await request(server)
+      .get('/api/v1/admin/notifications/export?limit=5001')
+      .set('Authorization', bearer(adminToken));
+    expect(invalidLimit.status).toBe(400);
+
+    const truncated = await request(server)
+      .get('/api/v1/admin/notifications/export?limit=1')
+      .set('Authorization', bearer(adminToken));
+    expect(truncated.status).toBe(200);
+    expect(truncated.body.items).toHaveLength(1);
+    expect(truncated.body.truncated).toBe(true);
+
+    const tenantBNotification = await prisma.notification.create({
+      data: {
+        tenantId: TEST_TENANT_B,
+        idempotencyKey: `e2e-export-b-${randomUUID()}`,
+        idempotencyExpiresAt: new Date(Date.now() + 60_000),
+        templateKey: TEMPLATE_KEY,
+        payload: {},
+      },
+    });
+    const isolated = await request(server)
+      .get(`/api/v1/admin/notifications/export?search=${tenantBNotification.id}`)
+      .set('Authorization', bearer(adminToken));
+    expect(isolated.status).toBe(200);
+    expect(isolated.body.total).toBe(0);
+  });
+
+  it('E42 resend all mengirim semua non-SMS, failed-only tetap gagal saja', async () => {
+    const otherRecipient = `resend-all-${randomUUID()}`;
+    const source = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', TEST_SERVICE_API_KEY)
+      .send({
+        idempotency_key: `e2e-resend-all-${randomUUID()}`,
+        template_key: TEMPLATE_KEY,
+        recipients: [RECIPIENT, otherRecipient],
+        channels: ['inapp', 'sms'],
+        data: { nama: 'Budi' },
+      });
+    expect(source.status).toBe(202);
+    const sourceId = source.body.notification_id as string;
+
+    await waitFor(
+      async () => {
+        const rows = await prisma.notificationRecipient.findMany({
+          where: { notificationId: sourceId, channel: Channel.inapp },
+          select: { status: true },
+        });
+
+        return rows.length === 2 && rows.every((row) => row.status !== 'pending') ? rows : null;
+      },
+      'recipient in-app selesai diproses sebelum resend all',
+    );
+
+    await prisma.notificationRecipient.updateMany({
+      where: { notificationId: sourceId, recipientId: RECIPIENT, channel: Channel.inapp },
+      data: { status: 'failed', lastError: 'forced_e2e_failure' },
+    });
+    await prisma.notificationRecipient.updateMany({
+      where: { notificationId: sourceId, recipientId: otherRecipient, channel: Channel.inapp },
+      data: { status: 'sent', sentAt: new Date() },
+    });
+
+    const requestKey = randomUUID();
+    const all = await request(server)
+      .post(`/api/v1/admin/notifications/${sourceId}/resend`)
+      .set('Authorization', bearer(adminToken))
+      .send({ mode: 'all', requestKey });
+    expect(all.status).toBe(202);
+    expect(all.body).toMatchObject({
+      status: 'accepted',
+      mode: 'all',
+      recipient_count: 2,
+      channels: ['inapp'],
+    });
+
+    const allNotificationId = all.body.notification_id as string;
+    const allCreated = await prisma.notification.findUniqueOrThrow({
+      where: { id: allNotificationId },
+      include: { recipients: true },
+    });
+    expect(allCreated.resendOfNotificationId).toBe(sourceId);
+    expect(allCreated.resendMode).toBe('all');
+    expect(allCreated.recipients).toHaveLength(2);
+    expect(allCreated.recipients.every((row) => row.channel === Channel.inapp)).toBe(true);
+    expect(
+      await prisma.billingEvent.count({ where: { notificationId: allNotificationId } }),
+    ).toBe(0);
+
+    await waitFor(
+      async () => {
+        const rows = await prisma.notificationRecipient.findMany({
+          where: { notificationId: allNotificationId },
+          select: { status: true },
+        });
+
+        return rows.every((row) => row.status !== 'pending') ? rows : null;
+      },
+      'resend all selesai diproses worker',
+    );
+
+    const replay = await request(server)
+      .post(`/api/v1/admin/notifications/${sourceId}/resend`)
+      .set('Authorization', bearer(adminToken))
+      .send({ mode: 'all', requestKey });
+    expect(replay.status).toBe(202);
+    expect(replay.body.notification_id).toBe(allNotificationId);
+
+    const failedOnly = await request(server)
+      .post(`/api/v1/admin/notifications/${sourceId}/resend`)
+      .set('Authorization', bearer(adminToken))
+      .send({ mode: 'failed', requestKey: randomUUID() });
+    expect(failedOnly.status).toBe(202);
+    expect(failedOnly.body).toMatchObject({ mode: 'failed', recipient_count: 1 });
+
+    const failedOnlyId = failedOnly.body.notification_id as string;
+    await waitFor(
+      async () => {
+        const rows = await prisma.notificationRecipient.findMany({
+          where: { notificationId: failedOnlyId },
+          select: { status: true },
+        });
+
+        return rows.every((row) => row.status !== 'pending') ? rows : null;
+      },
+      'resend failed-only selesai diproses worker',
+    );
   });
 });

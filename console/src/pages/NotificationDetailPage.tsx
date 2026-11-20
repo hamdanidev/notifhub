@@ -6,12 +6,13 @@ import { ChannelBadge } from '../components/ChannelBadge';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
 import { RefreshControl } from '../components/RefreshControl';
-import { ResendFailedDialog } from '../components/ResendFailedDialog';
+import { ResendDialog } from '../components/ResendDialog';
 import { StatusBadge } from '../components/StatusBadge';
 import { adminClient } from '../lib/adminClient';
 import {
-  resendFailedNotification,
-  type ResendFailedResult,
+  resendNotification,
+  type ResendMode,
+  type ResendNotificationResult,
 } from '../lib/adminResend';
 import { asNumber, asString, describeError, formatDateTime } from '../lib/format';
 
@@ -39,8 +40,9 @@ export function NotificationDetailPage(): JSX.Element {
   const queryClient = useQueryClient();
   const [recipientStatus, setRecipientStatus] = useState('');
   const [resendOpen, setResendOpen] = useState(false);
+  const [resendDialogMode, setResendDialogMode] = useState<ResendMode>('failed');
   const [resendRequestKey, setResendRequestKey] = useState('');
-  const [resendResult, setResendResult] = useState<ResendFailedResult | null>(null);
+  const [resendResult, setResendResult] = useState<ResendNotificationResult | null>(null);
 
   const query = useQuery({
     queryKey: ['notification', id],
@@ -63,16 +65,24 @@ export function NotificationDetailPage(): JSX.Element {
     (recipient) =>
       asString(recipient.status) === 'failed' && asString(recipient.channel) !== 'sms',
   );
+  const allNonSmsRecipients = allRecipients.filter(
+    (recipient) => asString(recipient.channel) !== 'sms',
+  );
   const failedChannels = [
     ...new Set(failedRecipients.map((recipient) => asString(recipient.channel))),
   ];
+  const allChannels = [
+    ...new Set(allNonSmsRecipients.map((recipient) => asString(recipient.channel))),
+  ];
+  const dialogRecipients = resendDialogMode === 'all' ? allNonSmsRecipients : failedRecipients;
+  const dialogChannels = resendDialogMode === 'all' ? allChannels : failedChannels;
   const resendOf = asString(notification.resendOfNotificationId, '');
   const resendMode = asString(notification.resendMode, '');
   const isDeleted = notification.deletedAt !== null && notification.deletedAt !== undefined;
 
   const resend = useMutation({
-    mutationFn: (input: { notificationId: string; requestKey: string }) =>
-      resendFailedNotification(input.notificationId, input.requestKey),
+    mutationFn: (input: { notificationId: string; requestKey: string; mode: ResendMode }) =>
+      resendNotification(input.notificationId, input.requestKey, input.mode),
     onSuccess: (result) => {
       setResendOpen(false);
       setResendResult(result);
@@ -82,11 +92,14 @@ export function NotificationDetailPage(): JSX.Element {
     },
   });
 
-  const openResend = (): void => {
-    if (id === undefined || failedRecipients.length === 0) {
+  const openResend = (mode: ResendMode): void => {
+    const count = mode === 'all' ? allNonSmsRecipients.length : failedRecipients.length;
+
+    if (id === undefined || count === 0) {
       return;
     }
 
+    setResendDialogMode(mode);
     setResendRequestKey(crypto.randomUUID());
     setResendResult(null);
     resend.reset();
@@ -104,7 +117,7 @@ export function NotificationDetailPage(): JSX.Element {
               type="button"
               size="sm"
               variant="primary"
-              onClick={openResend}
+              onClick={() => openResend('failed')}
               disabled={
                 query.isLoading || resend.isPending || failedRecipients.length === 0 || isDeleted
               }
@@ -117,6 +130,24 @@ export function NotificationDetailPage(): JSX.Element {
               }
             >
               Kirim ulang yang gagal ({failedRecipients.length})
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline-danger"
+              onClick={() => openResend('all')}
+              disabled={
+                query.isLoading || resend.isPending || allNonSmsRecipients.length === 0 || isDeleted
+              }
+              title={
+                isDeleted
+                  ? 'Notification sudah dihapus'
+                  : allNonSmsRecipients.length === 0
+                    ? 'Tidak ada recipient non-SMS'
+                    : 'Kirim ulang ke semua penerima non-SMS, termasuk yang sudah berhasil'
+              }
+            >
+              Kirim ulang semua ({allNonSmsRecipients.length})
             </Button>
             <RefreshControl
               isFetching={query.isFetching}
@@ -375,10 +406,11 @@ export function NotificationDetailPage(): JSX.Element {
         </Row>
       </QueryState>
 
-      <ResendFailedDialog
+      <ResendDialog
         show={resendOpen}
-        recipientCount={failedRecipients.length}
-        channels={failedChannels}
+        mode={resendDialogMode}
+        recipientCount={dialogRecipients.length}
+        channels={dialogChannels}
         busy={resend.isPending}
         error={resend.error === null ? null : describeError(resend.error)}
         onCancel={() => {
@@ -388,7 +420,7 @@ export function NotificationDetailPage(): JSX.Element {
         }}
         onConfirm={() => {
           if (id !== undefined && resendRequestKey !== '') {
-            resend.mutate({ notificationId: id, requestKey: resendRequestKey });
+            resend.mutate({ notificationId: id, requestKey: resendRequestKey, mode: resendDialogMode });
           }
         }}
       />

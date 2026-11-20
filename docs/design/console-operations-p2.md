@@ -1,6 +1,6 @@
 # Operasi console P2: export, resend all, audit, compose
 
-Status: **draf desain, menunggu persetujuan** (2026-11-20). Belum ada implementasi.
+Status: **P2a terimplementasi dan terverifikasi** (2026-11-20); P2b–P2c belum. Lihat §13.
 Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/console-admin-hardening.md`,
 `docs/design/admin-api.md`, `src/admin`, `src/ingest`, `prisma/schema.prisma`, dan `console/src`.
 
@@ -18,6 +18,7 @@ Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/console-admi
 - [10. Keputusan](#10-keputusan)
 - [11. Risiko dan batasan](#11-risiko-dan-batasan)
 - [12. Pertanyaan persetujuan](#12-pertanyaan-persetujuan)
+- [13. Catatan implementasi P2a](#13-catatan-implementasi-p2a)
 
 ---
 
@@ -399,3 +400,37 @@ Tidak ada perubahan pada `Notification`, `ApiKey`, atau template.
 
 Setelah disetujui, implementasi dimulai dari P2a dan berhenti di commit/verifikasi fase tersebut
 sebelum lanjut ke P2b.
+
+## 13. Catatan implementasi P2a
+
+P2a (export + resend all) selesai dan terverifikasi pada 2026-11-20; P2b/P2c belum dikerjakan.
+
+Yang sudah berjalan:
+
+- `GET /api/v1/admin/notifications/export` mengembalikan JSON dengan filter yang sama seperti
+  list, default/maksimum 5.000 baris, `total`, dan `truncated`; route didaftarkan sebelum `:id`.
+- `AdminNotificationsService` memakai satu `buildWhere()` untuk list dan export.
+- `POST /admin/notifications/:id/resend` menerima `mode: failed|all`; `all` memilih semua baris
+  non-`sms` (termasuk `sent`/`skipped`), tetap membuat notification baru tanpa `BillingEvent`,
+  dan idempotensi `requestKey` berlaku per mode.
+- Console: tombol **Export CSV** (JSON → CSV di browser, escape kutip + prefix `'` untuk formula),
+  notifikasi `truncated`, serta tombol/dialog **Kirim ulang semua** dengan konfirmasi eksplisit.
+- Wrapper console `adminExport.ts` dan `adminResend.ts` memakai `HttpTransport`; tidak ada
+  dependency baru.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run test:e2e` | **42** test lulus; E41 export (filter, limit 5.001 ditolak, truncated, tenant isolation), E42 resend all (non-SMS, failed-only tetap 1, replay idempoten, tanpa BillingEvent) |
+| `npm run console:typecheck` / `console:build` | lulus |
+| `npm run ci` | lulus 52 s: typecheck, build, 29 unit, 42 e2e, 13 migrasi, `Database schema is up to date!` |
+| `npm run docs:check` | lulus |
+
+Catatan:
+
+1. Export dibatasi 5.000 baris dan dibuat di browser; streaming CSV ditunda.
+2. Resend `all` menyertakan baris `skipped`; konfirmasi UI menjelaskan bahwa penerima yang sudah
+   sukses akan menerima lagi.
+3. Belum ada browser automation; unduh CSV diuji lewat build dan verifikasi protokol.
+4. P2b (audit) dan P2c (compose) belum dimulai.

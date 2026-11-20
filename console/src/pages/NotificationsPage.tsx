@@ -1,7 +1,7 @@
 import type { NotificationSummary, OverallStatus } from '@notifhub/js';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Button, Card, Col, Form, Row } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { DataTable, type DataTableColumn } from '../components/DataTable';
 import { Pagination } from '../components/Pagination';
@@ -10,7 +10,13 @@ import { QueryState } from '../components/QueryState';
 import { RefreshControl } from '../components/RefreshControl';
 import { StatusBadge } from '../components/StatusBadge';
 import { adminClient } from '../lib/adminClient';
-import { formatDateTime } from '../lib/format';
+import {
+  downloadCsv,
+  exportFileName,
+  exportNotifications,
+  notificationsToCsv,
+} from '../lib/adminExport';
+import { describeError, formatDateTime } from '../lib/format';
 
 const LIMIT_OPTIONS = [20, 50, 100] as const;
 const AUTO_REFRESH_MS = 5_000;
@@ -29,6 +35,9 @@ export function NotificationsPage(): JSX.Element {
   const [to, setTo] = useState('');
   const [limit, setLimit] = useState<number>(LIMIT_OPTIONS[0]);
   const [offset, setOffset] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ['notifications', { status, templateKey, search, from, to, limit, offset }],
@@ -88,22 +97,67 @@ export function NotificationsPage(): JSX.Element {
     setOffset(0);
   };
 
+  const handleExport = async (): Promise<void> => {
+    setExportError(null);
+    setExportNotice(null);
+    setExporting(true);
+
+    try {
+      const result = await exportNotifications({
+        limit: 5_000,
+        ...(status === '' ? {} : { status }),
+        ...(templateKey === '' ? {} : { templateKey }),
+        ...(search === '' ? {} : { search }),
+        ...(from === '' ? {} : { from: `${from}T00:00:00.000Z` }),
+        ...(to === '' ? {} : { to: `${to}T23:59:59.999Z` }),
+      });
+
+      downloadCsv(exportFileName(), notificationsToCsv(result.items));
+
+      setExportNotice(
+        result.truncated
+          ? `Diekspor ${result.items.length} dari ${result.total} baris (batas 5.000). Persempit filter untuk data lengkap.`
+          : `Diekspor ${result.items.length} baris.`,
+      );
+    } catch (caught: unknown) {
+      setExportError(describeError(caught));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
         title="Notifications"
         subtitle="Semua notifikasi tenant ini."
         actions={
-          <RefreshControl
-            isFetching={query.isFetching}
-            updatedAt={query.dataUpdatedAt}
-            autoRefreshMs={autoRefreshMs}
-            onRefresh={() => {
-              void query.refetch();
-            }}
-          />
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => {
+                void handleExport();
+              }}
+              disabled={exporting}
+            >
+              {exporting ? 'Menyiapkan…' : 'Export CSV'}
+            </Button>
+            <RefreshControl
+              isFetching={query.isFetching}
+              updatedAt={query.dataUpdatedAt}
+              autoRefreshMs={autoRefreshMs}
+              onRefresh={() => {
+                void query.refetch();
+              }}
+            />
+          </>
         }
       />
+
+      {exportError !== null ? <Alert variant="danger">{exportError}</Alert> : null}
+      {exportNotice !== null ? <Alert variant="info">{exportNotice}</Alert> : null}
 
       <Card className="filter-card mb-3">
         <Card.Body>

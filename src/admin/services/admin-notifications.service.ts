@@ -7,6 +7,7 @@ import {
   type NotificationRecipient,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { ExportNotificationsQueryDto } from '../dto/export-notifications.dto';
 import type { NotificationListQueryDto } from '../dto/list-query.dto';
 
 const UUID_PATTERN =
@@ -34,6 +35,18 @@ export interface NotificationListResult {
   offset: number;
 }
 
+export interface NotificationExportResult {
+  items: NotificationListItem[];
+  total: number;
+  limit: number;
+  truncated: boolean;
+}
+
+type NotificationFilters = Pick<
+  NotificationListQueryDto,
+  'status' | 'templateKey' | 'from' | 'to' | 'search'
+>;
+
 export interface NotificationDetailResult {
   notification: Record<string, unknown>;
   recipients: Record<string, unknown>[];
@@ -51,8 +64,56 @@ export class AdminNotificationsService {
   ): Promise<NotificationListResult> {
     const limit = query.limit ?? 20;
     const offset = query.offset ?? 0;
+    const where = this.buildWhere(tenantId, query);
+
+    const [rows, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+        include: { recipients: { select: { status: true } } },
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => toListItem(row, row.recipients)),
+      total,
+      limit,
+      offset,
+    };
+  }
+
+  async export(
+    tenantId: string,
+    query: ExportNotificationsQueryDto,
+  ): Promise<NotificationExportResult> {
+    const limit = query.limit ?? 5_000;
+    const where = this.buildWhere(tenantId, query);
+
+    const [rows, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: { recipients: { select: { status: true } } },
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => toListItem(row, row.recipients)),
+      total,
+      limit,
+      truncated: total > rows.length,
+    };
+  }
+
+  private buildWhere(tenantId: string, query: NotificationFilters): Prisma.NotificationWhereInput {
     const search = query.search?.trim();
-    const where: Prisma.NotificationWhereInput = {
+
+    return {
       tenantId,
       ...(query.status === undefined ? {} : { overallStatus: query.status }),
       ...(query.templateKey === undefined ? {} : { templateKey: query.templateKey }),
@@ -72,24 +133,6 @@ export class AdminNotificationsService {
               { recipients: { some: { recipientId: search } } },
             ],
           }),
-    };
-
-    const [rows, total] = await Promise.all([
-      this.prisma.notification.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: limit,
-        include: { recipients: { select: { status: true } } },
-      }),
-      this.prisma.notification.count({ where }),
-    ]);
-
-    return {
-      items: rows.map((row) => toListItem(row, row.recipients)),
-      total,
-      limit,
-      offset,
     };
   }
 

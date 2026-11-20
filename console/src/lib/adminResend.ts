@@ -2,10 +2,12 @@ import { DEFAULT_RETRY_OPTIONS, HttpTransport, type Channel } from '@notifhub/js
 import { API_BASE_URL } from '../env';
 import { getToken } from './session';
 
-export interface ResendFailedResult {
+export type ResendMode = 'failed' | 'all';
+
+export interface ResendNotificationResult {
   notification_id: string;
   status: 'accepted';
-  mode: 'failed';
+  mode: ResendMode;
   recipient_count: number;
   channels: Channel[];
 }
@@ -25,16 +27,17 @@ const transport = new HttpTransport(
   DEFAULT_RETRY_OPTIONS,
 );
 
-export function resendFailedNotification(
+export function resendNotification(
   notificationId: string,
   requestKey: string,
-): Promise<ResendFailedResult> {
-  return transport.request<ResendFailedResult>(
+  mode: ResendMode,
+): Promise<ResendNotificationResult> {
+  return transport.request<ResendNotificationResult>(
     'POST',
     `/notifications/${encodeURIComponent(notificationId)}/resend`,
     {
       retry: false,
-      body: { mode: 'failed', requestKey },
+      body: { mode, requestKey },
     },
   );
 }

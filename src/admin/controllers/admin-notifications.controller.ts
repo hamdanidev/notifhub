@@ -24,6 +24,7 @@ import {
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
+import { ExportNotificationsQueryDto } from '../dto/export-notifications.dto';
 import { NotificationListQueryDto } from '../dto/list-query.dto';
 import { ResendNotificationDto } from '../dto/resend-notification.dto';
 import {
@@ -33,6 +34,7 @@ import {
 import {
   AdminNotificationsService,
   type NotificationDetailResult,
+  type NotificationExportResult,
   type NotificationListResult,
 } from '../services/admin-notifications.service';
 
@@ -57,6 +59,21 @@ export class AdminNotificationsController {
     return this.notifications.list(admin.tenantId, query);
   }
 
+  @Get('export')
+  @ApiOperation({
+    summary: 'Export filtered notifications as JSON (max 5000 rows)',
+    description:
+      'The console turns this response into CSV. Sorting and filters match the notification list.',
+  })
+  @ApiOkResponse({ description: 'Export rows with total and truncated flag' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
+  export(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Query() query: ExportNotificationsQueryDto,
+  ): Promise<NotificationExportResult> {
+    return this.notifications.export(admin.tenantId, query);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Notification detail with payload, recipients, recent attempts and delivery events',
@@ -74,9 +91,10 @@ export class AdminNotificationsController {
   @Post(':id/resend')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
-    summary: 'Resend failed recipient/channel pairs as a new notification',
+    summary: 'Resend failed or all non-SMS recipient/channel pairs as a new notification',
     description:
-      'Only failed recipient/channel pairs are resent. The original notification is immutable; ' +
+      'failed resends only failed pairs; all resends every non-SMS pair (including successful ' +
+      'ones) and requires explicit console confirmation. The original notification is immutable; ' +
       'a new notification is created with an audit link and no new billing event.',
   })
   @ApiAcceptedResponse({
@@ -87,7 +105,7 @@ export class AdminNotificationsController {
       properties: {
         notification_id: { type: 'string', format: 'uuid' },
         status: { type: 'string', enum: ['accepted'] },
-        mode: { type: 'string', enum: ['failed'] },
+        mode: { type: 'string', enum: ['failed', 'all'] },
         recipient_count: { type: 'number' },
         channels: { type: 'array', items: { type: 'string' } },
       },

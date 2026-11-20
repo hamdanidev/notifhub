@@ -27,15 +27,14 @@ import {
   QUEUE_INAPP,
   QUEUE_WHATSAPP,
 } from '../../queues/queues.module';
-import type { ResendNotificationDto } from '../dto/resend-notification.dto';
+import type { ResendMode, ResendNotificationDto } from '../dto/resend-notification.dto';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
-const RESEND_MODE = 'failed';
 
 export interface ResendNotificationResult {
   notification_id: string;
   status: 'accepted';
-  mode: 'failed';
+  mode: ResendMode;
   recipient_count: number;
   channels: Channel[];
 }
@@ -97,12 +96,17 @@ export class AdminNotificationResendService {
       throw new NotFoundException('Notification not found');
     }
 
-    const failedRecipients = original.recipients.filter(
-      (recipient) => recipient.status === Status.failed && recipient.channel !== Channel.sms,
+    const mode = dto.mode ?? 'failed';
+    const candidates = original.recipients.filter(
+      (recipient) =>
+        recipient.channel !== Channel.sms &&
+        (mode === 'all' || recipient.status === Status.failed),
     );
 
-    if (failedRecipients.length === 0) {
-      throw new ConflictException('No failed recipients to resend');
+    if (candidates.length === 0) {
+      throw new ConflictException(
+        mode === 'failed' ? 'No failed recipients to resend' : 'No recipients to resend',
+      );
     }
 
     const idempotencyKey = requestKeyToIdempotencyKey(original.id, dto.requestKey);
@@ -116,7 +120,7 @@ export class AdminNotificationResendService {
       if (
         existing.tenantId !== tenantId ||
         existing.resendOfNotificationId !== original.id ||
-        existing.resendMode !== RESEND_MODE
+        existing.resendMode !== mode
       ) {
         throw new ConflictException('Resend request key has already been used');
       }
@@ -125,18 +129,18 @@ export class AdminNotificationResendService {
       // operation safe if the first request committed but the HTTP response or queue call failed.
       await this.dispatch(existing, extractData(original.payload), requestId);
 
-      return toResendResult(existing);
+      return toResendResult(existing, mode);
     }
 
     const ttlDays = this.config.getOrThrow<number>('IDEMPOTENCY_TTL_DAYS');
     const data = extractData(original.payload);
-    const channels = uniqueChannels(failedRecipients);
+    const channels = uniqueChannels(candidates);
     const targetSnapshot = asJson({
       topics: [],
-      recipient_ids: [...new Set(failedRecipients.map((recipient) => recipient.recipientId))],
+      recipient_ids: [...new Set(candidates.map((recipient) => recipient.recipientId))],
       channels,
       resend_of: original.id,
-      resend_mode: RESEND_MODE,
+      resend_mode: mode,
     });
 
     let created: CreatedNotification;
@@ -154,9 +158,9 @@ export class AdminNotificationResendService {
             targetType: 'recipients',
             targetSnapshot,
             resendOfNotificationId: original.id,
-            resendMode: RESEND_MODE,
+            resendMode: mode,
             recipients: {
-              create: failedRecipients.map((recipient) => ({
+              create: candidates.map((recipient) => ({
                 recipientId: recipient.recipientId,
                 channel: recipient.channel,
                 status: Status.pending,
@@ -180,9 +184,9 @@ export class AdminNotificationResendService {
           raced !== null &&
           raced.tenantId === tenantId &&
           raced.resendOfNotificationId === original.id &&
-          raced.resendMode === RESEND_MODE
+          raced.resendMode === mode
         ) {
-          return toResendResult(raced);
+          return toResendResult(raced, mode);
         }
       }
 
@@ -197,14 +201,14 @@ export class AdminNotificationResendService {
         tenant_id: tenantId,
         original_notification_id: original.id,
         notification_id: created.id,
-        mode: RESEND_MODE,
+        mode,
         recipient_count: created.recipients.length,
         channels,
       },
-      'failed notification recipients resent',
+      'notification recipients resent',
     );
 
-    return toResendResult(created);
+    return toResendResult(created, mode);
   }
 
   private async dispatch(
@@ -294,11 +298,14 @@ export class AdminNotificationResendService {
   }
 }
 
-function toResendResult(notification: CreatedNotification): ResendNotificationResult {
+function toResendResult(
+  notification: CreatedNotification,
+  mode: ResendMode,
+): ResendNotificationResult {
   return {
     notification_id: notification.id,
     status: 'accepted',
-    mode: 'failed',
+    mode,
     recipient_count: notification.recipients.length,
     channels: uniqueChannels(notification.recipients),
   };

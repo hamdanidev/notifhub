@@ -1,11 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsUUID } from 'class-validator';
 
+export type ResendMode = 'failed' | 'all';
+
 /**
  * Body of `POST /admin/notifications/:id/resend`.
  *
- * Only `failed` is supported in this phase. `all` is intentionally rejected until the product
- * decision and confirmation flow for duplicate sends are approved.
+ * `failed` is the safe default. `all` resends every non-SMS recipient/channel pair and therefore
+ * requires the console confirmation that already-successful recipients will receive it again.
  */
 export class ResendNotificationDto {
   @ApiProperty({
@@ -17,11 +19,11 @@ export class ResendNotificationDto {
   requestKey!: string;
 
   @ApiPropertyOptional({
-    enum: ['failed'],
+    enum: ['failed', 'all'],
     default: 'failed',
-    description: 'Resend only failed (recipient, channel) pairs.',
+    description: 'Resend only failed pairs, or every non-SMS pair.',
   })
   @IsOptional()
-  @IsIn(['failed'])
-  mode?: 'failed';
+  @IsIn(['failed', 'all'])
+  mode?: ResendMode;
 }

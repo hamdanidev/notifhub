@@ -393,3 +393,6 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     dan CSP pada image tenant/platform sudah berjalan. Verifikasi: 29 unit, 40 e2e (E38 password,
     E39 search, E40 bootstrap), CSP terpasang di kedua image, login ter-render di headless Edge di
     bawah CSP. Detail: `docs/design/console-admin-hardening.md` §16.
+18. **Console P2a (2026-11-20).** Export notifikasi (JSON maks 5.000 baris, CSV dibuat di console)
+    dan resend `all` non-`sms` sudah berjalan tanpa perubahan schema. E41/E42 menambah cakupan e2e
+    menjadi 42 test. Detail: `docs/design/console-operations-p2.md` §13.

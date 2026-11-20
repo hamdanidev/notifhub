@@ -155,11 +155,25 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 # Detail
 curl -s -H "Authorization: Bearer $TOKEN" \
   http://localhost:3000/api/v1/admin/notifications/<uuid>
+
+# Export JSON untuk CSV di console (maks 5000 baris)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  'http://localhost:3000/api/v1/admin/notifications/export?status=failed&limit=5000'
+
+# Kirim ulang failed-only atau semua non-SMS
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"mode":"all","requestKey":"<uuid>"}' \
+  http://localhost:3000/api/v1/admin/notifications/<uuid>/resend
 ```
 
 Parameter list: `limit` (default 20, maks 100), `offset`, `status` (`pending|partial|sent|failed`),
 `templateKey`, `from`, `to`. Setiap item memuat ringkasan hitungan:
 `recipientCount`, `sentCount`, `failedCount`, `pendingCount`, `skippedCount`.
+
+`GET /admin/notifications/export` memakai filter yang sama (plus `search`) dan mengembalikan JSON
+maksimum 5.000 baris; console mengubahnya menjadi CSV. `POST .../resend` default `mode: failed`;
+`mode: all` mengirim semua baris non-`sms` (termasuk yang sudah sukses), membuat notification baru,
+dan tidak membuat `BillingEvent` baru.
 
 Detail mengembalikan `{ notification, recipients, deliveryAttempts, deliveryEvents }` — dipakai
 console untuk menelusuri kenapa sebuah pengiriman gagal atau di-skip.
