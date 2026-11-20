@@ -549,4 +549,4 @@ API/SDK. Untuk operator yang ingin mengirim manual dari console, ini gap utama.
 P1 sudah diimplementasikan dan diverifikasi pada 2026-11-20:
 [console-admin-hardening.md](console-admin-hardening.md) §16. Sisa gap P2/P3 (export, resend all,
 compose/send, audit aksi admin tenant, test/browser automation, dan pemindahan wrapper ke SDK
-terbit) belum dikerjakan.
+terbit) belum dikerjakan. Draf desain P2: [console-operations-p2.md](console-operations-p2.md).

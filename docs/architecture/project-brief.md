@@ -255,4 +255,5 @@ npx prisma migrate status
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
 6. Sisa hardening console P2: export CSV, audit aksi admin tenant, re-send all, dan compose/send.
    P1 (password, secret API key, search, CSP) sudah selesai:
-   `docs/design/console-admin-hardening.md` §16.
+   `docs/design/console-admin-hardening.md` §16. Draf P2:
+   `docs/design/console-operations-p2.md` (menunggu persetujuan).
