@@ -2290,4 +2290,66 @@ describe('Console operations e2e', () => {
       'resend failed-only selesai diproses worker',
     );
   });
+
+  it('E43 audit admin tenant mencatat mutasi, filter, dan isolasi tenant', async () => {
+    const keyName = `audit-key-${randomUUID()}`;
+    const createdKey = await request(server)
+      .post('/api/v1/admin/api-keys')
+      .set('Authorization', bearer(adminToken))
+      .send({ name: keyName });
+    expect(createdKey.status).toBe(201);
+    const apiKeyId = createdKey.body.id as string;
+
+    const filtered = await request(server)
+      .get('/api/v1/admin/audit?action=admin.api_key.created&limit=100')
+      .set('Authorization', bearer(adminToken));
+    expect(filtered.status).toBe(200);
+
+    const event = (filtered.body.items as Array<Record<string, unknown>>).find(
+      (item) => item.targetId === apiKeyId,
+    );
+    expect(event).toBeDefined();
+    expect(event).toMatchObject({
+      actorEmail: TEST_ADMIN_EMAIL,
+      action: 'admin.api_key.created',
+      targetType: 'api_key',
+      targetId: apiKeyId,
+      metadata: { name: keyName },
+    });
+    expect(typeof event?.requestId).toBe('string');
+    expect(JSON.stringify(event?.metadata)).not.toContain(createdKey.body.key as string);
+
+    const tooLarge = await request(server)
+      .get('/api/v1/admin/audit?limit=101')
+      .set('Authorization', bearer(adminToken));
+    expect(tooLarge.status).toBe(400);
+
+    await prisma.adminAuditEvent.create({
+      data: {
+        tenantId: TEST_TENANT_B,
+        actorAdminId: 'tenant-b-admin',
+        actorEmail: 'b@test.local',
+        action: 'e2e.audit.tenant_b',
+        targetType: 'test',
+        targetId: 'tenant-b-only',
+      },
+    });
+    const isolated = await request(server)
+      .get('/api/v1/admin/audit?action=e2e.audit.tenant_b')
+      .set('Authorization', bearer(adminToken));
+    expect(isolated.status).toBe(200);
+    expect(isolated.body.total).toBe(0);
+
+    const resendAudit = await request(server)
+      .get('/api/v1/admin/audit?action=admin.notification.resend&limit=100')
+      .set('Authorization', bearer(adminToken));
+    expect(resendAudit.status).toBe(200);
+    expect(resendAudit.body.total).toBeGreaterThanOrEqual(2);
+
+    const passwordAudit = await request(server)
+      .get('/api/v1/admin/audit?action=admin.password.changed&limit=100')
+      .set('Authorization', bearer(adminToken));
+    expect(passwordAudit.status).toBe(200);
+    expect(passwordAudit.body.total).toBeGreaterThanOrEqual(2);
+  });
 });

@@ -1,6 +1,6 @@
 # Operasi console P2: export, resend all, audit, compose
 
-Status: **P2a terimplementasi dan terverifikasi** (2026-11-20); P2b–P2c belum. Lihat §13.
+Status: **P2a–P2b terimplementasi dan terverifikasi** (2026-11-20); P2c belum. Lihat §13–§14.
 Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/console-admin-hardening.md`,
 `docs/design/admin-api.md`, `src/admin`, `src/ingest`, `prisma/schema.prisma`, dan `console/src`.
 
@@ -19,6 +19,7 @@ Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/console-admi
 - [11. Risiko dan batasan](#11-risiko-dan-batasan)
 - [12. Pertanyaan persetujuan](#12-pertanyaan-persetujuan)
 - [13. Catatan implementasi P2a](#13-catatan-implementasi-p2a)
+- [14. Catatan implementasi P2b](#14-catatan-implementasi-p2b)
 
 ---
 
@@ -192,7 +193,7 @@ model AdminAuditEvent {
 |---|---|
 | Auth | `admin.password.changed` |
 | API key | `admin.api_key.created`, `admin.api_key.revoked` |
-| Template | `admin.template.created`, `updated`, `published`, `activated`, `cloned`, `rolled_back`, `deleted` |
+| Template | `admin.template.created`, `updated`, `published`, `activated`, `cloned`, `rolled_back`, `deactivated` |
 | Subscriber | `admin.subscriber.preferences_updated` |
 | Topic | `admin.topic.membership_added`, `membership_replaced` |
 | Notification | `admin.notification.resend`, `admin.notification.composed` |
@@ -403,7 +404,8 @@ sebelum lanjut ke P2b.
 
 ## 13. Catatan implementasi P2a
 
-P2a (export + resend all) selesai dan terverifikasi pada 2026-11-20; P2b/P2c belum dikerjakan.
+P2a (export + resend all) selesai dan terverifikasi pada 2026-11-20; P2b juga selesai (§14); P2c
+belum dikerjakan.
 
 Yang sudah berjalan:
 
@@ -434,3 +436,40 @@ Catatan:
    sukses akan menerima lagi.
 3. Belum ada browser automation; unduh CSV diuji lewat build dan verifikasi protokol.
 4. P2b (audit) dan P2c (compose) belum dimulai.
+
+## 14. Catatan implementasi P2b
+
+P2b (audit aksi admin tenant) selesai dan terverifikasi pada 2026-11-20; P2c belum.
+
+Yang sudah berjalan:
+
+- Tabel `AdminAuditEvent` (migrasi ke-14) append-only, tenant-scoped, tanpa FK; index tenant/waktu,
+  tenant/action/waktu, actor/waktu.
+- `AdminAuditService.record()` best-effort (gagal insert hanya dicatat ke log) dan `list()`
+  tenant-scoped dengan filter action/rentang tanggal + pagination.
+- `GET /api/v1/admin/audit` (guard tenant, throttle 120/menit).
+- Hook audit di controller (actor dari JWT, IP/requestId dari middleware) untuk: password changed;
+  API key created/revoked; template created/updated/deactivated/published/activated/cloned/
+  rolled_back; subscriber preferences_updated; topic membership_added/replaced; notification
+  resend. Metadata hanya berisi nama/versi/channel/mode/count — tanpa secret.
+- Halaman `/audit` + navigasi **Operations**: filter action/tanggal, tabel waktu/actor/action/
+  target/metadata, pagination, refresh.
+- Wrapper console `adminAudit.ts` memakai `HttpTransport`.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run test:e2e` | **43** test lulus; E43 memastikan event API key (actor/target/metadata tanpa raw key), filter action, limit 101 ditolak, isolasi tenant, serta event resend/password |
+| `npm run console:typecheck` / `console:build` | lulus |
+| `npm run ci` | lulus 66 s: typecheck, build, 29 unit, 43 e2e, 14 migrasi, `Database schema is up to date!` |
+| `npm run docs:check` | lulus |
+
+Catatan:
+
+1. Cakupan audit adalah daftar action §5.2; endpoint mutasi baru harus menambahkan hook eksplisit.
+   Tidak ada interceptor generik.
+2. Belum ada retensi/cleanup `AdminAuditEvent`; tabel tumbuh. Kandidat P3.
+3. Login/logout dan export tidak dicatat; password/API key/template/preference/topic/resend ya.
+4. Audit bersifat best-effort: kegagalan insert tidak menggagalkan mutasi (desain/log; E2E
+   memastikan alur normal).

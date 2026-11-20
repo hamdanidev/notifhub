@@ -6,6 +6,7 @@ import { QueuesModule } from '../queues/queues.module';
 import { TemplatesModule } from '../templates/templates.module';
 import { TopicsModule } from '../topics/topics.module';
 import { AdminApiKeysController } from './controllers/admin-api-keys.controller';
+import { AdminAuditController } from './controllers/admin-audit.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
 import { AdminNotificationsController } from './controllers/admin-notifications.controller';
 import { AdminSubscribersController } from './controllers/admin-subscribers.controller';
@@ -13,6 +14,7 @@ import { AdminTemplateAssetsController } from './controllers/admin-template-asse
 import { AdminTemplatesController } from './controllers/admin-templates.controller';
 import { AdminTopicsController } from './controllers/admin-topics.controller';
 import { AdminApiKeysService } from './services/admin-api-keys.service';
+import { AdminAuditService } from './services/admin-audit.service';
 import { AdminAuthService } from './services/admin-auth.service';
 import { AdminNotificationResendService } from './services/admin-notification-resend.service';
 import { AdminNotificationsService } from './services/admin-notifications.service';
@@ -39,6 +41,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
   ],
   controllers: [
     AdminAuthController,
+    AdminAuditController,
     AdminApiKeysController,
     AdminTemplatesController,
     AdminTemplateAssetsController,
@@ -48,6 +51,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
   ],
   providers: [
     AdminAuthService,
+    AdminAuditService,
     AdminApiKeysService,
     AdminTemplatesService,
     AdminTemplateAssetsService,

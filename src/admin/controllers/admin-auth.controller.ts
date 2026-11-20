@@ -20,12 +20,16 @@ import {
   LoginDto,
   LoginResponseDto,
 } from '../dto/auth.dto';
+import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 import { AdminAuthService } from '../services/admin-auth.service';
 
 @ApiTags('admin')
 @Controller('admin/auth')
 export class AdminAuthController {
-  constructor(private readonly authService: AdminAuthService) {}
+  constructor(
+    private readonly authService: AdminAuthService,
+    private readonly audit: AdminAuditService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -63,14 +67,22 @@ export class AdminAuthController {
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
   @ApiTooManyRequestsResponse({ description: 'Password change rate limit exceeded' })
-  changePassword(
+  async changePassword(
     @Body() dto: ChangePasswordDto,
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() request: RequestWithId,
   ): Promise<void> {
-    return this.authService.changePassword(admin.adminId, dto, {
+    await this.authService.changePassword(admin.adminId, dto, {
       ip: request.ip,
       requestId: request.requestId,
+    });
+    await this.audit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action: 'admin.password.changed',
+      targetType: 'admin',
+      targetId: admin.adminId,
+      context: adminAuditContextFrom(request),
     });
   }
 }

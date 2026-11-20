@@ -31,6 +31,10 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     title: 'Developer',
     items: [{ to: '/api-keys', label: 'API keys', icon: 'key' }],
   },
+  {
+    title: 'Operations',
+    items: [{ to: '/audit', label: 'Audit', icon: 'shield' }],
+  },
 ];
 
 const SIDEBAR_STORAGE_KEY = 'notifhub.console.sidebarCollapsed';
@@ -43,6 +47,7 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith('/subscribers')) return 'Subscribers';
   if (pathname.startsWith('/topics')) return 'Topics';
   if (pathname.startsWith('/api-keys')) return 'API keys';
+  if (pathname.startsWith('/audit')) return 'Audit';
   if (pathname.startsWith('/account')) return 'Akun';
   return 'Console';
 }

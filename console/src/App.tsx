@@ -6,6 +6,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './layout/AppLayout';
 import { AccountPage } from './pages/AccountPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
+import { AuditPage } from './pages/AuditPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { NotificationDetailPage } from './pages/NotificationDetailPage';
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       { path: '/topics', element: <TopicsPage /> },
       { path: '/topics/:key', element: <TopicDetailPage /> },
       { path: '/api-keys', element: <ApiKeysPage /> },
+      { path: '/audit', element: <AuditPage /> },
       { path: '/account', element: <AccountPage /> },
     ],
   },

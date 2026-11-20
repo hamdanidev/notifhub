@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseEnumPipe, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseEnumPipe, Put, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNotFoundResponse,
@@ -10,6 +10,7 @@ import {
 import { Channel } from '@prisma/client';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
+import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import { PreferenceResponseDto, UpdatePreferenceDto } from '../dto/preference.dto';
 import { AdminListQueryDto } from '../dto/list-query.dto';
@@ -18,13 +19,17 @@ import {
   type SubscriberListResult,
   type SubscriberView,
 } from '../services/admin-subscribers.service';
+import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 
 @ApiTags('admin')
 @ApiBearerAuth('admin-jwt')
 @Controller('admin/subscribers')
 @UseGuards(AdminJwtGuard)
 export class AdminSubscribersController {
-  constructor(private readonly subscribers: AdminSubscribersService) {}
+  constructor(
+    private readonly subscribers: AdminSubscribersService,
+    private readonly audit: AdminAuditService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List subscribers for the tenant' })
@@ -54,13 +59,29 @@ export class AdminSubscribersController {
   @ApiOkResponse({ type: PreferenceResponseDto })
   @ApiNotFoundResponse({ description: 'Subscriber not found for this tenant' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  upsertPreference(
+  async upsertPreference(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('externalId') externalId: string,
     @Param('channel', new ParseEnumPipe(Channel)) channel: Channel,
     @Body() dto: UpdatePreferenceDto,
+    @Req() request: RequestWithId,
   ): Promise<PreferenceResponseDto> {
-    return this.subscribers.upsertPreference(admin.tenantId, externalId, channel, dto);
+    const preference = await this.subscribers.upsertPreference(
+      admin.tenantId,
+      externalId,
+      channel,
+      dto,
+    );
+    await this.audit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action: 'admin.subscriber.preferences_updated',
+      targetType: 'subscriber',
+      targetId: externalId,
+      metadata: { channel, enabled: preference.enabled },
+      context: adminAuditContextFrom(request),
+    });
+    return preference;
   }
 
   @Get(':externalId')

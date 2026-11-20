@@ -178,6 +178,19 @@ dan tidak membuat `BillingEvent` baru.
 Detail mengembalikan `{ notification, recipients, deliveryAttempts, deliveryEvents }` — dipakai
 console untuk menelusuri kenapa sebuah pengiriman gagal atau di-skip.
 
+### 6.1 Audit aksi admin tenant
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  'http://localhost:3000/api/v1/admin/audit?action=admin.template.published&limit=50'
+```
+
+Response `{ items, total, limit, offset }`; item memuat waktu, actor, action, target, metadata
+(minimal), IP, dan requestId. Hanya event tenant dari token yang dikembalikan. Action yang dicatat:
+password changed; API key created/revoked; template created/updated/deactivated/published/activated/
+cloned/rolled_back; preference subscriber; membership topic; resend notifikasi. Audit append-only
+dan tidak menyimpan secret.
+
 ## 7. Console
 
 ```bash
@@ -186,7 +199,7 @@ npm run console:dev        # http://localhost:5173
 ```
 
 Halaman: Dashboard, Notifications (+detail), Templates (+form), Subscribers (+detail & editor
-preferensi), Topics (+detail & membership), API Keys, dan Akun (profil + ganti password).
+preferensi), Topics (+detail & membership), API Keys, Audit, dan Akun (profil + ganti password).
 
 - Login memakai `ADMIN_EMAIL` / password yang hash-nya ada di `ADMIN_PASSWORD_HASH`.
 - Admin JWT disimpan di `sessionStorage`; `401` menghapus sesi dan mengarahkan ke `/login`.

@@ -90,6 +90,7 @@ Aturan kerja:
 | Host split console platform: dua artifact (`dist/tenant`, `dist/platform`), dua image nginx, CI dua target, redirect `/platform/*` | selesai & terverifikasi (P1–P4 di smoke stack; rollout domain produksi = langkah operator) |
 | Hardening console P1: ganti password + `tokenVersion`, secret API key, search notifikasi, CSP | selesai & terverifikasi (E38–E40; 40 e2e, 29 unit, CSP pada image) |
 | Console P2a: export CSV + resend all non-SMS | selesai & terverifikasi (E41–E42; 42 e2e) |
+| Console P2b: audit aksi admin tenant (tabel + API + halaman) | selesai & terverifikasi (E43; 43 e2e) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -103,7 +104,7 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `routing/`, `preferences/`, `subscriber-preferences/`, `templates/`, `subscribers/`,
   `notifications/`, `cleanup/`, `queues/`, `metrics/`, `health/`, `config/`, `common/`.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
-- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (13 migrasi).
+- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (14 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
 - `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile` (target
   `runner-tenant`/`runner-platform`), `console/nginx/*.template`, `console/nginx/check-platform-url.sh`,
@@ -196,11 +197,11 @@ npx prisma migrate status
   diotomasi; verifikasi memakai HTTP/SSE/DB serta `typecheck`/`build`.
 - Console tenant sudah mendukung ganti password (invalidasi semua sesi lewat `tokenVersion`),
   secret subscriber per API key saat create, search notifikasi **exact** ID/recipient + page size
-  20/50/100, CSP, export CSV, serta re-send `failed` dan `all` non-SMS. Compose/send dan audit aksi
-  admin tenant belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override
+  20/50/100, CSP, export CSV, re-send `failed`/`all` non-SMS, dan halaman audit aksi admin tenant.
+  Compose/send belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override
   dari ingest awal tidak tersimpan. Endpoint console yang belum ada di SDK terbit memakai wrapper
-  `HttpTransport` sementara. Lihat `docs/design/console-admin-hardening.md` §16,
-  `docs/design/console-operations-p2.md` §13, dan `docs/design/console-needs-analysis.md` §11.1.
+  `HttpTransport` sementara. Lihat `docs/design/console-admin-hardening.md` §16 dan
+  `docs/design/console-operations-p2.md` §13–§14.
 - Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
   WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
   ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage count/proteksi hapus aset,
@@ -254,5 +255,5 @@ npx prisma migrate status
    di `docs/design/platform-console-host-split.md` §10/§18.4.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
-6. Sisa hardening console P2: audit aksi admin tenant dan compose/send. P2a (export CSV + resend
-   all) sudah selesai: `docs/design/console-operations-p2.md` §13.
+6. Sisa hardening console P2: compose/send. P2a (export + resend all) dan P2b (audit admin tenant)
+   sudah selesai: `docs/design/console-operations-p2.md` §13–§14.

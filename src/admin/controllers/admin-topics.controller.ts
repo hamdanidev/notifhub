@@ -8,6 +8,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
+import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import {
   TopicMembersBodyDto,
   TopicMembersResponseDto,
@@ -34,13 +36,17 @@ import {
   type AdminTopicDetail,
   type AdminTopicListResult,
 } from '../services/admin-topics.service';
+import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 
 @ApiTags('admin')
 @ApiBearerAuth('admin-jwt')
 @Controller('admin/topics')
 @UseGuards(AdminJwtGuard)
 export class AdminTopicsController {
-  constructor(private readonly topics: AdminTopicsService) {}
+  constructor(
+    private readonly topics: AdminTopicsService,
+    private readonly audit: AdminAuditService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List topics for the tenant with member counts' })
@@ -72,12 +78,23 @@ export class AdminTopicsController {
   @ApiParam({ name: 'key' })
   @ApiOkResponse({ type: TopicMutationResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  replaceMembers(
+  async replaceMembers(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('key') key: string,
     @Body() body: TopicMembersBodyDto,
+    @Req() request: RequestWithId,
   ): Promise<TopicMutationResponseDto> {
-    return this.topics.replaceMembers(admin.tenantId, key, body);
+    const result = await this.topics.replaceMembers(admin.tenantId, key, body);
+    await this.audit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action: 'admin.topic.membership_replaced',
+      targetType: 'topic',
+      targetId: key,
+      metadata: { members: body.members.length },
+      context: adminAuditContextFrom(request),
+    });
+    return result;
   }
 
   @Post(':key/members')
@@ -86,12 +103,23 @@ export class AdminTopicsController {
   @ApiParam({ name: 'key' })
   @ApiOkResponse({ type: TopicMutationResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  addMembers(
+  async addMembers(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('key') key: string,
     @Body() body: TopicMembersBodyDto,
+    @Req() request: RequestWithId,
   ): Promise<TopicMutationResponseDto> {
-    return this.topics.addMembers(admin.tenantId, key, body);
+    const result = await this.topics.addMembers(admin.tenantId, key, body);
+    await this.audit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action: 'admin.topic.membership_added',
+      targetType: 'topic',
+      targetId: key,
+      metadata: { members: body.members.length },
+      context: adminAuditContextFrom(request),
+    });
+    return result;
   }
 
   @Get(':key')

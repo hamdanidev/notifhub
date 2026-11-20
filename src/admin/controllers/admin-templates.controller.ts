@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -23,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
+import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import {
   CloneTemplateDto,
@@ -46,6 +48,7 @@ import {
 } from '../services/admin-templates.service';
 import { AdminTemplatePreviewService } from '../services/admin-template-preview.service';
 import { AdminTemplateTestSendService, type TestSendResult } from '../services/admin-template-test-send.service';
+import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 import type { TemplatePreviewResult } from '../../templates/template.types';
 
 @ApiTags('admin')
@@ -57,7 +60,32 @@ export class AdminTemplatesController {
     private readonly templates: AdminTemplatesService,
     private readonly preview: AdminTemplatePreviewService,
     private readonly testSend: AdminTemplateTestSendService,
+    private readonly adminAudit: AdminAuditService,
   ) {}
+
+  private async recordTemplateAudit(
+    admin: AdminPrincipal,
+    action: string,
+    template: TemplateView,
+    request: RequestWithId,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    await this.adminAudit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action,
+      targetType: 'template',
+      targetId: template.id,
+      metadata: {
+        key: template.key,
+        channel: template.channel,
+        locale: template.locale,
+        version: template.version,
+        ...metadata,
+      },
+      context: adminAuditContextFrom(request),
+    });
+  }
 
   @Get()
   @ApiOperation({ summary: 'List templates for the tenant' })
@@ -74,11 +102,14 @@ export class AdminTemplatesController {
   @ApiOperation({ summary: 'Create a template draft or legacy published template' })
   @ApiCreatedResponse({ description: 'Created template' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  create(
+  async create(
     @CurrentAdmin() admin: AdminPrincipal,
     @Body() dto: CreateTemplateDto,
+    @Req() request: RequestWithId,
   ): Promise<TemplateMutationView> {
-    return this.templates.create(admin.tenantId, admin, dto);
+    const created = await this.templates.create(admin.tenantId, admin, dto);
+    await this.recordTemplateAudit(admin, 'admin.template.created', created, request);
+    return created;
   }
 
   @Post('preview')
@@ -111,12 +142,15 @@ export class AdminTemplatesController {
   @ApiOkResponse({ description: 'Updated template' })
   @ApiNotFoundResponse({ description: 'Template not found for this tenant' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  update(
+  async update(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id') templateId: string,
     @Body() dto: UpdateTemplateDto,
+    @Req() request: RequestWithId,
   ): Promise<TemplateMutationView> {
-    return this.templates.update(admin.tenantId, admin, templateId, dto);
+    const updated = await this.templates.update(admin.tenantId, admin, templateId, dto);
+    await this.recordTemplateAudit(admin, 'admin.template.updated', updated, request);
+    return updated;
   }
 
   @Delete(':id')
@@ -124,56 +158,75 @@ export class AdminTemplatesController {
   @ApiOkResponse({ description: 'Deactivated template' })
   @ApiNotFoundResponse({ description: 'Template not found for this tenant' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  deactivate(
+  async deactivate(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id') templateId: string,
+    @Req() request: RequestWithId,
   ): Promise<TemplateView> {
-    return this.templates.deactivate(admin.tenantId, admin, templateId);
+    const deactivated = await this.templates.deactivate(admin.tenantId, admin, templateId);
+    await this.recordTemplateAudit(admin, 'admin.template.deactivated', deactivated, request);
+    return deactivated;
   }
 
   @Post(':id/publish')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Publish a draft after full validation' })
   @ApiOkResponse({ description: 'Published template' })
-  publish(
+  async publish(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id') templateId: string,
     @Body() dto: PublishTemplateDto,
+    @Req() request: RequestWithId,
   ): Promise<TemplateMutationView> {
-    return this.templates.publish(admin.tenantId, admin, templateId, dto);
+    const published = await this.templates.publish(admin.tenantId, admin, templateId, dto);
+    await this.recordTemplateAudit(admin, 'admin.template.published', published, request);
+    return published;
   }
 
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Activate the highest published version' })
   @ApiOkResponse({ description: 'Activated template' })
-  activate(
+  async activate(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id') templateId: string,
+    @Req() request: RequestWithId,
   ): Promise<TemplateView> {
-    return this.templates.activate(admin.tenantId, admin, templateId);
+    const activated = await this.templates.activate(admin.tenantId, admin, templateId);
+    await this.recordTemplateAudit(admin, 'admin.template.activated', activated, request);
+    return activated;
   }
 
   @Post(':id/clone')
   @ApiOperation({ summary: 'Clone a template into a new draft' })
   @ApiCreatedResponse({ description: 'Created draft' })
-  clone(
+  async clone(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id') templateId: string,
     @Body() dto: CloneTemplateDto,
+    @Req() request: RequestWithId,
   ): Promise<TemplateMutationView> {
-    return this.templates.clone(admin.tenantId, admin, templateId, dto);
+    const cloned = await this.templates.clone(admin.tenantId, admin, templateId, dto);
+    await this.recordTemplateAudit(admin, 'admin.template.cloned', cloned, request, {
+      source_template_id: templateId,
+    });
+    return cloned;
   }
 
   @Post(':id/rollback')
   @ApiOperation({ summary: 'Create a draft from a historical version' })
   @ApiCreatedResponse({ description: 'Created rollback draft' })
-  rollback(
+  async rollback(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id') templateId: string,
     @Body() dto: RollbackTemplateDto,
+    @Req() request: RequestWithId,
   ): Promise<TemplateMutationView> {
-    return this.templates.rollback(admin.tenantId, admin, templateId, dto);
+    const rolledBack = await this.templates.rollback(admin.tenantId, admin, templateId, dto);
+    await this.recordTemplateAudit(admin, 'admin.template.rolled_back', rolledBack, request, {
+      source_version: dto.sourceVersion,
+    });
+    return rolledBack;
   }
 
   @Get(':id/versions')

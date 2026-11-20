@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -23,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
+import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import { ExportNotificationsQueryDto } from '../dto/export-notifications.dto';
 import { NotificationListQueryDto } from '../dto/list-query.dto';
@@ -31,6 +33,7 @@ import {
   AdminNotificationResendService,
   type ResendNotificationResult,
 } from '../services/admin-notification-resend.service';
+import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 import {
   AdminNotificationsService,
   type NotificationDetailResult,
@@ -46,6 +49,7 @@ export class AdminNotificationsController {
   constructor(
     private readonly notifications: AdminNotificationsService,
     private readonly resendService: AdminNotificationResendService,
+    private readonly audit: AdminAuditService,
   ) {}
 
   @Get()
@@ -115,11 +119,26 @@ export class AdminNotificationsController {
   @ApiConflictResponse({ description: 'No failed recipients or request key already used' })
   @ApiServiceUnavailableResponse({ description: 'Notification queue is unavailable' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
-  resend(
+  async resend(
     @CurrentAdmin() admin: AdminPrincipal,
     @Param('id', new ParseUUIDPipe()) notificationId: string,
     @Body() dto: ResendNotificationDto,
+    @Req() request: RequestWithId,
   ): Promise<ResendNotificationResult> {
-    return this.resendService.resend(admin.tenantId, notificationId, dto);
+    const result = await this.resendService.resend(admin.tenantId, notificationId, dto);
+    await this.audit.record({
+      tenantId: admin.tenantId,
+      actor: { adminId: admin.adminId, email: admin.email },
+      action: 'admin.notification.resend',
+      targetType: 'notification',
+      targetId: result.notification_id,
+      metadata: {
+        original_notification_id: notificationId,
+        mode: result.mode,
+        recipient_count: result.recipient_count,
+      },
+      context: adminAuditContextFrom(request),
+    });
+    return result;
   }
 }

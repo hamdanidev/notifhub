@@ -396,3 +396,7 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
 18. **Console P2a (2026-11-20).** Export notifikasi (JSON maks 5.000 baris, CSV dibuat di console)
     dan resend `all` non-`sms` sudah berjalan tanpa perubahan schema. E41/E42 menambah cakupan e2e
     menjadi 42 test. Detail: `docs/design/console-operations-p2.md` §13.
+19. **Console P2b (2026-11-20).** Migrasi ke-14 menambah `AdminAuditEvent`; hook audit mencatat
+    password/API key/template/preference/topic/resend, dengan `GET /admin/audit` dan halaman
+    `/audit`. E43 menambah cakupan e2e menjadi 43 test. Audit belum punya retensi otomatis. Detail:
+    `docs/design/console-operations-p2.md` §14.
