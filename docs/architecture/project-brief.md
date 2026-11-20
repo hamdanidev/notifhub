@@ -258,4 +258,5 @@ npx prisma migrate status
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
 6. P3 console: test/browser automation dan pemindahan wrapper `HttpTransport` console
    (`adminResend`, `adminTemplates`, `adminPlatform`, `adminExport`, `adminAudit`, `adminCompose`,
-   `adminAccount`) ke `@notifhub/js` saat rilis SDK berikutnya.
+   `adminAccount`) ke `@notifhub/js` saat rilis SDK berikutnya, plus retensi audit admin. Draf:
+   `docs/design/console-quality-p3.md` (menunggu persetujuan).
