@@ -108,6 +108,9 @@ jobs:
           npm run console:typecheck
           npm run console:build
 
+      - name: Console tests
+        run: npm --prefix console run test
+
       - name: Console artifacts and bundle isolation
         run: |
           test -f console/dist/tenant/index.html

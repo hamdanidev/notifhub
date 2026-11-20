@@ -92,6 +92,7 @@ Aturan kerja:
 | Console P2a: export CSV + resend all non-SMS | selesai & terverifikasi (E41–E42; 42 e2e) |
 | Console P2b: audit aksi admin tenant (tabel + API + halaman) | selesai & terverifikasi (E43; 43 e2e) |
 | Console P2c: compose/send dari console (reuse ingest) | selesai & terverifikasi (E44; 44 e2e) |
+| Console P3a: test Vitest/jsdom (18 test) di CI | selesai & terverifikasi |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -156,7 +157,7 @@ npm run ci                      # typecheck + build + e2e + migrate status (pada
 npm run sdk:test
 npm --prefix sample/in-app-web ci
 npm run typecheck --prefix sample/in-app-web && npm run build --prefix sample/in-app-web
-npm run console:typecheck && npm run console:build
+npm run console:typecheck && npm run console:test && npm run console:build
 npm run sdk:go:test
 npm run verify:preferences      # HTTP + DB, backend harus hidup
 npm run docs:check              # tautan dan anchor Markdown di docs/
@@ -256,7 +257,7 @@ npx prisma migrate status
    di `docs/design/platform-console-host-split.md` §10/§18.4.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
-6. P3 console: test/browser automation dan pemindahan wrapper `HttpTransport` console
-   (`adminResend`, `adminTemplates`, `adminPlatform`, `adminExport`, `adminAudit`, `adminCompose`,
-   `adminAccount`) ke `@notifhub/js` saat rilis SDK berikutnya, plus retensi audit admin. Draf:
-   `docs/design/console-quality-p3.md` (menunggu persetujuan).
+6. P3 console lanjutan: pindahkan wrapper `HttpTransport` (`adminResend`, `adminTemplates`,
+   `adminPlatform`, `adminExport`, `adminAudit`, `adminCompose`, `adminAccount`) ke `@notifhub/js`
+   saat rilis SDK berikutnya, dan retensi audit admin. P3a (18 test Vitest/jsdom) selesai:
+   `docs/design/console-quality-p3.md` §11.

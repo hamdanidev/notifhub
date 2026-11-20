@@ -188,7 +188,7 @@ runner   node:24-bookworm-slim + openssl, copy /app, USER node,
 | Job | Isi |
 |---|---|
 | `backend` | services `postgres:16` (DB `notifhub_test`) + `redis:7`; Node 24 + cache npm; `npm ci`; `npm run ci`; lalu start `node dist/main`, tunggu health, `npm run openapi:export`, `git diff --exit-code openapi/notifhub.json` |
-| `packages` | `npm ci`; `sdk:build` + `sdk:typecheck` + `sdk:test`; `react:typecheck` + `react:test` + `react:build`; `npm --prefix console ci` + `console:typecheck` + `console:build`; langkah terpisah memastikan `console/dist/tenant/index.html` dan `console/dist/platform/index.html` ada, lalu menolak artifact tenant yang memuat string `NotifHub Platform` dan artifact platform yang memuat kunci `notifhub.console.session` |
+| `packages` | `npm ci`; `sdk:build` + `sdk:typecheck` + `sdk:test`; `react:typecheck` + `react:test` + `react:build`; `npm --prefix console ci` + `console:typecheck` + `console:build` + `console:test`; langkah terpisah memastikan `console/dist/tenant/index.html` dan `console/dist/platform/index.html` ada, lalu menolak artifact tenant yang memuat string `NotifHub Platform` dan artifact platform yang memuat kunci `notifhub.console.session` |
 | `go` | `setup-go 1.23`; `gofmt -l` harus kosong; `go vet ./...`; `go test ./...` |
 | `docker` | build tiga image tanpa push: backend (`runner`), console tenant (`runner-tenant`, tag `notifhub-console:ci`), console platform (`runner-platform`, tag `notifhub-console-platform:ci`); cache buildx dipisah per scope |
 
@@ -404,3 +404,7 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     (tenant dari JWT, `requestKey` sebagai idempotency key), throttle 30/menit, audit
     `admin.notification.composed`, dan halaman `/notifications/new`. E44 menambah cakupan e2e
     menjadi 44 test. Detail: `docs/design/console-operations-p2.md` §15.
+21. **Console P3a (2026-11-20).** Vitest + jsdom + Testing Library (dev-only) menambah 18 test
+    console; CI job `packages` menjalankan `npm --prefix console run test`. Test mencakup CSV
+    export, session storage, format helper, dan dialog resend. Detail:
+    `docs/design/console-quality-p3.md` §11.

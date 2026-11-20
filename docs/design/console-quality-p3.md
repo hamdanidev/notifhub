@@ -1,6 +1,6 @@
 # Kualitas console P3: test, SDK, dan retensi audit
 
-Status: **draf desain, menunggu persetujuan** (2026-11-20). Belum ada implementasi.
+Status: **P3a terimplementasi dan terverifikasi** (2026-11-20); P3b–P3c belum. Lihat §11.
 Basis: `docs/design/console-operations-p2.md` §15, `docs/design/console-admin-hardening.md` §16,
 `console/`, `packages/js-sdk/`, `src/cleanup/cleanup.service.ts`, dan `.github/workflows/ci.yml`.
 
@@ -16,6 +16,7 @@ Basis: `docs/design/console-operations-p2.md` §15, `docs/design/console-admin-h
 - [8. Keputusan](#8-keputusan)
 - [9. Risiko dan batasan](#9-risiko-dan-batasan)
 - [10. Pertanyaan persetujuan](#10-pertanyaan-persetujuan)
+- [11. Catatan implementasi P3a](#11-catatan-implementasi-p3a)
 
 ---
 
@@ -160,3 +161,35 @@ Tambahkan ke `NotifHubAdminClient` + tipe di `packages/js-sdk/src`:
 
 Setelah disetujui, implementasi dimulai dari P3a dan berhenti di commit/verifikasi fase tersebut
 sebelum P3b.
+
+## 11. Catatan implementasi P3a
+
+P3a (test console) selesai dan terverifikasi pada 2026-11-20; P3b/P3c belum.
+
+Yang sudah berjalan:
+
+- DevDependency console: `vitest 5.1.1`, `jsdom 31`, `@testing-library/react 16.3.3`,
+  `@testing-library/dom`, `@testing-library/jest-dom`; tanpa Playwright.
+- `console/vitest.config.ts` (environment jsdom, setup, plugin React) dan
+  `console/src/test/setup.ts` (jest-dom matchers + cleanup).
+- Script `test` (`vitest run`) dan `test:watch`.
+- 4 file test / **18 test**: CSV export (formula/quotes/newline/filename), session storage
+  (valid/expired/corrupt/clear), format helper, dialog resend (failed/all/busy/error/kosong).
+- CI job `packages` menambahkan langkah **Console tests**.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm --prefix console run test` | **18 test** lulus (4 file, ~3 detik) |
+| `npm run console:typecheck` | lulus (termasuk file test) |
+| `npm run console:build` | lulus |
+| `npm run ci` | lulus 73 s; backend 44 e2e/29 unit; console 18 test dijalankan terpisah |
+| `npm run docs:check` | lulus |
+
+Catatan:
+
+1. Test memakai jsdom, bukan browser nyata; layout/CSS tidak diuji.
+2. Halaman yang membutuhkan jaringan tetap ditutup E2E backend; komponen dialog/helper diuji unit.
+3. Dependency baru hanya dev; bundle produksi tidak berubah.
+4. P3b (SDK) dan P3c (retensi audit) belum dimulai.
