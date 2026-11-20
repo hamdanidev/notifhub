@@ -378,3 +378,10 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     `NotifHub Platform` di artifact tenant, kunci `notifhub.console.session` di artifact platform).
     Job `docker` membangun kedua target console dengan tag terpisah dan cache per scope. Detail
     verifikasi ada di `docs/design/platform-console-host-split.md` §18.3.
+16. **P4 host split smoke stack (2026-11-20).** Smoke stack penuh diverifikasi: `migrate` exit `0`,
+    backend `healthy`, tenant console `:8080` (redirect `/platform/*` ke `:8081`), platform console
+    `:8081` (root `302` relatif ke `/platform/tenants`), login platform dari origin platform, CORS
+    dua origin (origin asing tanpa `Access-Control-Allow-Origin`), audit create/delete tenant
+    tercatat di DB, dan login tidak mengirim cookie session. Detail + tabel ada di
+    `docs/design/platform-console-host-split.md` §18.4. Rollout domain produksi (DNS/TLS/ingress)
+    tetap langkah operator.

@@ -1,8 +1,10 @@
 # Desain pemisahan console platform ke host terpisah
 
-Status: **P1–P3 terimplementasi dan terverifikasi** (split build dua artifact, image/stage Docker
-ganda, nginx template + guard, compose dua console, CI dua artifact/image) pada 2026-11-20; P4
-(rollout host platform) belum. Draf disetujui 2026-11-19. Lihat §18 untuk catatan implementasi.
+Status: **P1–P4 terimplementasi dan terverifikasi pada smoke stack** (split build dua artifact,
+image/stage Docker ganda, nginx template + guard, compose dua console, CI dua artifact/image,
+rollout `:8080`/`:8081`, redirect lintas origin, CORS, login platform, audit) pada 2026-11-20.
+Rollout ke domain produksi (DNS/TLS/ingress) adalah langkah operasional di luar repo. Draf
+disetujui 2026-11-19. Lihat §18 untuk catatan implementasi.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
 Basis: `console/` (React 18 + Vite), `console/Dockerfile`, `console/nginx/*.template`,
@@ -327,6 +329,9 @@ diisi konsisten.
    bekerja.
 3. **Rilis 3 (bersih-bersih):** setelah satu siklus, evaluasi apakah redirect 302 dipertahankan
    (disarankan tetap, murah) atau diganti 404. Tidak ada perubahan API.
+4. **Status P4 (2026-11-20):** langkah 1–2 sudah dijalankan dan diverifikasi pada smoke stack
+   (`:8080` tenant, `:8081` platform); host produksi (`platform.<domain>`), DNS, dan TLS masih
+   keputusan operator. Hasil lengkap ada di §18.4.
 
 Tidak ada migrasi data. Session platform lama di origin tenant otomatis tidak terpakai; operator
 login ulang di origin baru.
@@ -350,10 +355,10 @@ login ulang di origin baru.
 
 | Fase | Isi | Verifikasi |
 |---|---|---|
-| P1 | Entry `platform.html`/`platform-main.tsx`, router split, redirect tenant, Vite mode/outDir, script build | `console:typecheck`; kedua build; grep bundel; unit/e2e backend tidak berubah |
+| **P1 (selesai)** | Entry `platform.html`/`platform-main.tsx`, router split, redirect tenant, Vite mode/outDir, script build | `console:typecheck`; kedua build; grep bundel; unit/e2e backend tidak berubah |
 | **P2 (selesai)** | Dockerfile stage ganda, template nginx, compose `platform-console`, env/CORS | `docker build` kedua target; container tenant/platform; redirect; guard env; compose config |
 | **P3 (selesai)** | CI build kedua target, dokumentasi (README, configuration, local-setup, production-readiness, desain ini) | `npm run ci`; job `packages`/`docker` lokal; `npm run docs:check` |
-| P4 | Rollout host platform + redirect, verifikasi manual dan regresi penuh | Checklist §13 |
+| **P4 (selesai — smoke stack)** | Rollout host platform + redirect, verifikasi manual dan regresi penuh | Checklist §13 (hasil di §18.4) |
 
 ## 13. Verifikasi
 
@@ -376,6 +381,8 @@ login ulang di origin baru.
 - CORS: request dari origin platform diterima; origin tak terdaftar ditolak.
 - Session: membuka console tenant dan platform di dua tab tidak berbagi session; logout salah satu
   tidak memengaruhi yang lain.
+
+Hasil eksekusi checklist ini pada smoke stack (2026-11-20) ada di §18.4.
 
 ### Regresi
 
@@ -428,14 +435,18 @@ login ulang di origin baru.
 - [x] Dua artifact build dihasilkan dan diperiksa di CI.
 - [x] Bundel tenant tidak memuat kode/rute platform (diverifikasi grep) dan sebaliknya.
 - [x] Image `runner-tenant` dan `runner-platform` berhasil dibangun dan dijalankan.
-- [ ] Compose smoke stack menjalankan kedua console; host tenant redirect `/platform/*` ke host
+- [x] Compose smoke stack menjalankan kedua console; host tenant redirect `/platform/*` ke host
       platform.
-- [ ] Login dan seluruh halaman platform berfungsi dari origin platform.
-- [ ] `CORS_ORIGINS` mencakup kedua origin; origin tak terdaftar ditolak.
-- [ ] Session tenant dan platform tidak berbagi origin/storage.
+- [x] Login dan seluruh halaman platform berfungsi dari origin platform.
+- [x] `CORS_ORIGINS` mencakup kedua origin; origin tak terdaftar ditolak.
+- [x] Session tenant dan platform tidak berbagi origin/storage.
 - [x] Dokumentasi (README, configuration, local-setup, production-readiness, desain ini)
       diperbarui.
 - [x] `npm run ci` dan `npm run docs:check` hijau.
+
+> Catatan DoD: login dan halaman platform diverifikasi lewat HTTP/route dan API dari origin
+> platform, bukan browser automation; isolasi session disimpulkan dari origin/bundle terpisah dan
+> login yang tidak mengirim cookie. Rollout ke domain produksi belum termasuk DoD ini.
 
 ## 17. Pertanyaan keputusan
 
@@ -576,10 +587,66 @@ Catatan:
    dibedakan dari kegagalan kompilasi di log Actions; pesan memakai anotasi `::error::`.
 3. **Simulasi lokal memakai Git Bash** supaya `test -f`/`grep` dieksekusi apa adanya seperti runner
    Ubuntu; PowerShell hanya dipakai untuk inspeksi artifact secara manual.
-4. **Job `docker` hanya membangun image.** Redirect/HTTP image diperiksa manual (tabel di atas),
-   tetapi smoke stack penuh dengan Postgres/Redis/backend dan login platform tetap bagian P4; build
-   arg `VITE_PLATFORM_CONSOLE_URL=http://localhost:8081` dipakai agar image tenant CI mencerminkan
+4. **Job `docker` hanya membangun image.** Redirect/HTTP image diperiksa manual di P3 dan smoke
+   stack penuh (Postgres/Redis/backend/login platform) diverifikasi di P4 (§18.4); build arg
+   `VITE_PLATFORM_CONSOLE_URL=http://localhost:8081` dipakai agar image tenant CI mencerminkan
    konfigurasi smoke stack.
 5. **Workflow GitHub Actions untuk commit P3 hijau**: run #34 (`e0088d0`) selesai `success` untuk
    kelima job, termasuk langkah guard artifact di job `packages` dan dua build image console di job
    `docker`.
+
+### 18.4 P4 (2026-11-20, smoke stack)
+
+Yang dijalankan:
+
+- `.env.prod` lokal (gitignored) diisi dari `.env.prod.example`: `PLATFORM_CONSOLE_URL` dan
+  `VITE_PLATFORM_CONSOLE_URL` = `http://localhost:8081`, `CORS_ORIGINS` berisi origin tenant dan
+  platform, akun platform admin aktif lewat `PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD_HASH`.
+- `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build` menjalankan enam
+  service; `migrate` exit `0`, backend `healthy`, tenant console `:8080`, platform console `:8081`.
+- Redirect lintas origin diuji dengan path dan query; root platform memakai `Location` relatif.
+- Login platform dipanggil dari origin `:8081`, lalu lane platform dan tenant diuji silang.
+- Mutasi tenant `p4-smoke` (create + delete) untuk memastikan audit platform tercatat dan data
+  bersih kembali.
+- CORS diuji dengan preflight dari kedua origin terdaftar dan satu origin asing.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `docker compose ... ps -a` | `migrate` Exited (0); postgres/redis/backend `healthy`; `console` dan `platform-console` Up |
+| `GET /health/ready` | `200`; database dan redis `up` |
+| Tenant `:8080/` | `200`, title `NotifHub Console` |
+| Tenant `:8080/platform/login?next=%2Ftenants` | `302` `http://localhost:8081/platform/login?next=%2Ftenants` |
+| Tenant `:8080/platform/tenants` (bookmark lama) | `302` `http://localhost:8081/platform/tenants` |
+| Platform `:8081/` | `302` `Location: /platform/tenants` (relatif) |
+| Platform `:8081/platform/login` | `200`, title `NotifHub Platform` |
+| Platform `:8081/platform/tenants`, `/platform/audit` | `200` (SPA platform) |
+| Login platform dari origin `:8081` | `200` + `accessToken`; tidak ada `Set-Cookie` |
+| Token platform | payload `role=platform_admin`, tanpa klaim `tenant` |
+| Token tenant | payload `role=tenant_admin`, `tenant=default` |
+| Token platform di lane tenant (`/admin/notifications`) | `403` |
+| Token tenant di lane platform (`/platform/tenants`) | `403` |
+| Kredensial platform di login tenant | `403` |
+| `POST /api/v1/platform/tenants` (`p4-smoke`) | `201`; `Tenant` dibuat |
+| `GET /platform/audit?action=tenant.created&tenantId=p4-smoke` | 1 event; actor `platform@notifhub.local`, IP `::ffff:172.23.0.1`, metadata `{"name":"P4 Smoke"}` |
+| `DELETE /api/v1/platform/tenants/p4-smoke` | `204`; audit `tenant.deleted`; sisa tenant `default` |
+| DB `PlatformAuditEvent` | 2 baris (`tenant.created`, `tenant.deleted`); `_prisma_migrations` 11 applied |
+| CORS preflight origin `:8080` dan `:8081` | `204` + `Access-Control-Allow-Origin` sesuai origin |
+| CORS preflight origin `http://evil.example` | `204` tanpa `Access-Control-Allow-Origin` |
+
+Catatan:
+
+1. **Tanpa browser automation.** Login platform dan halaman diverifikasi lewat HTTP/route + API,
+   bukan klik UI. Isolasi session disimpulkan dari origin dan bundle terpisah serta login yang tidak
+   mengirim cookie; `sessionStorage` tetap per origin.
+2. **Host produksi belum ditentukan.** Nilai `localhost:8080`/`:8081` adalah smoke stack. Untuk
+   produksi, ganti ketiga nilai (`PLATFORM_CONSOLE_URL`, `VITE_PLATFORM_CONSOLE_URL`,
+   `CORS_ORIGINS`) dengan origin nyata secara konsisten, lalu pasang TLS/ingress.
+3. **`.env.prod` berisi kredensial smoke lokal** dan gitignored; jangan dipakai sebagai kredensial
+   produksi.
+4. **Stack dibiarkan hidup** untuk inspeksi manual setelah verifikasi; hentikan dengan
+   `docker compose --env-file .env.prod -f docker-compose.prod.yml down -v` (menghapus volume dan
+   data smoke).
+5. **Redirect root platform relatif** (`Location: /platform/tenants`) sehingga port/subdomain tidak
+   hilang saat di belakang proxy.

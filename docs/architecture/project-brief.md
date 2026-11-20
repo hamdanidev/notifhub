@@ -87,7 +87,7 @@ Aturan kerja:
 | Otomasi rilis: Jest e2e (E1–E11), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
 | Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
 | Multi-tenant F1–F5: entitas `Tenant` + FK, idempotency per tenant, lane platform, provisioning tenant/admin, suspend, audit, `allowedOrigins`, console platform | selesai & terverifikasi (e2e E30–E37, console build + verifikasi manual, docs:check) |
-| Host split console platform: dua artifact (`dist/tenant`, `dist/platform`), dua image nginx, CI dua target, redirect `/platform/*` | selesai & terverifikasi (P1–P3; P4 rollout belum) |
+| Host split console platform: dua artifact (`dist/tenant`, `dist/platform`), dua image nginx, CI dua target, redirect `/platform/*` | selesai & terverifikasi (P1–P4 di smoke stack; rollout domain produksi = langkah operator) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -185,6 +185,9 @@ npx prisma migrate status
 - Go SDK hanya mencakup endpoint consumer (notify, subscriber, topic membership); admin/in-app/
   webhook/preference center tidak masuk. Tidak ada publikasi registry untuk Go SDK.
 - Console saat ini disajikan sebagai image nginx statis; belum ada browser automation permanen.
+  Host split console platform sudah diverifikasi pada smoke stack (`:8080` tenant, `:8081`
+  platform); domain produksi (`platform.<domain>`), TLS, dan ingress belum dikonfigurasi dari repo
+  (langkah operator). Lihat `docs/design/platform-console-host-split.md` §10 dan §18.4.
 - Sample `sample/in-app-web` memakai middleware Vite dev-only untuk menerbitkan token dan memanggil
   ingest. Ia bukan pola produksi, tidak punya test runner sendiri, dan interaksi visualnya belum
   diotomasi; verifikasi memakai HTTP/SSE/DB serta `typecheck`/`build`.
@@ -237,8 +240,9 @@ npx prisma migrate status
 2. Self-service topic subscription oleh end-user (butuh kebijakan sumber kebenaran agar push
    membership dari consumer tidak menimpa pilihan user).
 3. SDK bahasa lain (Python/PHP) dari OpenAPI publik, atau subset OpenAPI untuk endpoint subscriber.
-4. Pisahkan console platform ke host/origin sendiri (isolasi artifact + session). P1 (split build),
-   P2 (Docker/nginx/compose dua console), dan P3 (CI dua artifact/image + dokumentasi deploy) selesai;
-   sisa P4 (rollout host) di `docs/design/platform-console-host-split.md`.
+4. Rollout host platform ke domain produksi (`platform.<domain>`): DNS/TLS/ingress, nilai
+   `PLATFORM_CONSOLE_URL`/`VITE_PLATFORM_CONSOLE_URL`/`CORS_ORIGINS`, lalu verifikasi bookmark lama,
+   login, dan session. Implementasi P1–P4 sudah terverifikasi di smoke stack; langkah dan hasilnya
+   di `docs/design/platform-console-host-split.md` §10/§18.4.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.

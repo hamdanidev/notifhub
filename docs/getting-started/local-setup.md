@@ -516,6 +516,11 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 - Isi `PLATFORM_CONSOLE_URL=http://localhost:8081` dan
   `CORS_ORIGINS=http://localhost:8080,http://localhost:8081` di `.env.prod` (contoh sudah ada di
   `.env.prod.example`).
+- Platform login uses `PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD_HASH`; the returned token has
+  no tenant claim. `POST /api/v1/platform/auth/login` from `http://localhost:8081` returns `200`
+  and no cookie (the session stays in per-origin `sessionStorage`).
+- CORS check: both `http://localhost:8080` and `http://localhost:8081` must be listed; a preflight
+  from an unlisted origin gets no `Access-Control-Allow-Origin` header.
 - Tear down with `... down -v` (removes the volumes and all data).
 - This stack is for verification, not production: no TLS and secrets live in `.env.prod`.
 - Image targets: `docker build --target runner .` (backend),

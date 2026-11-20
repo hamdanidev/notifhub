@@ -36,7 +36,7 @@ selesai · **rencana** = belum dikerjakan.
 | [templates/email-block-builder-design.md](templates/email-block-builder-design.md) | Bagaimana body email disusun dari block, dan bagaimana `builderData` divalidasi? | terimplementasi | §3 model data, §4 UX, §7 verifikasi |
 | [templates/template-limitations-roadmap.md](templates/template-limitations-roadmap.md) | Batasan template mana yang paling berisiko, dan apa prioritas serta statusnya? | P0, P1, sebagian P2 selesai | §2 tabel batasan, §3 prioritas, §11–§14 hasil |
 | [multi-tenant-platform-admin.md](multi-tenant-platform-admin.md) | Bagaimana tenant dikelola sebagai entitas: provisioning, platform admin, suspend, audit, dan isolasi antar tenant? | terimplementasi penuh (F1–F5) | §3 gap, §5 keputusan, §6 migrasi, §8 API, §19 catatan F1–F5 |
-| [platform-console-host-split.md](platform-console-host-split.md) | Bagaimana memisahkan console platform ke host/origin sendiri tanpa memecah codebase, dan dampaknya ke build, Docker, CORS, serta rollout? | P1–P3 selesai; P4 belum | §4 opsi, §5 keputusan, §7 build, §8 deployment, §10 rollout, §18 catatan P1–P3 |
+| [platform-console-host-split.md](platform-console-host-split.md) | Bagaimana memisahkan console platform ke host/origin sendiri tanpa memecah codebase, dan dampaknya ke build, Docker, CORS, serta rollout? | P1–P4 selesai (smoke stack); rollout produksi operasional | §4 opsi, §5 keputusan, §7 build, §8 deployment, §10 rollout, §18 catatan P1–P4 |
 
 ## Arah baca menurut pekerjaan
 
