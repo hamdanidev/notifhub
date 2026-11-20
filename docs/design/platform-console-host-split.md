@@ -336,6 +336,30 @@ diisi konsisten.
 Tidak ada migrasi data. Session platform lama di origin tenant otomatis tidak terpakai; operator
 login ulang di origin baru.
 
+### 10.1 Checklist produksi (dijalankan saat domain siap)
+
+Keputusan operator 2026-11-20: produksi memakai **subdomain** `platform.<domain>` (bukan port
+terpisah); nama domain final menyusul. Urutan eksekusi:
+
+1. **DNS**: arahkan `platform.<domain>` (dan host console tenant bila belum) ke ingress; tunggu
+   propagasi.
+2. **TLS**: terbitkan sertifikat untuk kedua host dan paksa HTTPS.
+3. **Env** (konsisten di satu sumber):
+   - `PLATFORM_CONSOLE_URL=https://platform.<domain>` (runtime nginx tenant),
+   - `VITE_PLATFORM_CONSOLE_URL=https://platform.<domain>` (build arg tenant),
+   - `CORS_ORIGINS=https://console.<domain>,https://platform.<domain>` (atau origin final),
+   - `CONSOLE_API_URL=https://api.<domain>` bila API memakai host terpisah.
+4. **Build/deploy**: image backend, `runner-tenant`, dan `runner-platform`; pastikan image tenant
+   mendapat `PLATFORM_CONSOLE_URL` saat start (guard `check-platform-url.sh` gagal cepat bila
+   kosong).
+5. **Ingress**: host platform → service `platform-console`; host tenant → `console`; opsional
+   VPN/IP allowlist/basic auth khusus host platform.
+6. **Verifikasi** checklist §13: root platform `302` relatif, `/platform/login` `200`, redirect
+   bookmark dari host tenant, login platform, penolakan lintas lane, CORS kedua origin, dan tidak
+   ada cookie session.
+7. **Rollback**: kembalikan DNS/ingress ke deployment sebelumnya; bila perlu kosongkan
+   `PLATFORM_CONSOLE_URL` di tenant (route `/platform/*` menjadi `404`, bukan redirect rusak).
+
 ## 11. Keamanan
 
 - **Isolasi origin**: XSS di console tenant tidak dapat membaca `sessionStorage` platform karena
@@ -452,7 +476,7 @@ Hasil eksekusi checklist ini pada smoke stack (2026-11-20) ada di §18.4.
 
 | # | Pertanyaan | Usulan |
 |---|---|---|
-| Q1 | Nama host produksi: subdomain (`platform.<domain>`) atau port terpisah di host yang sama? | Subdomain untuk produksi; port `8081` untuk smoke stack |
+| Q1 | Nama host produksi: subdomain (`platform.<domain>`) atau port terpisah di host yang sama? | **Diputuskan 2026-11-20: subdomain** `platform.<domain>`; nama domain final menyusul. Port `8081` hanya untuk smoke stack |
 | Q2 | Pertahankan prefix `/platform/*` di host platform (rekomendasi) atau pindahkan ke `/login`, `/tenants`, …? | Pertahankan prefix di v1 agar URL/dokumentasi stabil |
 | Q3 | Redirect `/platform/*` di host tenant: 302 permanen (rekomendasi) atau 404 setelah migrasi? | 302; murah dan menjaga bookmark |
 | Q4 | Pemisahan paket `console-platform` sekarang atau tunda? | Tunda sampai kebutuhan UI/rilis benar-benar berbeda |
@@ -640,9 +664,9 @@ Catatan:
 1. **Tanpa browser automation.** Login platform dan halaman diverifikasi lewat HTTP/route + API,
    bukan klik UI. Isolasi session disimpulkan dari origin dan bundle terpisah serta login yang tidak
    mengirim cookie; `sessionStorage` tetap per origin.
-2. **Host produksi belum ditentukan.** Nilai `localhost:8080`/`:8081` adalah smoke stack. Untuk
-   produksi, ganti ketiga nilai (`PLATFORM_CONSOLE_URL`, `VITE_PLATFORM_CONSOLE_URL`,
-   `CORS_ORIGINS`) dengan origin nyata secara konsisten, lalu pasang TLS/ingress.
+2. **Host produksi: subdomain.** Diputuskan 2026-11-20 memakai `platform.<domain>`; nama domain
+   final belum tersedia, jadi rollout produksi belum dijalankan. Nilai `localhost:8080`/`:8081`
+   hanya smoke stack; checklist eksekusi ada di §10.1.
 3. **`.env.prod` berisi kredensial smoke lokal** dan gitignored; jangan dipakai sebagai kredensial
    produksi.
 4. **Stack dibiarkan hidup** untuk inspeksi manual setelah verifikasi; hentikan dengan
