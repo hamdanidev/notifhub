@@ -217,8 +217,11 @@ Semua query difilter `tenantId` dari token; parameter tenant dari client diabaik
 Bootstrap admin (saat `onApplicationBootstrap`):
 
 - Upsert by `ADMIN_EMAIL`; role `tenant_admin`, tenant `DEFAULT_TENANT_ID`, `active=true`.
-- Jika `ADMIN_PASSWORD_HASH` berbeda dari baris existing, hash diperbarui (env = sumber
-  kebenaran untuk satu admin).
+- `ADMIN_PASSWORD_HASH` diterapkan pada bootstrap pertama dan saat nilainya berubah (env = sumber
+  rotasi). `bootstrapPasswordHash` menyimpan hash env terakhir, sehingga password yang diubah dari
+  console/lane platform tidak ditimpa restart dengan env lama.
+- Rotasi env, reset password, dan ganti password menaikkan `AdminUser.tokenVersion` sehingga token
+  admin lama langsung ditolak.
 - Log `admin.bootstrap.ready` (tanpa hash).
 
 ### 6.2 Templates

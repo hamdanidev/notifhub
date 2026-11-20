@@ -83,7 +83,14 @@ export class PlatformAdminGuard implements CanActivate {
 
     const admin = await this.prisma.adminUser.findUnique({
       where: { id: claims.adminId },
-      select: { id: true, email: true, role: true, tenantId: true, active: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        active: true,
+        tokenVersion: true,
+      },
     });
 
     if (admin === null || !admin.active) {
@@ -96,6 +103,20 @@ export class PlatformAdminGuard implements CanActivate {
         'rejected request for unavailable platform admin',
       );
       throw new UnauthorizedException('Admin account is not available');
+    }
+
+    if (claims.tokenVersion !== admin.tokenVersion) {
+      this.logger.warn(
+        {
+          event: 'auth.platform_token.rejected',
+          reason: 'token_revoked',
+          admin_id: admin.id,
+          token_version: claims.tokenVersion,
+          account_version: admin.tokenVersion,
+        },
+        'rejected request for a revoked platform session',
+      );
+      throw new UnauthorizedException('Admin session is no longer valid');
     }
 
     if (admin.role !== PLATFORM_ADMIN_ROLE || admin.tenantId !== null) {

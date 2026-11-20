@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  DeliveryAttempt,
-  DeliveryEvent,
-  Notification,
-  NotificationRecipient,
+import {
+  Prisma,
+  type DeliveryAttempt,
+  type DeliveryEvent,
+  type Notification,
+  type NotificationRecipient,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { NotificationListQueryDto } from '../dto/list-query.dto';
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface NotificationListItem {
   id: string;
@@ -47,7 +51,8 @@ export class AdminNotificationsService {
   ): Promise<NotificationListResult> {
     const limit = query.limit ?? 20;
     const offset = query.offset ?? 0;
-    const where = {
+    const search = query.search?.trim();
+    const where: Prisma.NotificationWhereInput = {
       tenantId,
       ...(query.status === undefined ? {} : { overallStatus: query.status }),
       ...(query.templateKey === undefined ? {} : { templateKey: query.templateKey }),
@@ -58,6 +63,14 @@ export class AdminNotificationsService {
               ...(query.from === undefined ? {} : { gte: new Date(query.from) }),
               ...(query.to === undefined ? {} : { lte: new Date(query.to) }),
             },
+          }),
+      ...(search === undefined || search.length === 0
+        ? {}
+        : {
+            OR: [
+              ...(UUID_PATTERN.test(search) ? [{ id: search }] : []),
+              { recipients: { some: { recipientId: search } } },
+            ],
           }),
     };
 

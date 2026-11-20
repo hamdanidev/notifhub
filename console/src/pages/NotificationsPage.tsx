@@ -12,7 +12,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { adminClient } from '../lib/adminClient';
 import { formatDateTime } from '../lib/format';
 
-const LIMIT = 20;
+const LIMIT_OPTIONS = [20, 50, 100] as const;
 const AUTO_REFRESH_MS = 5_000;
 const STATUS_OPTIONS: Array<OverallStatus | ''> = ['', 'pending', 'partial', 'sent', 'failed'];
 
@@ -23,18 +23,22 @@ function hasInFlight(items: NotificationSummary[]): boolean {
 export function NotificationsPage(): JSX.Element {
   const [status, setStatus] = useState<OverallStatus | ''>('');
   const [templateKey, setTemplateKey] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [limit, setLimit] = useState<number>(LIMIT_OPTIONS[0]);
   const [offset, setOffset] = useState(0);
 
   const query = useQuery({
-    queryKey: ['notifications', { status, templateKey, from, to, offset }],
+    queryKey: ['notifications', { status, templateKey, search, from, to, limit, offset }],
     queryFn: () =>
       adminClient.listNotifications({
-        limit: LIMIT,
+        limit,
         offset,
         ...(status === '' ? {} : { status }),
         ...(templateKey === '' ? {} : { templateKey }),
+        ...(search === '' ? {} : { search }),
         ...(from === '' ? {} : { from: `${from}T00:00:00.000Z` }),
         ...(to === '' ? {} : { to: `${to}T23:59:59.999Z` }),
       }),
@@ -77,6 +81,8 @@ export function NotificationsPage(): JSX.Element {
   const resetFilters = (): void => {
     setStatus('');
     setTemplateKey('');
+    setSearchInput('');
+    setSearch('');
     setFrom('');
     setTo('');
     setOffset(0);
@@ -101,62 +107,107 @@ export function NotificationsPage(): JSX.Element {
 
       <Card className="filter-card mb-3">
         <Card.Body>
-          <Row className="g-2 align-items-end">
-            <Col xs={12} md={3}>
-              <Form.Label className="small text-muted mb-1">Status</Form.Label>
-              <Form.Select
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value as OverallStatus | '');
-                  setOffset(0);
-                }}
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option === '' ? 'Semua' : option}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-            <Col xs={12} md={3}>
-              <Form.Label className="small text-muted mb-1">Template key</Form.Label>
-              <Form.Control
-                value={templateKey}
-                placeholder="mis. test.notification"
-                onChange={(event) => {
-                  setTemplateKey(event.target.value);
-                  setOffset(0);
-                }}
-              />
-            </Col>
-            <Col xs={6} md={2}>
-              <Form.Label className="small text-muted mb-1">Dari</Form.Label>
-              <Form.Control
-                type="date"
-                value={from}
-                onChange={(event) => {
-                  setFrom(event.target.value);
-                  setOffset(0);
-                }}
-              />
-            </Col>
-            <Col xs={6} md={2}>
-              <Form.Label className="small text-muted mb-1">Sampai</Form.Label>
-              <Form.Control
-                type="date"
-                value={to}
-                onChange={(event) => {
-                  setTo(event.target.value);
-                  setOffset(0);
-                }}
-              />
-            </Col>
-            <Col xs={12} md={2}>
-              <Button variant="outline-secondary" className="w-100" onClick={resetFilters}>
-                Reset
-              </Button>
-            </Col>
-          </Row>
+          <Form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearch(searchInput.trim());
+              setOffset(0);
+            }}
+          >
+            <Row className="g-2 align-items-end">
+              <Col xs={12} md={4}>
+                <Form.Label className="small text-muted mb-1">
+                  Cari ID notifikasi atau recipient (exact)
+                </Form.Label>
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    value={searchInput}
+                    maxLength={128}
+                    placeholder="UUID notifikasi atau recipient ID"
+                    onChange={(event) => setSearchInput(event.target.value)}
+                  />
+                  <Button type="submit" variant="outline-primary">
+                    Cari
+                  </Button>
+                </div>
+              </Col>
+              <Col xs={12} md={2}>
+                <Form.Label className="small text-muted mb-1">Status</Form.Label>
+                <Form.Select
+                  value={status}
+                  onChange={(event) => {
+                    setStatus(event.target.value as OverallStatus | '');
+                    setOffset(0);
+                  }}
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option === '' ? 'Semua' : option}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+              <Col xs={12} md={2}>
+                <Form.Label className="small text-muted mb-1">Template key</Form.Label>
+                <Form.Control
+                  value={templateKey}
+                  placeholder="mis. test.notification"
+                  onChange={(event) => {
+                    setTemplateKey(event.target.value);
+                    setOffset(0);
+                  }}
+                />
+              </Col>
+              <Col xs={6} md={1}>
+                <Form.Label className="small text-muted mb-1">Dari</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={from}
+                  onChange={(event) => {
+                    setFrom(event.target.value);
+                    setOffset(0);
+                  }}
+                />
+              </Col>
+              <Col xs={6} md={1}>
+                <Form.Label className="small text-muted mb-1">Sampai</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={to}
+                  onChange={(event) => {
+                    setTo(event.target.value);
+                    setOffset(0);
+                  }}
+                />
+              </Col>
+              <Col xs={6} md={1}>
+                <Form.Label className="small text-muted mb-1">Baris</Form.Label>
+                <Form.Select
+                  value={limit}
+                  onChange={(event) => {
+                    setLimit(Number(event.target.value));
+                    setOffset(0);
+                  }}
+                >
+                  {LIMIT_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+              <Col xs={6} md={1}>
+                <Button
+                  type="button"
+                  variant="outline-secondary"
+                  className="w-100"
+                  onClick={resetFilters}
+                >
+                  Reset
+                </Button>
+              </Col>
+            </Row>
+          </Form>
         </Card.Body>
       </Card>
 
@@ -174,11 +225,15 @@ export function NotificationsPage(): JSX.Element {
               columns={columns}
               rows={query.data?.items ?? []}
               rowKey={(row) => row.id}
-              emptyMessage="Belum ada notifikasi."
+              emptyMessage={
+                search === ''
+                  ? 'Belum ada notifikasi.'
+                  : 'Tidak ada notifikasi yang cocok dengan ID/recipient tersebut.'
+              }
             />
             <Pagination
               total={query.data?.total ?? 0}
-              limit={LIMIT}
+              limit={limit}
               offset={offset}
               onChange={setOffset}
             />

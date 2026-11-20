@@ -208,6 +208,7 @@ export class NotifHubAdminClient {
       `/notifications${queryString({
         limit: query.limit,
         offset: query.offset,
+        search: query.search,
         status: query.status,
         templateKey: query.templateKey,
         from: query.from,

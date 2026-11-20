@@ -1,8 +1,8 @@
 # Analisis kebutuhan console admin NotifHub
 
 Status: **Fase A + Fase B terimplementasi dan terverifikasi** pada 2026-11-16; Fase C sebagian
-(template preview/test send sudah ada), sisa re-send all, search, compose/send, export. Audit ulang
-2026-11-20 ada di §11.1.
+(template preview/test send dan search notification sudah ada), sisa re-send all, compose/send,
+export. P1 hardening console selesai 2026-11-20. Audit ulang 2026-11-20 ada di §11.1.
 Tanggal: 2026-11-16. Bahasa: Indonesia.
 
 Dokumen ini menjawab dua keluhan konkret pada console saat ini — tidak ada **re-send** dan tidak ada
@@ -520,7 +520,7 @@ Cakupan console saat ini dibandingkan Admin API:
 | Area | Console | Catatan |
 |---|---|---|
 | Dashboard | count status + grafik 14 hari + auto-refresh 60 s | agregasi client-side |
-| Notifications | filter status/template/tanggal, detail, resend failed, auto-refresh in-flight | belum search ID/recipient, export, resend all, cancel/retry |
+| Notifications | filter status/template/tanggal, search ID/recipient exact, page size 20/50/100, detail, resend failed, auto-refresh in-flight | belum export, resend all, cancel/retry |
 | Templates | list/create/edit, preview, test send, publish/rollback/clone, riwayat/audit/test send, aset gambar | item Fase C "template test" sudah selesai |
 | Subscribers | list/detail, editor preferensi | data read-only dari push consumer |
 | Topics | list/detail, tambah/ubah membership, `expiresAt` | |
@@ -532,10 +532,10 @@ Gap yang tersisa dan prioritas:
 
 | Prioritas | Gap | Dampak | Butuh backend? |
 |---|---|---|---|
-| P1 | Ganti password admin sendiri | Rotasi password harus ubah env + restart; tidak praktis | Ya |
-| P1 | Isi `subscriberJwtSecret` saat buat API key | Secret per tenant hanya lewat curl; berisiko memakai fallback env | Tidak (DTO sudah ada) |
-| P1 | Search notification ID/recipient + page size | Investigasi lambat saat volume naik | Ya |
-| P1 | CSP header untuk console | Mitigasi XSS belum ada di konfigurasi nginx/Caddy | Tidak (config) |
+| P1 (selesai) | Ganti password admin sendiri | Rotasi password harus ubah env + restart; tidak praktis | Ya |
+| P1 (selesai) | Isi `subscriberJwtSecret` saat buat API key | Secret per tenant hanya lewat curl; berisiko memakai fallback env | Tidak (DTO sudah ada) |
+| P1 (selesai) | Search notification ID/recipient + page size | Investigasi lambat saat volume naik | Ya |
+| P1 (selesai) | CSP header untuk console | Mitigasi XSS belum ada di konfigurasi nginx/Caddy | Tidak (config) |
 | P2 | Export CSV notification/recipient | Pelaporan manual | Ya |
 | P2 | Resend all dengan konfirmasi | Pengingat massal belum bisa | Ya |
 | P2 | Compose/send dari console | Admin masih lewat API/curl | Ya |
@@ -546,5 +546,7 @@ Gap yang tersisa dan prioritas:
 Catatan: compose/send bukan blocker single tenant bila pengiriman memang dilakukan consumer lewat
 API/SDK. Untuk operator yang ingin mengirim manual dari console, ini gap utama.
 
-Draf desain P1 untuk gap password, secret API key, search, dan CSP:
-[console-admin-hardening.md](console-admin-hardening.md) (menunggu persetujuan).
+P1 sudah diimplementasikan dan diverifikasi pada 2026-11-20:
+[console-admin-hardening.md](console-admin-hardening.md) §16. Sisa gap P2/P3 (export, resend all,
+compose/send, audit aksi admin tenant, test/browser automation, dan pemindahan wrapper ke SDK
+terbit) belum dikerjakan.

@@ -1,6 +1,8 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -8,10 +10,16 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
+import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
-import { AdminProfileDto, LoginDto, LoginResponseDto } from '../dto/auth.dto';
+import {
+  AdminProfileDto,
+  ChangePasswordDto,
+  LoginDto,
+  LoginResponseDto,
+} from '../dto/auth.dto';
 import { AdminAuthService } from '../services/admin-auth.service';
 
 @ApiTags('admin')
@@ -39,5 +47,30 @@ export class AdminAuthController {
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
   me(@CurrentAdmin() admin: AdminPrincipal): Promise<AdminProfileDto> {
     return this.authService.me(admin.adminId);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiBearerAuth('admin-jwt')
+  @ApiOperation({
+    summary: 'Change the current admin password (invalidates every existing admin session)',
+  })
+  @ApiNoContentResponse({ description: 'Password changed; log in again with the new password' })
+  @ApiBadRequestResponse({
+    description: 'invalid_current_password | password_unchanged | password_too_long',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
+  @ApiTooManyRequestsResponse({ description: 'Password change rate limit exceeded' })
+  changePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() request: RequestWithId,
+  ): Promise<void> {
+    return this.authService.changePassword(admin.adminId, dto, {
+      ip: request.ip,
+      requestId: request.requestId,
+    });
   }
 }

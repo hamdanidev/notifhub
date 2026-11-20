@@ -386,3 +386,10 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     tercatat di DB, dan login tidak mengirim cookie session. Detail + tabel ada di
     `docs/design/platform-console-host-split.md` §18.4. Rollout domain produksi (DNS/TLS/ingress)
     tetap langkah operator.
+17. **Console hardening P1 (2026-11-20).** Migrasi ke-12 (`AdminUser.tokenVersion`) mencabut token
+    admin saat password berubah/reset; migrasi ke-13 (`bootstrapPasswordHash`) mencegah bootstrap
+    env menimpa password yang diubah dari console. Endpoint `POST /admin/auth/change-password`,
+    field `subscriberJwtSecret` di form API key, search notifikasi exact ID/recipient + page size,
+    dan CSP pada image tenant/platform sudah berjalan. Verifikasi: 29 unit, 40 e2e (E38 password,
+    E39 search, E40 bootstrap), CSP terpasang di kedua image, login ter-render di headless Edge di
+    bawah CSP. Detail: `docs/design/console-admin-hardening.md` §16.

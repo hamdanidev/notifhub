@@ -4,6 +4,7 @@ import { PLATFORM_CONSOLE_URL } from './env';
 import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './layout/AppLayout';
+import { AccountPage } from './pages/AccountPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
       { path: '/topics', element: <TopicsPage /> },
       { path: '/topics/:key', element: <TopicDetailPage /> },
       { path: '/api-keys', element: <ApiKeysPage /> },
+      { path: '/account', element: <AccountPage /> },
     ],
   },
   {

@@ -88,6 +88,7 @@ export class AdminJwtGuard implements CanActivate {
         role: true,
         tenantId: true,
         active: true,
+        tokenVersion: true,
         tenant: { select: { status: true } },
       },
     });
@@ -102,6 +103,20 @@ export class AdminJwtGuard implements CanActivate {
         'rejected request for unavailable admin account',
       );
       throw new UnauthorizedException('Admin account is not available');
+    }
+
+    if (principal.tokenVersion !== admin.tokenVersion) {
+      this.logger.warn(
+        {
+          event: 'auth.admin_token.rejected',
+          reason: 'token_revoked',
+          admin_id: admin.id,
+          token_version: principal.tokenVersion,
+          account_version: admin.tokenVersion,
+        },
+        'rejected request for a revoked admin session',
+      );
+      throw new UnauthorizedException('Admin session is no longer valid');
     }
 
     if (
@@ -141,6 +156,7 @@ export class AdminJwtGuard implements CanActivate {
       email: admin.email,
       role: admin.role,
       tenantId: admin.tenantId,
+      tokenVersion: admin.tokenVersion,
     };
 
     return true;

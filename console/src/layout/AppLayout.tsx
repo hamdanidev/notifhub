@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Icon, type IconName } from '../components/Icon';
 
@@ -43,6 +43,7 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith('/subscribers')) return 'Subscribers';
   if (pathname.startsWith('/topics')) return 'Topics';
   if (pathname.startsWith('/api-keys')) return 'API keys';
+  if (pathname.startsWith('/account')) return 'Akun';
   return 'Console';
 }
 
@@ -222,7 +223,13 @@ export function AppLayout(): JSX.Element {
 
           <div className="app-topbar-right">
             {session !== null ? (
-              <span className="account-email">{session.admin.email}</span>
+              <Link
+                to="/account"
+                className="account-email text-reset text-decoration-none"
+                title="Akun dan ubah password"
+              >
+                {session.admin.email}
+              </Link>
             ) : null}
             <button type="button" className="btn btn-link" onClick={handleLogout}>
               Logout

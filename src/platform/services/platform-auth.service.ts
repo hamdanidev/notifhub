@@ -67,6 +67,7 @@ export class PlatformAuthService {
       id: admin.id,
       email: admin.email,
       role: admin.role,
+      tokenVersion: admin.tokenVersion,
     });
 
     await this.prisma.adminUser.update({

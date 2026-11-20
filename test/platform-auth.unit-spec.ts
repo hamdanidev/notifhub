@@ -49,7 +49,7 @@ describe('platform admin lane', () => {
   const tokens = new AdminTokenService(config, logger);
 
   it('token platform tidak membawa klaim tenant', () => {
-    const signed = tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin' });
+    const signed = tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin', tokenVersion: 0 });
     const payload = jwt.decode(signed.token) as Record<string, unknown>;
 
     expect(payload.role).toBe('platform_admin');
@@ -58,7 +58,7 @@ describe('platform admin lane', () => {
 
   it('verify mengembalikan tenantId hanya untuk token tenant admin', () => {
     const platform = tokens.verify(
-      tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin' }).token,
+      tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin', tokenVersion: 0 }).token,
     );
     const tenant = tokens.verify(
       tokens.sign({
@@ -66,6 +66,7 @@ describe('platform admin lane', () => {
         email: 'admin@example.com',
         role: 'tenant_admin',
         tenantId: 'default',
+        tokenVersion: 0,
       }).token,
     );
 
@@ -82,12 +83,13 @@ describe('platform admin lane', () => {
           role: 'platform_admin',
           tenantId: null,
           active: true,
+          tokenVersion: 0,
         }),
       },
     } as unknown as PrismaService;
     const guard = new PlatformAdminGuard(tokens, prisma, logger);
     const request = requestWith(
-      tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin' }).token,
+      tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin', tokenVersion: 0 }).token,
     );
 
     await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
@@ -96,6 +98,30 @@ describe('platform admin lane', () => {
       email: 'ops@example.com',
       role: 'platform_admin',
     });
+  });
+
+  it('guard menolak token dengan tokenVersion lama', async () => {
+    const prisma = {
+      adminUser: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'p1',
+          email: 'ops@example.com',
+          role: 'platform_admin',
+          tenantId: null,
+          active: true,
+          tokenVersion: 1,
+        }),
+      },
+    } as unknown as PrismaService;
+    const guard = new PlatformAdminGuard(tokens, prisma, logger);
+    const request = requestWith(
+      tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin', tokenVersion: 0 })
+        .token,
+    );
+
+    await expect(guard.canActivate(contextFor(request))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('guard menolak token tenant admin di lane platform', async () => {
@@ -109,6 +135,7 @@ describe('platform admin lane', () => {
         email: 'admin@example.com',
         role: 'tenant_admin',
         tenantId: 'default',
+        tokenVersion: 0,
       }).token,
     );
 
@@ -125,6 +152,7 @@ describe('platform admin lane', () => {
           role: 'platform_admin',
           tenantId: null,
           active: false,
+          tokenVersion: 0,
         }),
       },
     } as unknown as PrismaService;
@@ -134,7 +162,7 @@ describe('platform admin lane', () => {
       guard.canActivate(
         contextFor(
           requestWith(
-            tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin' }).token,
+            tokens.sign({ id: 'p1', email: 'ops@example.com', role: 'platform_admin', tokenVersion: 0 }).token,
           ),
         ),
       ),

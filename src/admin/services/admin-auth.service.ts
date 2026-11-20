@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -6,8 +7,14 @@ import {
 import bcrypt from 'bcrypt';
 import { PinoLogger } from 'nestjs-pino';
 import { AdminTokenService } from '../../auth/admin/admin-token.service';
+import { TENANT_ADMIN_ROLE } from '../../auth/admin/admin.types';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { AdminProfileDto, LoginDto, LoginResponseDto } from '../dto/auth.dto';
+import type {
+  AdminProfileDto,
+  ChangePasswordDto,
+  LoginDto,
+  LoginResponseDto,
+} from '../dto/auth.dto';
 
 @Injectable()
 export class AdminAuthService {
@@ -72,6 +79,7 @@ export class AdminAuthService {
       email: admin.email,
       role: admin.role,
       tenantId: admin.tenantId,
+      tokenVersion: admin.tokenVersion,
     });
 
     await this.prisma.adminUser.update({
@@ -95,6 +103,63 @@ export class AdminAuthService {
         tenantId: admin.tenantId,
       }),
     };
+  }
+
+  async changePassword(
+    adminId: string,
+    dto: ChangePasswordDto,
+    context: { ip?: string; requestId?: string } = {},
+  ): Promise<void> {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id: adminId } });
+
+    if (admin === null || !admin.active) {
+      throw new UnauthorizedException('Admin account is not available');
+    }
+
+    if (admin.role !== TENANT_ADMIN_ROLE || admin.tenantId === null) {
+      throw new ForbiddenException('Admin role is not permitted');
+    }
+
+    if (Buffer.byteLength(dto.newPassword, 'utf8') > 72) {
+      throw new BadRequestException({
+        message: 'password_too_long',
+        details: { code: 'password_too_long' },
+      });
+    }
+
+    const currentMatches = await bcrypt.compare(dto.currentPassword, admin.passwordHash);
+
+    if (!currentMatches) {
+      throw new BadRequestException({
+        message: 'invalid_current_password',
+        details: { code: 'invalid_current_password' },
+      });
+    }
+
+    if (await bcrypt.compare(dto.newPassword, admin.passwordHash)) {
+      throw new BadRequestException({
+        message: 'password_unchanged',
+        details: { code: 'password_unchanged' },
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.adminUser.update({
+      where: { id: admin.id },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+    });
+
+    this.logger.info(
+      {
+        event: 'admin.password.changed',
+        admin_id: admin.id,
+        tenant_id: admin.tenantId,
+        ip: context.ip ?? null,
+        request_id: context.requestId ?? null,
+      },
+      'admin password changed',
+    );
   }
 
   async me(adminId: string): Promise<AdminProfileDto> {

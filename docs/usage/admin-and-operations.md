@@ -40,6 +40,8 @@ curl -s -X POST http://localhost:3000/api/v1/admin/auth/login \
 - Token ditandatangani `ADMIN_JWT_SECRET`, berlaku sesuai `ADMIN_JWT_EXPIRES_IN` (default `1h`).
 - Hanya role `tenant_admin` yang diizinkan; token `platform_admin` ditolak `403` oleh guard.
 - Belum ada refresh token: setelah kedaluwarsa, login ulang.
+- Ganti password: `POST /api/v1/admin/auth/change-password` dengan password lama + baru. Sukses
+  `204`; semua token admin lama langsung dicabut (`tokenVersion`) dan pengguna harus login ulang.
 - `GET /api/v1/admin/auth/me` mengembalikan profil admin yang sedang login.
 
 Admin bootstrap dibuat otomatis saat startup dari `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH`.
@@ -74,6 +76,8 @@ Catatan:
 - Revoke berlaku seketika untuk ingest maupun verifikasi token subscriber (secret key yang
   di-revoke tidak lagi dipakai).
 - Key `bootstrap` dibuat dari `SERVICE_API_KEY` saat tabel masih kosong.
+- Console dapat mengisi `subscriberJwtSecret` saat membuat key; setelah dibuat, nilainya tidak
+  dapat dilihat atau diubah lagi.
 
 ## 3. Template
 
@@ -168,7 +172,7 @@ npm run console:dev        # http://localhost:5173
 ```
 
 Halaman: Dashboard, Notifications (+detail), Templates (+form), Subscribers (+detail & editor
-preferensi), Topics (+detail & membership), API Keys.
+preferensi), Topics (+detail & membership), API Keys, dan Akun (profil + ganti password).
 
 - Login memakai `ADMIN_EMAIL` / password yang hash-nya ada di `ADMIN_PASSWORD_HASH`.
 - Admin JWT disimpan di `sessionStorage`; `401` menghapus sesi dan mengarahkan ke `/login`.

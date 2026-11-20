@@ -1,6 +1,6 @@
 # Hardening console tenant: password, secret API key, search, CSP
 
-Status: **draf desain, menunggu persetujuan** (2026-11-20). Belum ada implementasi.
+Status: **terimplementasi dan terverifikasi** (2026-11-20). Lihat §16 untuk catatan implementasi.
 Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/multi-tenant-platform-admin.md`
 §19, `docs/usage/admin-and-operations.md`, `prisma/schema.prisma`, dan kode `src/admin`,
 `src/auth/admin`, `console/src`.
@@ -22,6 +22,7 @@ Basis: `docs/design/console-needs-analysis.md` §11.1, `docs/design/multi-tenant
 - [13. Risiko dan batasan](#13-risiko-dan-batasan)
 - [14. Rollout](#14-rollout)
 - [15. Pertanyaan persetujuan](#15-pertanyaan-persetujuan)
+- [16. Catatan implementasi (2026-11-20)](#16-catatan-implementasi-2026-11-20)
 
 ---
 
@@ -152,11 +153,12 @@ pengguna hanya salah mengetik password lama.
 ```prisma
 model AdminUser {
   // ...
-  tokenVersion Int @default(0)
+  tokenVersion          Int     @default(0)
+  bootstrapPasswordHash String?
 }
 ```
 
-Migrasi additive; baris lama otomatis `0`.
+Migrasi additive; baris lama otomatis `0`/`NULL`.
 
 ### 5.2 Token
 
@@ -179,6 +181,22 @@ Migrasi additive; baris lama otomatis `0`.
 - Setelah password berubah/reset/ env hash berubah, `tokenVersion` naik dan semua token lama
   ditolak seketika.
 - Tidak ada perubahan pada `ADMIN_JWT_SECRET` atau masa berlaku.
+
+### 5.4 Bootstrap versus password dari console
+
+Bootstrap env tetap menjadi sumber untuk **rotasi** password, tetapi tidak boleh menimpa password
+yang baru diubah dari console setiap restart. Karena itu `AdminUser.bootstrapPasswordHash`
+menyimpan hash env terakhir yang diterapkan:
+
+- admin dibuat: `passwordHash` dan `bootstrapPasswordHash` diisi hash env;
+- restart dengan env sama: tidak ada update password (password UI tetap);
+- `ADMIN_PASSWORD_HASH` berubah: hash baru diterapkan, `bootstrapPasswordHash` diperbarui, dan
+  `tokenVersion` naik (sesi lama dicabut);
+- reset password lewat lane platform atau console: `passwordHash` berubah, `bootstrapPasswordHash`
+  tetap; restart dengan env lama tidak mengembalikannya.
+
+Baris lama (sebelum migrasi) memiliki `bootstrapPasswordHash = NULL`; pada startup pertama
+bootstrap mengisi kolom itu, dan hanya menyelaraskan password bila hash DB berbeda dari env.
 
 ## 6. Secret API key dari console
 
@@ -282,9 +300,9 @@ Alasan:
 
 | Perubahan | Detail |
 |---|---|
-| Kolom baru | `AdminUser.tokenVersion Int @default(0)` |
-| Migrasi | `prisma/migrations/<timestamp>_admin_token_version/migration.sql` dengan `ALTER TABLE "AdminUser" ADD COLUMN "tokenVersion" INTEGER NOT NULL DEFAULT 0;` |
-| Backfill | Otomatis lewat default `0`; tidak ada perubahan token lama |
+| Kolom baru | `AdminUser.tokenVersion Int @default(0)` dan `AdminUser.bootstrapPasswordHash String?` |
+| Migrasi | `20261120120000_admin_token_version` dan `20261120123000_admin_bootstrap_password_hash` |
+| Backfill | `tokenVersion = 0`; `bootstrapPasswordHash = NULL` lalu diisi bootstrap berikutnya |
 | Rollback | Kolom additive; drop manual hanya jika benar-benar perlu (Prisma tidak menyediakan down otomatis). Token tanpa klaim tetap kompatibel |
 
 Tidak ada perubahan pada tabel tenant/notifikasi/API key.
@@ -416,7 +434,7 @@ Tidak ada perubahan pada tabel tenant/notifikasi/API key.
 
 ## 15. Pertanyaan persetujuan
 
-Mohon konfirmasi sebelum implementasi:
+Disetujui 2026-11-20: D1–D10 (pertanyaan di bawah dipertahankan sebagai catatan keputusan).
 
 1. Setuju **tokenVersion + migrasi** (D2), sehingga ganti password mereset semua sesi?
 2. Setuju password baru 8–72 karakter dan error password lama `400` (bukan `401`)?
@@ -428,3 +446,64 @@ Mohon konfirmasi sebelum implementasi:
 
 Setelah disetujui, implementasi dilakukan berurutan: migrasi/tokenVersion → endpoint password →
 UI akun → secret API key → search → CSP → verifikasi dan commit.
+
+## 16. Catatan implementasi (2026-11-20)
+
+D1–D10 disetujui dan diimplementasikan.
+
+Yang sudah berjalan:
+
+- Migrasi `20261120120000_admin_token_version` menambah `AdminUser.tokenVersion`, dan
+  `20261120123000_admin_bootstrap_password_hash` menambah `bootstrapPasswordHash`; keduanya
+  diterapkan di database dev dan test (total 13 migrasi).
+- `AdminTokenService` menandatangani/membaca klaim `tokenVersion`; token lama tanpa klaim dianggap
+  `0`. `AdminJwtGuard` dan `PlatformAdminGuard` menolak token yang versinya tidak cocok.
+- `POST /api/v1/admin/auth/change-password` (guard tenant + throttle 5/menit, `204`, error
+  `invalid_current_password`/`password_unchanged`/`password_too_long` dengan `details.code`).
+- Bootstrap menaikkan `tokenVersion` hanya saat hash env berubah; `bootstrapPasswordHash`
+  membedakan rotasi env dari perubahan password UI sehingga restart tidak mengembalikan password
+  lama. Reset password oleh platform juga menaikkan `tokenVersion`.
+- Halaman `/account` (profil + form ganti password) dan tautan email di topbar; setelah sukses
+  sesi dibersihkan dan diarahkan ke `/login?passwordChanged=1` dengan banner.
+- Form API key menambah field opsional `subscriberJwtSecret` (min 32); SDK dan backend sudah
+  mendukung.
+- `AdminNotificationsService.list` mencari **exact** `Notification.id` (UUID) atau
+  `recipientId`, tenant-scoped; SDK `listNotifications` meneruskan `search`; UI punya input cari
+  dan pilihan 20/50/100 baris.
+- CSP ditambahkan ke `tenant.conf.template`, `platform.conf.template`, serta contoh Caddy/nginx di
+  panduan single tenant.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run typecheck` (backend) | lulus |
+| `npm run test:unit` | 29 test lulus (7 suite), termasuk unit tokenVersion |
+| `npm run test:e2e` | 40 test lulus; E38 password, E39 search, E40 bootstrap tidak menimpa password UI |
+| `npm run console:typecheck` / `console:build` | lulus; dua artifact |
+| `docker build` target `runner-tenant` / `runner-platform` | lulus |
+| `curl -I` image tenant & platform | `Content-Security-Policy` persis sesuai §8.1, halaman `200` |
+| Render login dengan headless Edge di bawah CSP | form tampil (script/style tidak diblokir) |
+| `npm run ci` | lulus 86 s: typecheck, build, 29 unit, 40 e2e, 13 migrasi, `Database schema is up to date!` |
+| `npm run docs:check` | lulus |
+
+Catatan/deviasi:
+
+1. **Test E38 tidak memakai login** untuk admin uji: token ditandatangani langsung dengan
+   `ADMIN_JWT_SECRET` (`tokenVersion: 0`). Ini menghindari throttle login 5/menit yang sudah
+   terpakai E6/E32/E33 dan tetap menguji guard, endpoint, serta invalidasi token.
+2. **Halaman `/account` belum diuji dengan browser automation.** Verifikasi UI: build/typecheck,
+   route tersaji `200`, dan render login di bawah CSP. Perilaku form mengikuti komponen yang sama.
+3. **CSP `connect-src 'self' https:` masih luas**; pengetatan per origin memerlukan env tambahan
+   (dicatat sebagai penyempurnaan).
+4. **Tidak ada audit persisten** untuk perubahan password; hanya log terstruktur
+   `admin.password.changed`. Audit aksi admin tenant tetap backlog P2.
+5. **Token lama tetap berlaku saat deploy** (klaim tidak ada = 0, DB 0); setelah password berubah
+   atau hash env berubah, semua token lama langsung ditolak.
+6. **SDK npm belum dirilis ulang**; console memakai workspace, jadi `search` berjalan. Patch
+   release `@notifhub/js` perlu dilakukan agar konsumen npm mendapatkannya.
+7. **Tidak ada dependency baru.** OpenAPI publik tidak berubah (endpoint admin tidak masuk subset
+   publik).
+8. **Bootstrap env tidak menimpa password UI.** `bootstrapPasswordHash` menyimpan hash env terakhir;
+   rotasi `ADMIN_PASSWORD_HASH` tetap diterapkan dan mencabut sesi, sedangkan perubahan dari console
+   bertahan setelah restart. E40 menguji perilaku ini.

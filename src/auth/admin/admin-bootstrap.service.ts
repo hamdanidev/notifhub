@@ -53,6 +53,7 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
         data: {
           email,
           passwordHash,
+          bootstrapPasswordHash: passwordHash,
           role: TENANT_ADMIN_ROLE,
           tenantId,
           active: true,
@@ -67,16 +68,18 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
       return;
     }
 
-    if (
-      existing.passwordHash !== passwordHash ||
-      existing.role !== TENANT_ADMIN_ROLE ||
-      existing.tenantId !== tenantId ||
-      !existing.active
-    ) {
+    const sync = this.passwordSync(existing, passwordHash);
+    const accountChanged =
+      existing.role !== TENANT_ADMIN_ROLE || existing.tenantId !== tenantId || !existing.active;
+
+    if (sync.shouldSyncPassword || sync.shouldTrackEnvHash || accountChanged) {
       await this.prisma.adminUser.update({
         where: { id: existing.id },
         data: {
-          passwordHash,
+          ...(sync.shouldSyncPassword
+            ? { passwordHash, tokenVersion: { increment: 1 } }
+            : {}),
+          ...(sync.shouldTrackEnvHash ? { bootstrapPasswordHash: passwordHash } : {}),
           role: TENANT_ADMIN_ROLE,
           tenantId,
           active: true,
@@ -124,6 +127,7 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
         data: {
           email,
           passwordHash,
+          bootstrapPasswordHash: passwordHash,
           role: PLATFORM_ADMIN_ROLE,
           tenantId: null,
           active: true,
@@ -145,10 +149,18 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
       );
     }
 
-    if (existing.passwordHash !== passwordHash || !existing.active) {
+    const sync = this.passwordSync(existing, passwordHash);
+
+    if (sync.shouldSyncPassword || sync.shouldTrackEnvHash || !existing.active) {
       await this.prisma.adminUser.update({
         where: { id: existing.id },
-        data: { passwordHash, active: true },
+        data: {
+          ...(sync.shouldSyncPassword
+            ? { passwordHash, tokenVersion: { increment: 1 } }
+            : {}),
+          ...(sync.shouldTrackEnvHash ? { bootstrapPasswordHash: passwordHash } : {}),
+          active: true,
+        },
       });
 
       this.logger.info(
@@ -163,5 +175,26 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
       { event: 'platform.admin.bootstrap.ready', admin_id: existing.id },
       'bootstrap platform admin is up to date',
     );
+  }
+
+  /**
+   * The environment hash is applied on first bootstrap and again only when it changes. A password
+   * changed from the UI is therefore not reverted on restart, while rotating ADMIN_PASSWORD_HASH
+   * still forces a sync. `bootstrapPasswordHash` remembers the last env value that was applied.
+   */
+  private passwordSync(
+    existing: { passwordHash: string; bootstrapPasswordHash: string | null },
+    envPasswordHash: string,
+  ): { shouldSyncPassword: boolean; shouldTrackEnvHash: boolean } {
+    const bootstrapHashMissing = existing.bootstrapPasswordHash === null;
+    const envHashChanged =
+      !bootstrapHashMissing && existing.bootstrapPasswordHash !== envPasswordHash;
+    const passwordDiffers = existing.passwordHash !== envPasswordHash;
+    const shouldSyncPassword = (bootstrapHashMissing || envHashChanged) && passwordDiffers;
+
+    return {
+      shouldSyncPassword,
+      shouldTrackEnvHash: bootstrapHashMissing || envHashChanged,
+    };
   }
 }

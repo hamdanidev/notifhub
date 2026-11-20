@@ -9,6 +9,8 @@ export interface AdminTokenClaims {
   email: string;
   role: string;
   tenantId?: string;
+  /** Bumped when the password changes/resets; mismatch invalidates the token. */
+  tokenVersion: number;
 }
 
 /** Tenant-lane principal: every tenant admin has a tenant. */

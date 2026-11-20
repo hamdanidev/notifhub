@@ -447,16 +447,19 @@ model ApiKey {
 }
 
 model AdminUser {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  role         String    @default("tenant_admin")
-  tenantId     String?
-  tenant       Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  active       Boolean   @default(true)
-  lastLoginAt  DateTime? @db.Timestamptz
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  passwordHash         String
+  /// Hash env terakhir yang diterapkan bootstrap; membedakan rotasi env dari perubahan password UI.
+  bootstrapPasswordHash String?
+  role                 String    @default("tenant_admin")
+  tenantId             String?
+  tenant               Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  active               Boolean   @default(true)
+  lastLoginAt          DateTime? @db.Timestamptz
+  tokenVersion         Int       @default(0)
+  createdAt            DateTime  @default(now()) @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @db.Timestamptz
 
   @@index([tenantId])
   @@index([role])

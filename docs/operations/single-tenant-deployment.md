@@ -114,8 +114,9 @@ Catatan keamanan:
 
 - File `.env.prod` berisi secret; `chmod 600 .env.prod`, jangan masuk git.
 - `SUBSCRIBER_JWT_SECRET` dan `WEBHOOK_SIGNING_SECRET` berbeda dari secret admin.
-- Jika `ADMIN_PASSWORD_HASH` diubah, bootstrap akan memperbarui akun saat restart; sesi lama tetap
-  berlaku sampai token kedaluwarsa (`ADMIN_JWT_EXPIRES_IN`).
+- Jika `ADMIN_PASSWORD_HASH` diubah, bootstrap memperbarui akun dan mencabut sesi lama. Sebaliknya,
+  password yang diubah dari console tidak ditimpa restart selama hash env tidak berubah
+  (`bootstrapPasswordHash` melacak nilai env terakhir).
 
 ## 6. Menjalankan backend
 
@@ -215,6 +216,7 @@ console.example.com {
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
         Referrer-Policy no-referrer
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; form-action 'self'"
     }
 }
 ```
@@ -226,6 +228,11 @@ server {
     listen 443 ssl http2;
     server_name console.example.com;
     root /srv/notifhub/console;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; form-action 'self'" always;
 
     location ^~ /api/v1/platform/ { return 404; }
     location ^~ /platform/        { return 404; }

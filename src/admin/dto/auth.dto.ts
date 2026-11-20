@@ -14,6 +14,20 @@ export class LoginDto {
   password!: string;
 }
 
+export class ChangePasswordDto {
+  @ApiProperty({ minLength: 1, maxLength: 128, writeOnly: true })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
+  currentPassword!: string;
+
+  @ApiProperty({ minLength: 8, maxLength: 72, writeOnly: true })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  newPassword!: string;
+}
+
 export class AdminProfileDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;

@@ -8,6 +8,7 @@ interface AdminJwtPayload extends jwt.JwtPayload {
   email?: unknown;
   role?: unknown;
   tenant?: unknown;
+  tokenVersion?: unknown;
 }
 
 export interface SignedAdminToken {
@@ -19,7 +20,7 @@ export interface SignedAdminToken {
  * Admin JWT signing/verification (PART 1 rule 47).
  *
  * Separate secret from subscriber and ingest auth. Claims for tenant admins: sub, email, role,
- * tenant, exp, iat. Platform admins get the same token without a `tenant` claim.
+ * tenant, tokenVersion, exp, iat. Platform admins get the same token without a `tenant` claim.
  */
 @Injectable()
 export class AdminTokenService {
@@ -40,11 +41,13 @@ export class AdminTokenService {
     email: string;
     role: string;
     tenantId?: string;
+    tokenVersion: number;
   }): SignedAdminToken {
     const payload: Record<string, unknown> = {
       sub: admin.id,
       email: admin.email,
       role: admin.role,
+      tokenVersion: admin.tokenVersion,
     };
 
     if (admin.tenantId !== undefined) {
@@ -87,6 +90,14 @@ export class AdminTokenService {
     const role = typeof payload.role === 'string' ? payload.role : '';
     const tenantId =
       typeof payload.tenant === 'string' && payload.tenant.length > 0 ? payload.tenant : undefined;
+    // Tokens issued before tokenVersion was introduced are treated as version 0 for a smooth
+    // deploy; a later password change bumps the DB value and invalidates them immediately.
+    const tokenVersion =
+      typeof payload.tokenVersion === 'number' &&
+      Number.isInteger(payload.tokenVersion) &&
+      payload.tokenVersion >= 0
+        ? payload.tokenVersion
+        : 0;
 
     if (
       adminId.length === 0 ||
@@ -98,8 +109,8 @@ export class AdminTokenService {
     }
 
     return tenantId === undefined
-      ? { adminId, email, role }
-      : { adminId, email, role, tenantId };
+      ? { adminId, email, role, tokenVersion }
+      : { adminId, email, role, tenantId, tokenVersion };
   }
 }
 

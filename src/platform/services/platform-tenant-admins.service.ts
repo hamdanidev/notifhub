@@ -117,6 +117,7 @@ export class PlatformTenantAdminsService {
 
     if (dto.password !== undefined) {
       data.passwordHash = await bcrypt.hash(dto.password, 10);
+      data.tokenVersion = { increment: 1 };
     }
 
     if (dto.active !== undefined && dto.active !== admin.active) {

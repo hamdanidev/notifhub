@@ -14,6 +14,7 @@ export function ApiKeysPage(): JSX.Element {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [origins, setOrigins] = useState('');
+  const [subscriberJwtSecret, setSubscriberJwtSecret] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<ApiKeySummary | null>(null);
 
@@ -34,16 +35,23 @@ export function ApiKeysPage(): JSX.Element {
         .split(',')
         .map((origin) => origin.trim())
         .filter((origin) => origin.length > 0);
+      const secret = subscriberJwtSecret.trim();
+
+      if (secret.length > 0 && secret.length < 32) {
+        throw new Error('Subscriber JWT secret minimal 32 karakter.');
+      }
 
       return adminClient.createApiKey({
         name: trimmed,
         ...(allowedOrigins.length === 0 ? {} : { allowedOrigins }),
+        ...(secret.length === 0 ? {} : { subscriberJwtSecret: secret }),
       });
     },
     onSuccess: (result) => {
       setCreatedKey(result.key);
       setName('');
       setOrigins('');
+      setSubscriberJwtSecret('');
       void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
     },
   });
@@ -132,7 +140,7 @@ export function ApiKeysPage(): JSX.Element {
             }}
           >
             <Row className="g-2 align-items-end">
-              <Col xs={12} md={4}>
+              <Col xs={12} md={3}>
                 <Form.Label className="small text-muted mb-1">Nama</Form.Label>
                 <Form.Control
                   value={name}
@@ -140,7 +148,7 @@ export function ApiKeysPage(): JSX.Element {
                   onChange={(event) => setName(event.target.value)}
                 />
               </Col>
-              <Col xs={12} md={5}>
+              <Col xs={12} md={4}>
                 <Form.Label className="small text-muted mb-1">
                   Allowed origins (opsional, pisahkan koma)
                 </Form.Label>
@@ -151,6 +159,22 @@ export function ApiKeysPage(): JSX.Element {
                 />
               </Col>
               <Col xs={12} md={3}>
+                <Form.Label className="small text-muted mb-1">
+                  Subscriber JWT secret (opsional)
+                </Form.Label>
+                <Form.Control
+                  type="password"
+                  autoComplete="new-password"
+                  maxLength={128}
+                  value={subscriberJwtSecret}
+                  placeholder="min. 32 karakter"
+                  onChange={(event) => setSubscriberJwtSecret(event.target.value)}
+                />
+                <Form.Text className="text-muted">
+                  Kosongkan untuk memakai fallback SUBSCRIBER_JWT_SECRET.
+                </Form.Text>
+              </Col>
+              <Col xs={12} md={2}>
                 <Button type="submit" className="w-100" disabled={create.isPending}>
                   {create.isPending ? 'Membuat…' : 'Buat key'}
                 </Button>

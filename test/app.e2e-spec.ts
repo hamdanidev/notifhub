@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Channel } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/bootstrap';
@@ -1963,6 +1964,159 @@ describe('Template system e2e', () => {
 
     await prisma.templateImage.deleteMany({
       where: { id: uploaded.body.id as string },
+    });
+  });
+});
+
+describe('Admin hardening e2e', () => {
+  it('E38 ganti password memverifikasi password lama dan mencabut token lama', async () => {
+    const email = `password-${randomUUID()}@test.local`;
+    const oldPassword = 'OldPassword123!';
+    const newPassword = 'NewPassword456!';
+    const admin = await prisma.adminUser.create({
+      data: {
+        email,
+        passwordHash: await bcrypt.hash(oldPassword, 4),
+        role: 'tenant_admin',
+        tenantId: 'default',
+      },
+    });
+    const token = jwt.sign(
+      {
+        sub: admin.id,
+        email,
+        role: 'tenant_admin',
+        tenant: 'default',
+        tokenVersion: 0,
+      },
+      process.env.ADMIN_JWT_SECRET as string,
+      { algorithm: 'HS256', expiresIn: '1h' },
+    );
+
+    const wrongCurrent = await request(server)
+      .post('/api/v1/admin/auth/change-password')
+      .set('Authorization', bearer(token))
+      .send({ currentPassword: 'WrongPassword123!', newPassword });
+    expect(wrongCurrent.status).toBe(400);
+    expect(wrongCurrent.body.details.code).toBe('invalid_current_password');
+
+    const unchanged = await request(server)
+      .post('/api/v1/admin/auth/change-password')
+      .set('Authorization', bearer(token))
+      .send({ currentPassword: oldPassword, newPassword: oldPassword });
+    expect(unchanged.status).toBe(400);
+    expect(unchanged.body.details.code).toBe('password_unchanged');
+
+    const changed = await request(server)
+      .post('/api/v1/admin/auth/change-password')
+      .set('Authorization', bearer(token))
+      .send({ currentPassword: oldPassword, newPassword });
+    expect(changed.status).toBe(204);
+
+    const oldTokenRejected = await request(server)
+      .get('/api/v1/admin/auth/me')
+      .set('Authorization', bearer(token));
+    expect(oldTokenRejected.status).toBe(401);
+
+    const updated = await prisma.adminUser.findUniqueOrThrow({ where: { id: admin.id } });
+    expect(updated.tokenVersion).toBe(1);
+    expect(await bcrypt.compare(newPassword, updated.passwordHash)).toBe(true);
+    expect(await bcrypt.compare(oldPassword, updated.passwordHash)).toBe(false);
+
+    await prisma.adminUser.delete({ where: { id: admin.id } });
+  });
+
+  it('E39 search notifikasi memakai ID/recipient exact dan tetap tenant-scoped', async () => {
+    const recipient = `search-${randomUUID()}`;
+    const created = await request(server)
+      .post('/api/v1/notify')
+      .set('X-API-Key', TEST_SERVICE_API_KEY)
+      .send({
+        idempotency_key: `e2e-search-${randomUUID()}`,
+        template_key: TEMPLATE_KEY,
+        recipients: [recipient],
+        channels: ['inapp'],
+        data: { nama: 'Budi' },
+      });
+    expect(created.status).toBe(202);
+    const notificationId = created.body.notification_id as string;
+
+    const byId = await request(server)
+      .get(`/api/v1/admin/notifications?search=${encodeURIComponent(notificationId)}`)
+      .set('Authorization', bearer(adminToken));
+    expect(byId.status).toBe(200);
+    expect(byId.body.total).toBe(1);
+    expect(byId.body.items[0].id).toBe(notificationId);
+
+    const byRecipient = await request(server)
+      .get(`/api/v1/admin/notifications?search=${encodeURIComponent(recipient)}`)
+      .set('Authorization', bearer(adminToken));
+    expect(byRecipient.status).toBe(200);
+    expect(byRecipient.body.total).toBeGreaterThanOrEqual(1);
+    expect(
+      (byRecipient.body.items as Array<{ id: string }>).some((item) => item.id === notificationId),
+    ).toBe(true);
+
+    const missing = await request(server)
+      .get(`/api/v1/admin/notifications?search=${randomUUID()}`)
+      .set('Authorization', bearer(adminToken));
+    expect(missing.status).toBe(200);
+    expect(missing.body.total).toBe(0);
+
+    // Insert tenant B directly so the search isolation check does not enqueue a worker job.
+    const tenantBRecipient = `tenant-b-${randomUUID()}`;
+    const tenantBNotification = await prisma.notification.create({
+      data: {
+        tenantId: TEST_TENANT_B,
+        idempotencyKey: `e2e-search-b-${randomUUID()}`,
+        idempotencyExpiresAt: new Date(Date.now() + 60_000),
+        templateKey: TEMPLATE_KEY,
+        payload: {},
+        targetSnapshot: { recipient_ids: [tenantBRecipient], channels: ['inapp'] },
+        recipients: {
+          create: [{ recipientId: tenantBRecipient, channel: Channel.inapp }],
+        },
+      },
+    });
+    const tenantBNotificationId = tenantBNotification.id;
+
+    const isolated = await request(server)
+      .get(`/api/v1/admin/notifications?search=${encodeURIComponent(tenantBNotificationId)}`)
+      .set('Authorization', bearer(adminToken));
+    expect(isolated.status).toBe(200);
+    expect(isolated.body.total).toBe(0);
+  });
+
+  it('E40 bootstrap tidak menimpa password yang diubah dari console', async () => {
+    const newPassword = 'BootstrapNew123!';
+    const changed = await request(server)
+      .post('/api/v1/admin/auth/change-password')
+      .set('Authorization', bearer(adminToken))
+      .send({ currentPassword: TEST_ADMIN_PASSWORD, newPassword });
+    expect(changed.status).toBe(204);
+
+    const afterChange = await prisma.adminUser.findUniqueOrThrow({
+      where: { email: TEST_ADMIN_EMAIL },
+    });
+    expect(await bcrypt.compare(newPassword, afterChange.passwordHash)).toBe(true);
+
+    // A restart re-runs bootstrap; it must not revert the UI password because the env hash did
+    // not change (bootstrapPasswordHash still tracks the old env value).
+    await app.get(AdminBootstrapService).onApplicationBootstrap();
+
+    const afterBootstrap = await prisma.adminUser.findUniqueOrThrow({
+      where: { email: TEST_ADMIN_EMAIL },
+    });
+    expect(await bcrypt.compare(newPassword, afterBootstrap.passwordHash)).toBe(true);
+    expect(afterBootstrap.tokenVersion).toBe(afterChange.tokenVersion);
+
+    // Restore the env-backed password so the test database is left in a predictable state.
+    await prisma.adminUser.update({
+      where: { id: afterBootstrap.id },
+      data: {
+        passwordHash: await bcrypt.hash(TEST_ADMIN_PASSWORD, 4),
+        tokenVersion: { increment: 1 },
+      },
     });
   });
 });

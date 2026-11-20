@@ -12,6 +12,8 @@ export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const passwordChanged =
+    new URLSearchParams(location.search).get('passwordChanged') === '1';
 
   const {
     register,
@@ -48,6 +50,12 @@ export function LoginPage(): JSX.Element {
 
         <h1>Masuk</h1>
         <p className="login-intro">Gunakan akun tenant admin untuk melanjutkan.</p>
+
+        {passwordChanged ? (
+          <Alert variant="success">
+            Password berhasil diubah. Silakan masuk dengan password baru.
+          </Alert>
+        ) : null}
 
         {error !== null ? <Alert variant="danger">{error}</Alert> : null}
 
