@@ -420,6 +420,24 @@ WHATSAPP_CATCH_ALL_RECIPIENT=+628999999999   # staging only
 - WhatsApp text messages are only valid inside Meta's 24-hour service window. Approved template
   messages are not implemented yet.
 
+### WAHA (optional)
+
+WAHA is a self-hosted, unofficial WhatsApp gateway. Run it separately, authenticate the `default`
+session with a QR code, and configure its webhook to
+`https://<notifhub-host>/api/v1/webhooks/waha/events` with events `message.ack` and an HMAC key.
+Then set:
+
+```bash
+WHATSAPP_PROVIDER=waha
+WAHA_BASE_URL=http://127.0.0.1:3001
+WAHA_API_KEY=change-me
+WAHA_SESSION=default
+WAHA_WEBHOOK_HMAC_KEY=change-me-at-least-32-characters
+```
+
+`WHATSAPP_CATCH_ALL_RECIPIENT` still applies in staging. See
+`docs/design/whatsapp-waha-provider.md` for the full contract and risks.
+
 ## Verify the platform lane
 
 Platform admin accounts come from the environment (there is no default credential). Add both

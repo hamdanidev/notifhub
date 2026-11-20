@@ -30,6 +30,7 @@ import { TemplateImagesModule } from './template-images/template-images.module';
 import { TopicsModule } from './topics/topics.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { WhatsAppWebhookModule } from './webhooks/whatsapp/whatsapp-webhook.module';
+import { WahaWebhookModule } from './webhooks/waha/waha-webhook.module';
 import { WorkersModule } from './workers/workers.module';
 
 function resolveHeaderRequestId(request: IncomingMessage): string {
@@ -114,6 +115,7 @@ function resolveHeaderRequestId(request: IncomingMessage): string {
     TopicsModule,
     WebhooksModule,
     WhatsAppWebhookModule,
+    WahaWebhookModule,
     NotificationsModule,
     CleanupModule,
     TemplateImagesModule,

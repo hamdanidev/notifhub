@@ -63,7 +63,7 @@ tanggal di dalamnya bukan urutan baca. Semua desain terindeks di [design/README.
 | [preference-center.md](design/preference-center.md) | Preference center end-user di lane subscriber, verifikasi JWT per tenant | terimplementasi |
 | [webhooks.md](design/webhooks.md) | Webhook provider bertanda tangan HMAC, rollup `overallStatus`, cleanup retensi/idempotency | terimplementasi |
 | [whatsapp.md](design/whatsapp.md) | Kanal WhatsApp Meta Cloud API: provider, worker, webhook Meta, stub lokal | terimplementasi |
-| [whatsapp-waha-provider.md](design/whatsapp-waha-provider.md) | Provider WhatsApp WAHA (self-hosted, opsional): sendText, webhook HMAC-SHA512, pemetaan ack | rencana (menunggu persetujuan) |
+| [whatsapp-waha-provider.md](design/whatsapp-waha-provider.md) | Provider WhatsApp WAHA (self-hosted, opsional): sendText, webhook HMAC-SHA512, pemetaan ack | terimplementasi; smoke WAHA nyata pending |
 | [admin-api.md](design/admin-api.md) | API key, auth admin, topik, isolasi tenant, dan seluruh endpoint Admin API | terimplementasi |
 | [react-and-console.md](design/react-and-console.md) | `NotifHubAdminClient`, `@notifhub/react`, dan console tenant admin | terimplementasi |
 | [console-needs-analysis.md](design/console-needs-analysis.md) | Analisis gap console (refresh, re-send) dan rencana fasenya | Fase A+B selesai; Fase C sebagian; P1 hardening selesai |

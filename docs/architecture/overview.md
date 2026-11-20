@@ -26,8 +26,11 @@ flowchart LR
 
   smtp -->|"callback"| webhook["POST /api/v1/webhooks/:provider<br/>HMAC signature"]
   meta -->|"callback"| wawebhook["GET/POST /api/v1/webhooks/whatsapp/events"]
+  providers -.->|"opsional: WHATSAPP_PROVIDER=waha"| waha["WAHA (self-hosted)"]
+  waha -->|"callback"| wahahook["POST /api/v1/webhooks/waha/events<br/>HMAC-SHA512"]
   webhook --> db
   wawebhook --> db
+  wahahook --> db
   bus --> enduser
 ```
 
@@ -36,7 +39,7 @@ flowchart LR
 | Backend | NestJS 11, TypeScript, Prisma 6, PostgreSQL 16 | Ingest, orkestrasi, worker, Admin API, health, metrics |
 | Queue | BullMQ di Redis 7 | Satu queue per channel; retry dengan exponential backoff |
 | Event bus in-app | Redis Stream (replay) + Pub/Sub (live) | Push real-time ke browser, catch-up setelah reconnect |
-| Provider | SMTP (Nodemailer), Meta WhatsApp Cloud API, in-app | Pengiriman aktual, dibungkus circuit breaker |
+| Provider | SMTP (Nodemailer), Meta WhatsApp Cloud API (default) atau WAHA (`WHATSAPP_PROVIDER=waha`), in-app | Pengiriman aktual, dibungkus circuit breaker |
 | Console | React 18, Vite, Bootstrap 5 | UI tenant admin (data lewat Admin API) |
 | SDK | `@notifhub/js`, `@notifhub/react`, Go module | Klien konsumen dan end-user |
 | Storage aset | Filesystem `TEMPLATE_IMAGE_DIR` | Gambar template, URL publik UUID |
@@ -120,7 +123,7 @@ dan [preference-center §6](../design/preference-center.md#6-verifikasi-jwt-subs
 |---|---|---|---|
 | in-app | `notification-inapp` | Redis stream + pub/sub | Selalu "terkirim" ke stream; UI bisa diverifikasi lewat curl |
 | email | `notification-email` | SMTP | Log-only, `providerMessageId=dev-log-only`, tidak ada koneksi SMTP |
-| WhatsApp | `notification-whatsapp` | Meta Cloud API | Log-only; stub lokal `scripts/dev-whatsapp-stub.mjs` |
+| WhatsApp | `notification-whatsapp` | Meta Cloud API (default) atau WAHA (`WHATSAPP_PROVIDER=waha`) | Log-only; stub lokal `scripts/dev-whatsapp-stub.mjs` |
 | sms | — | — | Belum ada provider/worker. Ingest tetap menerima `sms`, tetapi recipient ditandai `skipped`; `PUT /subscriber/preferences/sms` ditolak `400` |
 
 Queue terdaftar dengan prefix Redis `notifhub`; nama queue memakai tanda hubung karena BullMQ
@@ -178,6 +181,7 @@ Prefix global `api/v1`; path berikut dikecualikan dari prefix:
 | Platform audit | `GET /api/v1/platform/audit` | platform JWT |
 | Webhook provider | `POST /api/v1/webhooks/:provider` | HMAC `WEBHOOK_SIGNING_SECRET` |
 | Webhook WhatsApp | `GET`, `POST /api/v1/webhooks/whatsapp/events` | `X-Hub-Signature-256` |
+| Webhook WAHA | `POST /api/v1/webhooks/waha/events` | `X-Webhook-Hmac` (HMAC-SHA512) |
 | Health | `GET /health/live`, `GET /health/ready` | publik |
 | Metrics | `GET /metrics` | header `X-API-Key` |
 | Dokumentasi | `GET /api/docs`, `GET /api/docs-json` | basic auth di luar development |

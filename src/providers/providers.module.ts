@@ -6,6 +6,7 @@ import { EmailProvider } from './email/email.provider';
 import { InAppProvider } from './in-app/in-app.provider';
 import { ProviderExecutor } from './provider-executor.service';
 import { ProviderRegistry } from './provider-registry.service';
+import { WahaProvider } from './waha/waha.provider';
 import { WhatsAppProvider } from './whatsapp/whatsapp.provider';
 
 @Module({
@@ -40,6 +41,7 @@ import { WhatsAppProvider } from './whatsapp/whatsapp.provider';
     InAppProvider,
     EmailProvider,
     WhatsAppProvider,
+    WahaProvider,
     ProviderExecutor,
     ProviderRegistry,
   ],

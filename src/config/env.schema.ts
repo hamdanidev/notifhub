@@ -90,6 +90,11 @@ export const envSchema = z
       .string()
       .regex(/^v\d+\.\d+$/, 'WHATSAPP_API_VERSION must look like v21.0')
       .default('v21.0'),
+    WHATSAPP_PROVIDER: z.enum(['meta', 'waha']).default('meta'),
+    WAHA_BASE_URL: optionalUrl,
+    WAHA_API_KEY: optionalString,
+    WAHA_SESSION: z.string().min(1).default('default'),
+    WAHA_WEBHOOK_HMAC_KEY: optionalString,
     WHATSAPP_PHONE_NUMBER_ID: optionalString,
     WHATSAPP_ACCESS_TOKEN: optionalString,
     WHATSAPP_APP_SECRET: optionalString,
@@ -164,6 +169,42 @@ export const envSchema = z
         path: ['WHATSAPP_ACCESS_TOKEN'],
         message:
           'WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN must be set together',
+      });
+    }
+
+    if (env.WHATSAPP_PROVIDER === 'waha') {
+      if (env.WAHA_BASE_URL === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['WAHA_BASE_URL'],
+          message: 'WAHA_BASE_URL is required when WHATSAPP_PROVIDER=waha',
+        });
+      }
+      if (env.WAHA_API_KEY === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['WAHA_API_KEY'],
+          message: 'WAHA_API_KEY is required when WHATSAPP_PROVIDER=waha',
+        });
+      }
+      if (env.WAHA_WEBHOOK_HMAC_KEY === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['WAHA_WEBHOOK_HMAC_KEY'],
+          message: 'WAHA_WEBHOOK_HMAC_KEY is required when WHATSAPP_PROVIDER=waha',
+        });
+      }
+    }
+
+    if (
+      env.WHATSAPP_PROVIDER === 'waha' &&
+      env.WAHA_WEBHOOK_HMAC_KEY !== undefined &&
+      env.WAHA_WEBHOOK_HMAC_KEY.length < 32
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['WAHA_WEBHOOK_HMAC_KEY'],
+        message: 'WAHA_WEBHOOK_HMAC_KEY must be at least 32 characters',
       });
     }
 

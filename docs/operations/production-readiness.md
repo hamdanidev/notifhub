@@ -419,3 +419,10 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     `admin.audit.cleanup` tanpa metadata event. E45 dan unit test branch `0` menambah cakupan
     menjadi 45 e2e/30 unit; tidak ada migrasi baru (tetap 14). Detail:
     `docs/design/console-quality-p3.md` §13.
+24. **Provider WhatsApp WAHA (2026-11-20).** `WHATSAPP_PROVIDER=waha` mengaktifkan provider
+    self-hosted WAHA (`POST /api/sendText`, `X-Api-Key`) sebagai alternatif Meta; default tetap
+    `meta`. Status masuk lewat webhook baru `POST /api/v1/webhooks/waha/events` dengan HMAC-SHA512
+    (`X-Webhook-Hmac`) dan pemetaan `message.ack`; payload disimpan minimal tanpa `_data`/body.
+    E46 + 30 unit test menambah cakupan menjadi 46 e2e/60 unit; 14 migrasi dan tanpa dependency
+    baru. Smoke test WAHA nyata (scan QR + kirim pesan) belum dijalankan dan tetap gate operator.
+    Detail: `docs/design/whatsapp-waha-provider.md` §15.

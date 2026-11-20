@@ -82,6 +82,7 @@ Aturan kerja:
 | Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode + block builder email (heading/teks/gambar/tombol/divider/spacer/dua kolom) | selesai & terverifikasi (E12–E20, UI manual tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
+| Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46; smoke WAHA nyata pending) |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E40), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
@@ -180,7 +181,9 @@ npx prisma migrate status
 ## 6. Batasan dan deviasi yang diketahui
 
 - WhatsApp hanya mengirim teks (`type: "text"`), belum approved-template Meta; inbound reply tidak
-  ditangani.
+  ditangani. Provider alternatif WAHA (self-hosted, tidak resmi, `WHATSAPP_PROVIDER=waha`) tersedia
+  untuk deployment yang menerima risiko banned; default tetap Meta. Lihat
+  `docs/design/whatsapp-waha-provider.md`.
 - `platform_admin` sudah punya lane sendiri (`/platform/auth/*`, provisioning tenant, suspend,
   audit) dan console platform (`/platform/*` di `console/`); tenant yang di-suspend ditolak
   `403 tenant_suspended` di tiga lane. Yang belum: RBAC granular dan pengelolaan akun platform
@@ -264,3 +267,6 @@ npx prisma migrate status
    job 03:45 UTC; `0` menonaktifkan) — catatan dan bukti di
    `docs/design/console-quality-p3.md` §11–§13. `adminTemplates.ts` dan `platformClient.ts` tetap
    lokal sampai rilis SDK berikutnya.
+7. WAHA lanjutan (opsional): media/gambar, pesan masuk/reply, sesi per tenant, dan pengelolaan
+   QR/session dari console. Saat ini WAHA hanya teks dan satu sesi per deployment
+   (`docs/design/whatsapp-waha-provider.md` §10/§15).

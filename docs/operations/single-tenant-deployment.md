@@ -368,6 +368,8 @@ staging sebelum produksi.
 6. **Image single-arch (amd64)** dan belum dipush ke registry; bangun di server atau registry
    internal.
 7. **WhatsApp hanya teks**; belum memakai approved-template Meta. Email bergantung SMTP provider.
+   Alternatif WAHA self-hosted tersedia lewat `WHATSAPP_PROVIDER=waha` (tidak resmi, risiko banned);
+   lihat `docs/design/whatsapp-waha-provider.md`.
 8. **Tanpa browser automation permanen**; verifikasi UI dilakukan manual/protokol.
 
 ## 13. Checklist go-live

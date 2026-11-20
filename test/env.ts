@@ -17,6 +17,7 @@ export const TEST_PLATFORM_ADMIN_EMAIL = 'platform@test.local';
 export const TEST_PLATFORM_ADMIN_PASSWORD = 'Platform123!';
 export const TEST_SERVICE_API_KEY = 'test-service-api-key-0123456789';
 export const TEST_TENANT_B = 'tenant-b';
+export const TEST_WAHA_WEBHOOK_HMAC_KEY = 'test-waha-webhook-hmac-key-32-chars-min';
 
 const env: Record<string, string> = {
   NODE_ENV: 'test',
@@ -51,6 +52,8 @@ const env: Record<string, string> = {
   PLATFORM_ADMIN_EMAIL: TEST_PLATFORM_ADMIN_EMAIL,
   PLATFORM_ADMIN_PASSWORD_HASH: bcrypt.hashSync(TEST_PLATFORM_ADMIN_PASSWORD, 4),
   WEBHOOK_SIGNING_SECRET: 'test-webhook-signing-secret-32-chars',
+  WHATSAPP_PROVIDER: 'meta',
+  WAHA_WEBHOOK_HMAC_KEY: TEST_WAHA_WEBHOOK_HMAC_KEY,
 };
 
 for (const [key, value] of Object.entries(env)) {

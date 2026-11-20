@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Channel } from '@prisma/client';
+import { Channel, Status } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
@@ -15,6 +15,7 @@ import {
   TEST_PLATFORM_ADMIN_PASSWORD,
   TEST_SERVICE_API_KEY,
   TEST_TENANT_B,
+  TEST_WAHA_WEBHOOK_HMAC_KEY,
 } from './env';
 import { prisma, resetDatabase, waitFor } from './setup/database';
 import { RECIPIENT, seedFixtures, TEMPLATE_KEY } from './setup/fixtures';
@@ -2523,5 +2524,130 @@ describe('Console operations e2e', () => {
     ).not.toBeNull();
 
     await prisma.adminAuditEvent.deleteMany({ where: { id: recentEvent.id } });
+  });
+});
+
+describe('WhatsApp WAHA e2e', () => {
+  function signedWahaWebhook(body: unknown, secret = TEST_WAHA_WEBHOOK_HMAC_KEY) {
+    const raw = JSON.stringify(body);
+
+    return {
+      raw,
+      signature: createHmac('sha512', secret).update(raw).digest('hex'),
+    };
+  }
+
+  function postWahaWebhook(body: unknown, secret?: string) {
+    const { raw, signature } = signedWahaWebhook(body, secret);
+
+    return request(server)
+      .post('/api/v1/webhooks/waha/events')
+      .set('Content-Type', 'application/json')
+      .set('X-Webhook-Hmac', signature)
+      .set('X-Webhook-Hmac-Algorithm', 'sha512')
+      .send(raw);
+  }
+
+  function ackBody(providerMessageId: string, ack: number, ackName: string) {
+    return {
+      id: `evt_${randomUUID()}`,
+      timestamp: Date.now(),
+      event: 'message.ack',
+      session: 'default',
+      payload: { id: providerMessageId, fromMe: true, ack, ackName },
+    };
+  }
+
+  it('E46 webhook WAHA memetakan ack, menolak signature salah, dan mengabaikan event asing', async () => {
+    const recipientId = `waha-${randomUUID()}`;
+    const providerMessageId = `true_${recipientId}@c.us_${randomUUID().replace(/-/g, '')}`;
+    const notification = await prisma.notification.create({
+      data: {
+        tenantId: 'default',
+        idempotencyKey: `e2e-waha-${randomUUID()}`,
+        idempotencyExpiresAt: new Date(Date.now() + 60_000),
+        templateKey: TEMPLATE_KEY,
+        payload: {},
+        targetSnapshot: { recipient_ids: [recipientId], channels: ['whatsapp'] },
+        recipients: {
+          create: [
+            {
+              recipientId,
+              channel: Channel.whatsapp,
+              status: Status.sent,
+              sentAt: new Date(),
+              providerName: 'waha',
+              providerMessageId,
+            },
+          ],
+        },
+      },
+    });
+    const recipientWhere = {
+      notificationId_recipientId_channel: {
+        notificationId: notification.id,
+        recipientId,
+        channel: Channel.whatsapp,
+      },
+    };
+    const loadRecipient = () =>
+      prisma.notificationRecipient.findUniqueOrThrow({ where: recipientWhere });
+    const countEvents = () =>
+      prisma.deliveryEvent.count({ where: { notificationId: notification.id } });
+
+    const delivered = await postWahaWebhook(ackBody(providerMessageId, 2, 'DEVICE'));
+    expect(delivered.status).toBe(202);
+    let recipient = await loadRecipient();
+    expect(recipient.status).toBe(Status.sent);
+    expect(recipient.deliveredAt).not.toBeNull();
+    expect(await countEvents()).toBe(1);
+
+    const readBody = ackBody(providerMessageId, 3, 'READ');
+    const read = await postWahaWebhook(readBody);
+    expect(read.status).toBe(202);
+    recipient = await loadRecipient();
+    expect(recipient.status).toBe(Status.read);
+    expect(recipient.readAt).not.toBeNull();
+    expect(await countEvents()).toBe(2);
+
+    const duplicateRead = await postWahaWebhook(readBody);
+    expect(duplicateRead.status).toBe(202);
+    recipient = await loadRecipient();
+    expect(recipient.status).toBe(Status.read);
+    expect(await countEvents()).toBe(3);
+
+    const pending = await postWahaWebhook(ackBody(providerMessageId, 0, 'PENDING'));
+    expect(pending.status).toBe(202);
+    expect(await countEvents()).toBe(3);
+
+    const foreignEvent = await postWahaWebhook({
+      id: `evt_${randomUUID()}`,
+      timestamp: Date.now(),
+      event: 'message',
+      session: 'default',
+      payload: { id: providerMessageId },
+    });
+    expect(foreignEvent.status).toBe(202);
+    expect(await countEvents()).toBe(3);
+
+    const unknownId = await postWahaWebhook(ackBody(`true_unknown_${randomUUID()}@c.us_X`, 2, 'DEVICE'));
+    expect(unknownId.status).toBe(202);
+    expect(await countEvents()).toBe(3);
+
+    const invalidSignature = await postWahaWebhook(
+      ackBody(providerMessageId, 2, 'DEVICE'),
+      'wrong-waha-webhook-hmac-key-32-characters',
+    );
+    expect(invalidSignature.status).toBe(401);
+    expect(await countEvents()).toBe(3);
+
+    const missingAlgorithmBody = signedWahaWebhook(ackBody(providerMessageId, 2, 'DEVICE'));
+    const missingAlgorithm = await request(server)
+      .post('/api/v1/webhooks/waha/events')
+      .set('Content-Type', 'application/json')
+      .set('X-Webhook-Hmac', missingAlgorithmBody.signature)
+      .send(missingAlgorithmBody.raw);
+    expect(missingAlgorithm.status).toBe(401);
+    expect(await countEvents()).toBe(3);
   });
 });

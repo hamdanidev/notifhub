@@ -1,6 +1,7 @@
 # Provider WhatsApp WAHA
 
-Status: **rencana — menunggu persetujuan** (2026-11-20). Belum ada kode yang diubah.
+Status: **terimplementasi; verifikasi otomatis lulus; smoke test WAHA nyata belum dijalankan**
+(2026-11-20). Lihat §15.
 Basis: `docs/design/whatsapp.md` (provider Meta, worker, webhook), `docs/design/webhooks.md`
 (pipeline status), `src/providers/`, `src/workers/whatsapp.processor.ts`, dan dokumentasi resmi
 WAHA: [Send messages](https://waha.devlike.pro/docs/how-to/send-messages/),
@@ -23,6 +24,7 @@ WAHA: [Send messages](https://waha.devlike.pro/docs/how-to/send-messages/),
 - [12. Verifikasi](#12-verifikasi)
 - [13. Risiko](#13-risiko)
 - [14. Pertanyaan persetujuan](#14-pertanyaan-persetujuan)
+- [15. Catatan implementasi](#15-catatan-implementasi)
 
 ---
 
@@ -423,3 +425,52 @@ di §Catatan implementasi saat fase ini dikerjakan.
 
 Setelah disetujui, implementasi dimulai dari provider + unit test, lalu webhook + E46, lalu
 smoke test manual dan dokumentasi status.
+
+## 15. Catatan implementasi
+
+Implementasi selesai pada 2026-11-20 dan disetujui dengan D1–D11. Status verifikasi: **otomatis
+lulus**; smoke test WAHA nyata belum dijalankan karena membutuhkan nomor WhatsApp dan scan QR
+(lihat §15.3).
+
+Yang sudah berjalan:
+
+- `WahaProvider` (`name = waha`, channel `whatsapp`) memakai `POST {WAHA_BASE_URL}/api/sendText`
+  dengan `X-Api-Key`, `chatId` tanpa `+` + `@c.us`, `linkPreview: false`, timeout 9 detik, dan mode
+  `development`/`staging`/`production` yang sama dengan provider Meta.
+- `ProviderRegistry` memilih provider dari `WHATSAPP_PROVIDER` (default `meta`) dan menulis log
+  boot `provider.whatsapp.selected` tanpa secret. Worker dan test send otomatis memakai pilihan
+  tersebut.
+- Webhook `POST /api/v1/webhooks/waha/events` dengan HMAC-SHA512 atas raw body, pemetaan
+  `message.ack` (`SERVER`/`DEVICE`/`READ`/`PLAYED`/`ERROR`; `PENDING` diabaikan), dan payload
+  minimal tanpa `_data`/body.
+- Env `WHATSAPP_PROVIDER`, `WAHA_BASE_URL`, `WAHA_API_KEY`, `WAHA_SESSION`, dan
+  `WAHA_WEBHOOK_HMAC_KEY` masuk schema (validasi wajib bila provider `waha`, HMAC minimal 32
+  karakter), `.env.example`, `.env.prod.example`, dan `docs/getting-started/configuration.md`.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run test:unit` | **60** test lulus (12 suite); 30 test baru untuk WAHA |
+| `npm run test:e2e` | **46** test lulus; E46 lulus (ack DEVICE/READ, duplikat, PENDING, event asing, id tak dikenal, HMAC salah, algoritma hilang) |
+| `npm run ci` | lulus **75 s**; typecheck, build, 60 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
+| Perubahan schema/migrasi | tidak ada (tetap 14) |
+| Dependency baru | tidak ada |
+| `npm run docs:check` | lulus (511 tautan/anchor, 42 file) |
+| `console:typecheck`/`console:build`, `sdk:typecheck`/`sdk:test` | lulus; tidak ada perubahan pada console/SDK |
+
+Deviasi dan catatan:
+
+1. **Fallback `_data.id`.** Respon `sendText` diambil dari `id`; bila engine tidak menyediakannya,
+   `_data.id` dipakai sebagai fallback sebelum dianggap gagal 502. Ini defensif terhadap perbedaan
+   engine yang didokumentasikan WAHA.
+2. **Log boot** `provider.whatsapp.selected` ditambahkan agar operator bisa memastikan provider
+   yang aktif tanpa membaca secret.
+3. **E2E tidak memanggil WAHA nyata.** E46 membuat notification/recipient langsung lewat Prisma,
+   lalu mengirim webhook bertanda tangan; provider HTTP diuji unit dengan `fetch` mock. Ini
+   menghindari ketergantungan pada nomor WhatsApp di CI.
+4. **Smoke test WAHA nyata belum dijalankan.** Langkah §12.2 tetap menjadi gate operator: jalankan
+   container WAHA, scan QR, isi env, kirim pesan uji, dan amati `waha.sent` serta `message.ack`.
+   Status dokumen ini akan diperbarui setelah smoke test dilakukan.
+5. Tidak ada perubahan kontrak HTTP publik, console, SDK, atau `docker-compose.prod.yml`; deployment
+   WAHA tetap terpisah di sisi operator.

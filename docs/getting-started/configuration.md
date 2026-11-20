@@ -79,11 +79,20 @@ Di `development` email tidak pernah dikirim: provider mencatat `email.log_only` 
 |---|---|---|
 | `WHATSAPP_API_BASE_URL` | `https://graph.facebook.com` | Ganti ke stub lokal (`http://127.0.0.1:2526`) untuk uji end-to-end |
 | `WHATSAPP_API_VERSION` | `v21.0` | Format `v<major>.<minor>` |
+| `WHATSAPP_PROVIDER` | `meta` | `meta` (Cloud API) atau `waha` (self-hosted, tidak resmi) |
 | `WHATSAPP_PHONE_NUMBER_ID` | — | Harus diisi bersama `WHATSAPP_ACCESS_TOKEN` |
 | `WHATSAPP_ACCESS_TOKEN` | — | Harus diisi bersama `WHATSAPP_PHONE_NUMBER_ID` |
 | `WHATSAPP_APP_SECRET` | — | Harus diisi bersama `WHATSAPP_VERIFY_TOKEN`; dipakai `X-Hub-Signature-256` |
 | `WHATSAPP_VERIFY_TOKEN` | — | Harus diisi bersama `WHATSAPP_APP_SECRET` |
-| `WHATSAPP_CATCH_ALL_RECIPIENT` | — | Nomor pengganti di staging |
+| `WHATSAPP_CATCH_ALL_RECIPIENT` | — | Nomor pengganti di staging (Meta maupun WAHA) |
+| `WAHA_BASE_URL` | — | Wajib bila `WHATSAPP_PROVIDER=waha`; contoh `http://waha:3000` |
+| `WAHA_API_KEY` | — | Wajib bila `waha`; dikirim sebagai header `X-Api-Key` |
+| `WAHA_SESSION` | `default` | Nama sesi WAHA yang berstatus `WORKING` |
+| `WAHA_WEBHOOK_HMAC_KEY` | — | Wajib bila `waha`; minimal 32 karakter; HMAC-SHA512 |
+
+`WHATSAPP_PROVIDER=waha` memakai WAHA self-hosted: kirim lewat `POST /api/sendText` dan status
+lewat `POST /api/v1/webhooks/waha/events`. Provider ini **tidak resmi** dan nomor berisiko diblokir;
+Meta Cloud API tetap default. Detail: `docs/design/whatsapp-waha-provider.md`.
 
 ## In-app dan SSE
 

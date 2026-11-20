@@ -17,6 +17,7 @@ berjalan (`docs/design/in-app.md`, `docs/design/email-and-preferences.md`, `docs
 - [9. Keputusan desain](#9-keputusan-desain)
 - [10. Catatan implementasi](#10-catatan-implementasi)
 - [11. Template WhatsApp v2 (2026-11-16)](#11-template-whatsapp-v2-2026-11-16)
+- [12. Provider WAHA (2026-11-20)](#12-provider-waha-2026-11-20)
 
 ---
 
@@ -44,7 +45,8 @@ berjalan (`docs/design/in-app.md`, `docs/design/email-and-preferences.md`, `docs
 - WhatsApp template pesan resmi (Meta-approved templates) — butuh pemetaan template provider;
   lihat D2.
 - Media/attachment, pesan interaktif, OTP flow khusus.
-- Multi-provider WhatsApp (Twilio/360dialog).
+- Multi-provider WhatsApp lain (Twilio/360dialog). WAHA self-hosted tersedia sebagai opsi lewat
+  `WHATSAPP_PROVIDER=waha`; lihat `docs/design/whatsapp-waha-provider.md`.
 - Go SDK (lihat `docs/sdk/go-sdk.md`), platform admin, end-user preference center
   (lihat `docs/design/preference-center.md`).
 - Balasan/percakapan masuk (inbound message handling) selain status webhook.
@@ -293,3 +295,14 @@ API/console yang sudah ada; template channel `whatsapp` bisa dibuat dari console
   4.096 karakter setelah render. Provider tetap mengirim `type: "text"`.
 - Schema variabel, draft/publish, preview, dan audit mengikuti `docs/design/templates/template-system-design.md`.
   Pemetaan Meta approved-template tetap ditunda.
+
+---
+
+## 12. Provider WAHA (2026-11-20)
+
+Kanal WhatsApp bisa memakai **WAHA** (WhatsApp HTTP API self-hosted) sebagai alternatif Meta Cloud
+API: set `WHATSAPP_PROVIDER=waha` beserta `WAHA_BASE_URL`/`WAHA_API_KEY`/`WAHA_SESSION` dan
+`WAHA_WEBHOOK_HMAC_KEY`. Provider ini mengirim teks lewat `POST /api/sendText` dan menerima status
+lewat webhook `POST /api/v1/webhooks/waha/events` (HMAC-SHA512). Default tetap `meta`; WAHA tidak
+resmi dan berisiko banned. Detail keputusan, pemetaan `message.ack`, dan batasan ada di
+`docs/design/whatsapp-waha-provider.md`.
