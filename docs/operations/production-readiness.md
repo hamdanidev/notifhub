@@ -187,9 +187,9 @@ runner   node:24-bookworm-slim + openssl, copy /app, USER node,
 | Job | Isi |
 |---|---|
 | `backend` | services `postgres:16` (DB `notifhub_test`) + `redis:7`; Node 24 + cache npm; `npm ci`; `npm run ci`; lalu start `node dist/main`, tunggu health, `npm run openapi:export`, `git diff --exit-code openapi/notifhub.json` |
-| `packages` | `npm ci`; `sdk:build` + `sdk:typecheck` + `sdk:test`; `react:typecheck` + `react:test` + `react:build`; `console:install` + `console:typecheck` + `console:build` |
+| `packages` | `npm ci`; `sdk:build` + `sdk:typecheck` + `sdk:test`; `react:typecheck` + `react:test` + `react:build`; `npm --prefix console ci` + `console:typecheck` + `console:build`; langkah terpisah memastikan `console/dist/tenant/index.html` dan `console/dist/platform/index.html` ada, lalu menolak artifact tenant yang memuat string `NotifHub Platform` dan artifact platform yang memuat kunci `notifhub.console.session` |
 | `go` | `setup-go 1.23`; `gofmt -l` harus kosong; `go vet ./...`; `go test ./...` |
-| `docker` | build kedua image (tanpa push) dengan cache buildx |
+| `docker` | build tiga image tanpa push: backend (`runner`), console tenant (`runner-tenant`, tag `notifhub-console:ci`), console platform (`runner-platform`, tag `notifhub-console-platform:ci`); cache buildx dipisah per scope |
 
 Trigger: `push` dan `pull_request`.
 
@@ -373,3 +373,8 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     mengubah `openapi/notifhub.json`, jadi spec di-commit ulang. Perubahan hanya pada teks
     deskripsi; jumlah path/schema tetap 3/9 dan kontrak SDK tidak berubah. Tanpa regenerasi ini,
     penjaga drift di CI akan gagal pada run pertama.
+15. **P3 host split console (2026-11-20).** Job `packages` kini memeriksa dua artifact console
+    (`dist/tenant/index.html`, `dist/platform/index.html`) dan menolak kebocoran bundel (string
+    `NotifHub Platform` di artifact tenant, kunci `notifhub.console.session` di artifact platform).
+    Job `docker` membangun kedua target console dengan tag terpisah dan cache per scope. Detail
+    verifikasi ada di `docs/design/platform-console-host-split.md` §18.3.

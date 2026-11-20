@@ -1,12 +1,11 @@
 # Desain pemisahan console platform ke host terpisah
 
-Status: **P1–P2 terimplementasi dan terverifikasi** (split build dua artifact, image/stage Docker
-ganda, nginx template + guard, compose dua console) pada 2026-11-19; P3–P4 (CI build kedua
-artifact/image, dokumentasi deploy akhir, rollout) belum. Draf disetujui 2026-11-19. Lihat §18
-untuk catatan implementasi.
+Status: **P1–P3 terimplementasi dan terverifikasi** (split build dua artifact, image/stage Docker
+ganda, nginx template + guard, compose dua console, CI dua artifact/image) pada 2026-11-20; P4
+(rollout host platform) belum. Draf disetujui 2026-11-19. Lihat §18 untuk catatan implementasi.
 Tanggal: 2026-11-19. Bahasa: Indonesia.
 
-Basis: `console/` (React 18 + Vite), `console/Dockerfile`, `console/nginx.conf`,
+Basis: `console/` (React 18 + Vite), `console/Dockerfile`, `console/nginx/*.template`,
 `docker-compose.prod.yml`, `.github/workflows/ci.yml`, `docs/design/multi-tenant-platform-admin.md`
 §11–§12, dan `README.md` bagian Docker.
 
@@ -353,7 +352,7 @@ login ulang di origin baru.
 |---|---|---|
 | P1 | Entry `platform.html`/`platform-main.tsx`, router split, redirect tenant, Vite mode/outDir, script build | `console:typecheck`; kedua build; grep bundel; unit/e2e backend tidak berubah |
 | **P2 (selesai)** | Dockerfile stage ganda, template nginx, compose `platform-console`, env/CORS | `docker build` kedua target; container tenant/platform; redirect; guard env; compose config |
-| P3 | CI build kedua target, dokumentasi (README, configuration, local-setup, production-readiness, desain ini) | `npm run ci`; job `packages`/`docker` lokal; `npm run docs:check` |
+| **P3 (selesai)** | CI build kedua target, dokumentasi (README, configuration, local-setup, production-readiness, desain ini) | `npm run ci`; job `packages`/`docker` lokal; `npm run docs:check` |
 | P4 | Rollout host platform + redirect, verifikasi manual dan regresi penuh | Checklist §13 |
 
 ## 13. Verifikasi
@@ -426,17 +425,17 @@ login ulang di origin baru.
 
 ## 16. Definition of done
 
-- [ ] Dua artifact build dihasilkan dan diperiksa di CI.
-- [ ] Bundel tenant tidak memuat kode/rute platform (diverifikasi grep) dan sebaliknya.
-- [ ] Image `runner-tenant` dan `runner-platform` berhasil dibangun dan dijalankan.
+- [x] Dua artifact build dihasilkan dan diperiksa di CI.
+- [x] Bundel tenant tidak memuat kode/rute platform (diverifikasi grep) dan sebaliknya.
+- [x] Image `runner-tenant` dan `runner-platform` berhasil dibangun dan dijalankan.
 - [ ] Compose smoke stack menjalankan kedua console; host tenant redirect `/platform/*` ke host
       platform.
 - [ ] Login dan seluruh halaman platform berfungsi dari origin platform.
 - [ ] `CORS_ORIGINS` mencakup kedua origin; origin tak terdaftar ditolak.
 - [ ] Session tenant dan platform tidak berbagi origin/storage.
-- [ ] Dokumentasi (README, configuration, local-setup, production-readiness, desain ini)
+- [x] Dokumentasi (README, configuration, local-setup, production-readiness, desain ini)
       diperbarui.
-- [ ] `npm run ci` dan `npm run docs:check` hijau.
+- [x] `npm run ci` dan `npm run docs:check` hijau.
 
 ## 17. Pertanyaan keputusan
 
@@ -535,4 +534,51 @@ Catatan:
    penuh tetap diverifikasi di P4/roadmap.
 3. CI baru membangun image console default (tenant); penambahan build kedua target di job
    `docker`/`packages` adalah bagian P3.
-4. Belum dikerjakan: P3 (CI + dokumentasi deploy akhir) dan P4 (rollout host platform).
+4. P3 (CI + dokumentasi deploy akhir) selesai 2026-11-20; sisa P4 (rollout host platform).
+
+### 18.3 P3 (2026-11-20)
+
+Yang sudah berjalan:
+
+- Job `packages` mendapat langkah **Console artifacts and bundle isolation**: memastikan
+  `console/dist/tenant/index.html` dan `console/dist/platform/index.html` ada, lalu menggagalkan
+  CI bila artifact tenant memuat string `NotifHub Platform` atau artifact platform memuat kunci
+  `notifhub.console.session`.
+- Job `docker` membangun image console dengan target eksplisit `runner-tenant`
+  (tag `notifhub-console:ci`, build arg `VITE_PLATFORM_CONSOLE_URL=http://localhost:8081`) dan
+  `runner-platform` (tag `notifhub-console-platform:ci`); cache buildx dipisah per scope agar kedua
+  target tidak saling menimpa cache.
+- Dokumentasi diperbarui: `docs/operations/production-readiness.md` §6 dan §11, `docs/README.md`,
+  `docs/design/README.md`, `docs/architecture/project-brief.md` §7, dan dokumen ini.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run console:typecheck` | lulus |
+| `npm run console:build` | `dist/tenant/index.html` (JS 990,12 kB) dan `dist/platform/index.html` (JS 502,46 kB) ada |
+| Guard kebocoran (Git Bash, perintah sama dengan CI) | exit `0`: `NotifHub Platform` tidak ada di `dist/tenant/assets`; `notifhub.console.session` tidak ada di `dist/platform/assets` |
+| Validasi YAML CI (`js-yaml`) | valid; 5 job (`backend`, `packages`, `go`, `docs`, `docker`); langkah guard dan dua build console terdaftar |
+| `npm run ci` | lulus 136 s: typecheck, build, 28 unit, 37 e2e, `migrate status` "Database schema is up to date!" |
+| `npm run docs:check` | lulus: 421 tautan/anchor di 37 file Markdown |
+| `docker build --target runner-tenant` | berhasil, tag `notifhub-console:ci` |
+| `docker build --target runner-platform` | berhasil, tag `notifhub-console-platform:ci` |
+| Negative test guard | file uji berisi `NotifHub Platform` di `dist/tenant/assets` membuat guard gagal (exit `1`); file dihapus setelah uji |
+| Runtime image (manual, `docker run` :18080/:18081) | tenant `/platform/login?x=1` → `302` ke `http://localhost:18081/platform/login?x=1`; platform `/` → `302` `Location: /platform/tenants`; `/platform/login` → `200`; tenant `/` → `200` |
+
+Catatan:
+
+1. **Guard berbasis penanda string**, bukan analisis AST. Ini cukup menangkap regresi impor
+   platform ke entry tenant (dan sebaliknya) tanpa menambah dependency, tetapi tidak menjamin semua
+   nama class CSS platform hilang dari artifact tenant (lihat §18.1 catatan 1).
+2. **Langkah guard dipisah** dari langkah build console agar kegagalan isolasi bundel mudah
+   dibedakan dari kegagalan kompilasi di log Actions; pesan memakai anotasi `::error::`.
+3. **Simulasi lokal memakai Git Bash** supaya `test -f`/`grep` dieksekusi apa adanya seperti runner
+   Ubuntu; PowerShell hanya dipakai untuk inspeksi artifact secara manual.
+4. **Job `docker` hanya membangun image.** Redirect/HTTP image diperiksa manual (tabel di atas),
+   tetapi smoke stack penuh dengan Postgres/Redis/backend dan login platform tetap bagian P4; build
+   arg `VITE_PLATFORM_CONSOLE_URL=http://localhost:8081` dipakai agar image tenant CI mencerminkan
+   konfigurasi smoke stack.
+5. **Workflow GitHub Actions belum dijalankan ulang dari sesi ini** untuk commit P3; padanan
+   lokalnya dijalankan dengan perintah yang sama (tabel di atas). Status hijau di GitHub tetap perlu
+   diperiksa setelah push.

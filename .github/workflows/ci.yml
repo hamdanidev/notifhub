@@ -108,6 +108,20 @@ jobs:
           npm run console:typecheck
           npm run console:build
 
+      - name: Console artifacts and bundle isolation
+        run: |
+          test -f console/dist/tenant/index.html
+          test -f console/dist/platform/index.html
+          if grep -rq -- 'NotifHub Platform' console/dist/tenant/assets; then
+            echo '::error::Regresi isolasi bundel: artifact tenant memuat string khas console platform.'
+            exit 1
+          fi
+          if grep -rq -- 'notifhub.console.session' console/dist/platform/assets; then
+            echo '::error::Regresi isolasi bundel: artifact platform memuat kunci session tenant.'
+            exit 1
+          fi
+          echo 'Kedua artifact console ada dan tidak saling bocor.'
+
   go:
     name: Go SDK
     runs-on: ubuntu-latest
@@ -162,12 +176,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build console image
+      - name: Build console image (tenant)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: console/Dockerfile
+          target: runner-tenant
+          build-args: |
+            VITE_PLATFORM_CONSOLE_URL=http://localhost:8081
           push: false
           tags: notifhub-console:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=console-tenant
+          cache-to: type=gha,mode=max,scope=console-tenant
+
+      - name: Build console image (platform)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: console/Dockerfile
+          target: runner-platform
+          push: false
+          tags: notifhub-console-platform:ci
+          cache-from: type=gha,scope=console-platform
+          cache-to: type=gha,mode=max,scope=console-platform
