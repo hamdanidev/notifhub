@@ -252,3 +252,5 @@ npx prisma migrate status
    di `docs/design/platform-console-host-split.md` §10/§18.4.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
+6. Hardening console tenant P1 (ganti password + invalidasi token, secret API key, search
+   notifikasi, CSP). Draf desain: `docs/design/console-admin-hardening.md` (menunggu persetujuan).

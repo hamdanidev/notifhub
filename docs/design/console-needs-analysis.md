@@ -545,3 +545,6 @@ Gap yang tersisa dan prioritas:
 
 Catatan: compose/send bukan blocker single tenant bila pengiriman memang dilakukan consumer lewat
 API/SDK. Untuk operator yang ingin mengirim manual dari console, ini gap utama.
+
+Draf desain P1 untuk gap password, secret API key, search, dan CSP:
+[console-admin-hardening.md](console-admin-hardening.md) (menunggu persetujuan).
