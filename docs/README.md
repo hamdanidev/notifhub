@@ -65,7 +65,7 @@ tanggal di dalamnya bukan urutan baca. Semua desain terindeks di [design/README.
 | [whatsapp.md](design/whatsapp.md) | Kanal WhatsApp Meta Cloud API: provider, worker, webhook Meta, stub lokal | terimplementasi |
 | [admin-api.md](design/admin-api.md) | API key, auth admin, topik, isolasi tenant, dan seluruh endpoint Admin API | terimplementasi |
 | [react-and-console.md](design/react-and-console.md) | `NotifHubAdminClient`, `@notifhub/react`, dan console tenant admin | terimplementasi |
-| [console-needs-analysis.md](design/console-needs-analysis.md) | Analisis gap console (refresh, re-send) dan rencana fasenya | Fase A+B selesai, Fase C belum |
+| [console-needs-analysis.md](design/console-needs-analysis.md) | Analisis gap console (refresh, re-send) dan rencana fasenya | Fase A+B selesai; Fase C sebagian |
 | [sample-in-app-design.md](design/sample-in-app-design.md) | Sample React 18 in-app: sesi, SSE, read receipt, preference center, middleware dev | terimplementasi (dev-only) |
 | [templates/template-system-design.md](design/templates/template-system-design.md) | Sistem template v2: draft/publish/rollback/clone, versi, preview, test send, layout/theme/partial, sanitasi, pipeline render | terimplementasi |
 | [templates/email-authoring-ui-design.md](design/templates/email-authoring-ui-design.md) | Form theme dan galeri layout untuk admin non-teknis | terimplementasi |

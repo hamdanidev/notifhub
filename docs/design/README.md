@@ -29,7 +29,7 @@ selesai · **rencana** = belum dikerjakan.
 | [whatsapp.md](whatsapp.md) | Bagaimana kanal WhatsApp memakai Meta Cloud API, termasuk webhook-nya? | terimplementasi | §3 Cloud API, §4 worker, §5 webhook |
 | [admin-api.md](admin-api.md) | Bagaimana tiga lane auth dipisahkan, API key dikelola, tenant diisolasi, dan endpoint admin disusun? | terimplementasi | §2 lane auth, §3 ApiKey, §6 Admin API |
 | [react-and-console.md](react-and-console.md) | Bagaimana `@notifhub/js` (admin client), `@notifhub/react`, dan console tenant admin dibangun? | terimplementasi | §2 auth frontend, §3 admin client, §4 React, §5 console |
-| [console-needs-analysis.md](console-needs-analysis.md) | Gap operasional console apa yang perlu ditutup, dan fase mana yang sudah jalan? | Fase A+B selesai, Fase C belum | §1 ringkasan, §4 refresh, §5 re-send |
+| [console-needs-analysis.md](console-needs-analysis.md) | Gap operasional console apa yang perlu ditutup, dan fase mana yang sudah jalan? | Fase A+B selesai; Fase C sebagian | §1 ringkasan, §4 refresh, §5 re-send, §11.1 audit 2026-11-20 |
 | [sample-in-app-design.md](sample-in-app-design.md) | Bagaimana sample React 18 memakai SDK terbit untuk in-app, SSE, dan preference center? | terimplementasi (dev-only) | §4 arsitektur, §6 middleware dev, §15 hasil verifikasi |
 | [templates/template-system-design.md](templates/template-system-design.md) | Bagaimana sistem template v2 bekerja: versi, draft/publish, render per channel, sanitasi? | terimplementasi | §1 keputusan, §5 D1–D12, §7 pipeline render, §18 catatan |
 | [templates/email-authoring-ui-design.md](templates/email-authoring-ui-design.md) | Bagaimana admin non-teknis mengubah theme dan layout tanpa menulis JSON/HTML? | terimplementasi | §2 keputusan, §3 UX, §5 batasan |

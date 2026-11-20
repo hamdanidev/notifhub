@@ -196,6 +196,9 @@ npx prisma migrate status
   export belum ada. Re-send memakai template aktif/data Subscriber saat ini; inline override dari
   ingest awal tidak tersimpan. Endpoint console memakai wrapper `HttpTransport` sementara sampai
   rilis `@notifhub/js` berikutnya.
+- Console tenant belum punya halaman ganti password/profil; perubahan password admin masih lewat
+  `ADMIN_PASSWORD_HASH` + restart. API key `subscriberJwtSecret` belum bisa diisi dari UI, dan
+  audit aksi admin tenant belum ada. Lihat `docs/design/console-needs-analysis.md` §11.
 - Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
   WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
   ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage count/proteksi hapus aset,
@@ -212,7 +215,9 @@ npx prisma migrate status
 - Lane admin juga query DB per request (akun aktif + status tenant) agar suspend/deaktivasi berlaku
   segera; tidak ada cache di v1.
 - Rate limit per IP; di belakang reverse proxy tanpa `trust proxy` limit praktis menjadi global.
-- `ApiKey.allowedOrigins` disimpan tetapi belum ditegakkan.
+- `ApiKey.allowedOrigins` ditegakkan di lane API key: bila daftar tidak kosong, `Origin` yang tidak
+  cocok ditolak `403 origin_not_allowed`; daftar kosong berarti semua origin. Console dapat
+  mengisinya saat membuat key, tetapi belum ada endpoint/UI untuk mengubahnya setelah dibuat.
 - Revocation token subscriber hanya per API key; tidak ada session/refresh token per user.
 - Preferensi tidak punya FK ke `Subscriber`: GET tetap bekerja untuk recipient yang belum
   di-push (locale `null`).

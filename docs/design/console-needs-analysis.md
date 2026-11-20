@@ -1,6 +1,8 @@
 # Analisis kebutuhan console admin NotifHub
 
-Status: **Fase A + Fase B terimplementasi dan terverifikasi** pada 2026-11-16; Fase C belum.
+Status: **Fase A + Fase B terimplementasi dan terverifikasi** pada 2026-11-16; Fase C sebagian
+(template preview/test send sudah ada), sisa re-send all, search, compose/send, export. Audit ulang
+2026-11-20 ada di §11.1.
 Tanggal: 2026-11-16. Bahasa: Indonesia.
 
 Dokumen ini menjawab dua keluhan konkret pada console saat ini — tidak ada **re-send** dan tidak ada
@@ -510,3 +512,36 @@ Fase A dan B disetujui dan diterapkan:
 
 Fase C (re-send all, search, compose, template test, export) tetap ditunda. Batasan re-send
 (template/preferensi/override) tetap seperti §5.4.
+
+### 11.1 Audit ulang (2026-11-20)
+
+Cakupan console saat ini dibandingkan Admin API:
+
+| Area | Console | Catatan |
+|---|---|---|
+| Dashboard | count status + grafik 14 hari + auto-refresh 60 s | agregasi client-side |
+| Notifications | filter status/template/tanggal, detail, resend failed, auto-refresh in-flight | belum search ID/recipient, export, resend all, cancel/retry |
+| Templates | list/create/edit, preview, test send, publish/rollback/clone, riwayat/audit/test send, aset gambar | item Fase C "template test" sudah selesai |
+| Subscribers | list/detail, editor preferensi | data read-only dari push consumer |
+| Topics | list/detail, tambah/ubah membership, `expiresAt` | |
+| API keys | list/create (nama + `allowedOrigins`), revoke | `subscriberJwtSecret` belum ada di form; edit origins belum didukung backend |
+| Platform | login, tenant list/detail, provisioning, admin tenant, suspend/resume, hapus, audit | hanya untuk multi-tenant |
+| Akun admin | login/logout, sesi | belum ada ganti password/profil sendiri |
+
+Gap yang tersisa dan prioritas:
+
+| Prioritas | Gap | Dampak | Butuh backend? |
+|---|---|---|---|
+| P1 | Ganti password admin sendiri | Rotasi password harus ubah env + restart; tidak praktis | Ya |
+| P1 | Isi `subscriberJwtSecret` saat buat API key | Secret per tenant hanya lewat curl; berisiko memakai fallback env | Tidak (DTO sudah ada) |
+| P1 | Search notification ID/recipient + page size | Investigasi lambat saat volume naik | Ya |
+| P1 | CSP header untuk console | Mitigasi XSS belum ada di konfigurasi nginx/Caddy | Tidak (config) |
+| P2 | Export CSV notification/recipient | Pelaporan manual | Ya |
+| P2 | Resend all dengan konfirmasi | Pengingat massal belum bisa | Ya |
+| P2 | Compose/send dari console | Admin masih lewat API/curl | Ya |
+| P2 | Audit aksi admin tenant | Tidak ada jejak aksi admin tenant | Ya (tabel audit) |
+| P3 | Test/browser automation console | Regresi UI tidak otomatis | Tidak (tooling) |
+| P3 | Pindahkan wrapper `adminTemplates`/`adminResend`/platform ke SDK terbit | Dua jalur pemanggilan | Ya (rilis SDK) |
+
+Catatan: compose/send bukan blocker single tenant bila pengiriman memang dilakukan consumer lewat
+API/SDK. Untuk operator yang ingin mengirim manual dari console, ini gap utama.

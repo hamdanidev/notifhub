@@ -65,7 +65,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" \
 | Field | Arti |
 |---|---|
 | `name` | Label key (maks 80) |
-| `allowedOrigins` | Disimpan untuk kebutuhan CORS per key; **belum ditegakkan** |
+| `allowedOrigins` | CORS per key: bila diisi, `Origin` yang tidak cocok ditolak `403 origin_not_allowed`; kosong = semua origin. Bisa diisi saat create; ubah setelah create belum didukung |
 | `subscriberJwtSecret` | Secret HS256 untuk memverifikasi token subscriber tenant ini (maks 128, min 32) |
 
 Catatan:
@@ -205,7 +205,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 | `redis` | internal | Append-only |
 | `migrate` | — | One-shot `prisma migrate deploy`; harus `Exited (0)` sebelum backend mulai |
 | `backend` | `3000` | Image non-root, HEALTHCHECK `/health/live` |
-| `console` | `8080` | nginx, SPA fallback |
+| `console` | `8080` | nginx, tenant SPA fallback (`dist/tenant`) |
+| `platform-console` | `8081` | nginx, artifact `dist/platform`; hanya untuk deployment multi-tenant |
 
 Di `NOTIFHUB_MODE=production`, env ini wajib (validasi gagal saat startup bila kosong):
 `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SWAGGER_BASIC_AUTH_USER`, `SWAGGER_BASIC_AUTH_PASS`.
@@ -214,7 +215,9 @@ Build manual: `docker build --target runner .`, `docker build -f console/Dockerf
 `docker build --target migrator .`. Stack ini untuk verifikasi, bukan deployment produksi
 (tanpa TLS/secret manager). Detail ada di
 [docs/operations/production-readiness.md](../operations/production-readiness.md) dan
-[docs/getting-started/local-setup.md](../getting-started/local-setup.md).
+[docs/getting-started/local-setup.md](../getting-started/local-setup.md). Untuk deployment satu
+tenant tanpa console platform, ikuti
+[panduan deployment single tenant](../operations/single-tenant-deployment.md).
 
 ## 10. Env penting
 
