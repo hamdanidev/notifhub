@@ -451,9 +451,9 @@ Verifikasi:
 
 | Pemeriksaan | Hasil |
 |---|---|
-| `npm run test:unit` | **60** test lulus (12 suite); 30 test baru untuk WAHA |
+| `npm run test:unit` | **62** test lulus (13 suite); 32 test baru untuk WAHA |
 | `npm run test:e2e` | **46** test lulus; E46 lulus (ack DEVICE/READ, duplikat, PENDING, event asing, id tak dikenal, HMAC salah, algoritma hilang) |
-| `npm run ci` | lulus **75 s**; typecheck, build, 60 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
+| `npm run ci` | lulus **95 s**; typecheck, build, 62 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
 | Perubahan schema/migrasi | tidak ada (tetap 14) |
 | Dependency baru | tidak ada |
 | `npm run docs:check` | lulus (511 tautan/anchor, 42 file) |

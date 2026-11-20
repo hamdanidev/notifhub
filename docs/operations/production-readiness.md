@@ -423,6 +423,6 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     self-hosted WAHA (`POST /api/sendText`, `X-Api-Key`) sebagai alternatif Meta; default tetap
     `meta`. Status masuk lewat webhook baru `POST /api/v1/webhooks/waha/events` dengan HMAC-SHA512
     (`X-Webhook-Hmac`) dan pemetaan `message.ack`; payload disimpan minimal tanpa `_data`/body.
-    E46 + 30 unit test menambah cakupan menjadi 46 e2e/60 unit; 14 migrasi dan tanpa dependency
+    E46 + 32 unit test menambah cakupan menjadi 46 e2e/62 unit; 14 migrasi dan tanpa dependency
     baru. Smoke test WAHA nyata (scan QR + kirim pesan) belum dijalankan dan tetap gate operator.
     Detail: `docs/design/whatsapp-waha-provider.md` §15.
