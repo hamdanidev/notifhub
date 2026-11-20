@@ -1,6 +1,6 @@
 # Kualitas console P3: test, SDK, dan retensi audit
 
-Status: **P3a–P3b terimplementasi dan terverifikasi** (2026-11-20); P3c belum. Lihat §11–§12.
+Status: **P3a–P3c terimplementasi dan terverifikasi** (2026-11-20). Lihat §11–§13.
 Basis: `docs/design/console-operations-p2.md` §15, `docs/design/console-admin-hardening.md` §16,
 `console/`, `packages/js-sdk/`, `src/cleanup/cleanup.service.ts`, dan `.github/workflows/ci.yml`.
 
@@ -18,6 +18,7 @@ Basis: `docs/design/console-operations-p2.md` §15, `docs/design/console-admin-h
 - [10. Pertanyaan persetujuan](#10-pertanyaan-persetujuan)
 - [11. Catatan implementasi P3a](#11-catatan-implementasi-p3a)
 - [12. Catatan implementasi P3b](#12-catatan-implementasi-p3b)
+- [13. Catatan implementasi P3c](#13-catatan-implementasi-p3c)
 
 ---
 
@@ -118,7 +119,7 @@ Tambahkan ke `NotifHubAdminClient` + tipe di `packages/js-sdk/src`:
 | Test console | `console/package.json`, `console/package-lock.json`, `console/vitest.config.ts`, `console/src/test/setup.ts`, `console/src/lib/*.test.ts`, `console/src/components/ResendDialog.test.tsx` |
 | CI | `.github/workflows/ci.yml` (langkah `console:test`) |
 | SDK | `packages/js-sdk/src/admin-client.ts`, `admin-types.ts`, `package.json`; hapus 5 wrapper console |
-| Audit retention | `src/config/env.schema.ts`, `src/cleanup/cleanup.service.ts`, `.env.example`, `.env.prod.example`, `docs/getting-started/configuration.md`, `test/app.e2e-spec.ts` |
+| Audit retention | `src/config/env.schema.ts`, `src/cleanup/cleanup.service.ts`, `.env.example`, `.env.prod.example`, `docs/getting-started/configuration.md`, `test/app.e2e-spec.ts`, `test/admin-audit.cleanup.unit-spec.ts` |
 | Docs | `docs/design/console-quality-p3.md`, `docs/README.md`, `docs/design/README.md`, `docs/architecture/project-brief.md`, `docs/operations/production-readiness.md` |
 
 ## 7. Verifikasi
@@ -165,7 +166,8 @@ sebelum P3b.
 
 ## 11. Catatan implementasi P3a
 
-P3a (test console) selesai dan terverifikasi pada 2026-11-20; P3b/P3c belum.
+P3a (test console) selesai dan terverifikasi pada 2026-11-20; P3b/P3c dikerjakan pada fase
+berikutnya (lihat §12–§13).
 
 Yang sudah berjalan:
 
@@ -193,11 +195,12 @@ Catatan:
 1. Test memakai jsdom, bukan browser nyata; layout/CSS tidak diuji.
 2. Halaman yang membutuhkan jaringan tetap ditutup E2E backend; komponen dialog/helper diuji unit.
 3. Dependency baru hanya dev; bundle produksi tidak berubah.
-4. P3b (SDK) dan P3c (retensi audit) belum dimulai.
+4. P3b (SDK) dan P3c (retensi audit) menyusul; lihat §12–§13.
 
 ## 12. Catatan implementasi P3b
 
-P3b (konsolidasi SDK) selesai dan terverifikasi pada 2026-11-20; P3c belum.
+P3b (konsolidasi SDK) selesai dan terverifikasi pada 2026-11-20; P3c menyusul pada fase
+berikutnya (lihat §13).
 
 Yang sudah berjalan:
 
@@ -229,3 +232,43 @@ Catatan:
 3. Tipe export menambah `ExportNotificationsQuery` (termasuk `offset` dari `ListQuery`) meskipun
    endpoint export tidak memakai offset; nilai itu tidak dikirim oleh console.
 4. Tidak ada perubahan kontrak HTTP; hanya pemindahan pemanggilan ke SDK.
+
+## 13. Catatan implementasi P3c
+
+P3c (retensi audit admin) selesai dan terverifikasi pada 2026-11-20.
+
+Yang sudah berjalan:
+
+- Env `ADMIN_AUDIT_RETENTION_DAYS` (integer ≥ 0, default **730**, `0` menonaktifkan) masuk
+  `src/config/env.schema.ts`, `.env.example`, `.env.prod.example`, dan
+  `docs/getting-started/configuration.md`.
+- `CleanupService.runAdminAuditCleanup()` dijadwalkan cron `45 3 * * *` UTC (nama job
+  `admin-audit-cleanup`) dengan flag `adminAuditRunning`; event dihapus per batch 1.000
+  (`deleteMany` by id) sampai tidak ada lagi baris dengan `occurredAt < now - days`.
+- Log terstruktur `admin.audit.cleanup` berisi `retention_days`, `cutoff` (`null` saat `0`), dan
+  `deleted`; tidak ada metadata event, actor, atau target yang dicatat.
+- E45 membuat event berumur 800 hari dan event baru, memastikan event lama terhapus, event baru
+  tetap ada, dan pemanggilan kedua idempoten (`deleted: 0`).
+- Unit test branch `0` memastikan tidak ada query/penghapusan dan log skip tetap ditulis.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run test:unit` | **30** test lulus (29 baseline + 1 test retensi `0`) |
+| `npm run test:e2e` | **45** test lulus; E45 lulus |
+| `npm run ci` | lulus 60 s: typecheck, build, 30 unit, 45 e2e, 14 migrasi, `Database schema is up to date!` |
+| `npm run docs:check` | lulus (492 tautan/anchor, 41 file) |
+| Perubahan schema/migrasi | tidak ada (tetap 14 migrasi) |
+
+Catatan:
+
+1. Retensi bersifat global (semua tenant) dan permanen; tidak ada soft delete untuk
+   `AdminAuditEvent`. Backup/arsip sebelum retensi tetap tanggung jawab operator.
+2. `0` adalah kill switch: event lama tetap tersimpan dan tabel dapat tumbuh tanpa batas.
+3. Filter cleanup hanya memakai `occurredAt`; index yang ada berawalan `tenantId`
+   (`[tenantId, occurredAt]`), sehingga pembersihan massal dapat memakai sequential scan pada tabel
+   besar. Tidak ada migrasi index baru pada P3c untuk menjaga jumlah migrasi tetap 14.
+4. Job berjalan 45 menit setelah template telemetry dan tidak membaca isi baris; aman untuk log
+   produksi.
+5. Tidak ada perubahan kontrak HTTP atau perilaku console; P3c hanya menambah lifecycle job.

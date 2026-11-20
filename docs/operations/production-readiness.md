@@ -413,3 +413,9 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     console dihapus. Versi source `@notifhub/js` `0.3.1`, tetapi **belum dipublish**; registry tetap
     `0.3.0`. `npm pack` menghasilkan `notifhub-js-0.3.1.tgz`. Detail:
     `docs/design/console-quality-p3.md` §12.
+23. **Console P3c (2026-11-20).** `AdminAuditEvent` mendapat retensi terjadwal: env
+    `ADMIN_AUDIT_RETENTION_DAYS` (default `730`, `0` menonaktifkan) dan job
+    `admin-audit-cleanup` pukul 03:45 UTC yang menghapus per batch 1.000 dengan log
+    `admin.audit.cleanup` tanpa metadata event. E45 dan unit test branch `0` menambah cakupan
+    menjadi 45 e2e/30 unit; tidak ada migrasi baru (tetap 14). Detail:
+    `docs/design/console-quality-p3.md` §13.

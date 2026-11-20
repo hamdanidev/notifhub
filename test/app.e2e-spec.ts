@@ -2476,4 +2476,52 @@ describe('Console operations e2e', () => {
       'compose acme selesai diproses worker',
     );
   });
+
+  it('E45 cleanup audit admin menghapus event lama, menyisakan yang baru, dan idempoten', async () => {
+    const day = 86_400_000;
+    const oldEvent = await prisma.adminAuditEvent.create({
+      data: {
+        tenantId: 'default',
+        actorAdminId: 'retention-admin',
+        actorEmail: 'retention@test.local',
+        action: 'e2e.audit.retention_old',
+        targetType: 'test',
+        targetId: `old-${randomUUID()}`,
+        metadata: { seed: 'old' },
+        occurredAt: new Date(Date.now() - 800 * day),
+      },
+      select: { id: true },
+    });
+    const recentEvent = await prisma.adminAuditEvent.create({
+      data: {
+        tenantId: 'default',
+        actorAdminId: 'retention-admin',
+        actorEmail: 'retention@test.local',
+        action: 'e2e.audit.retention_recent',
+        targetType: 'test',
+        targetId: `recent-${randomUUID()}`,
+        metadata: { seed: 'recent' },
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    const cleanup = app.get(CleanupService);
+    const first = await cleanup.runAdminAuditCleanup();
+    expect(first.deleted).toBeGreaterThanOrEqual(1);
+    expect(
+      await prisma.adminAuditEvent.findUnique({ where: { id: oldEvent.id } }),
+    ).toBeNull();
+    expect(
+      await prisma.adminAuditEvent.findUnique({ where: { id: recentEvent.id } }),
+    ).not.toBeNull();
+
+    const second = await cleanup.runAdminAuditCleanup();
+    expect(second.deleted).toBe(0);
+    expect(
+      await prisma.adminAuditEvent.findUnique({ where: { id: recentEvent.id } }),
+    ).not.toBeNull();
+
+    await prisma.adminAuditEvent.deleteMany({ where: { id: recentEvent.id } });
+  });
 });

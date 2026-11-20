@@ -20,6 +20,10 @@ export interface TemplateTelemetryCleanupResult {
   testSendDeleted: number;
 }
 
+export interface AdminAuditCleanupResult {
+  deleted: number;
+}
+
 /**
  * Nightly data lifecycle jobs (PART 1 rules 26 and 27), scheduled in UTC.
  *
@@ -32,6 +36,7 @@ export class CleanupService {
   private retentionRunning = false;
   private idempotencyRunning = false;
   private telemetryRunning = false;
+  private adminAuditRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -143,6 +148,44 @@ export class CleanupService {
     }
   }
 
+  /**
+   * Admin audit retention. `AdminAuditEvent` is compliance evidence, so the default window is
+   * longer than template telemetry and `0` disables deletion entirely. Batches keep transactions
+   * short on large tables; logs contain counts and the cutoff only, never event metadata.
+   */
+  @Cron('45 3 * * *', { name: 'admin-audit-cleanup', timeZone: 'UTC' })
+  async runAdminAuditCleanup(): Promise<AdminAuditCleanupResult> {
+    if (this.adminAuditRunning) {
+      return { deleted: 0 };
+    }
+
+    this.adminAuditRunning = true;
+
+    try {
+      const retentionDays = this.config.getOrThrow<number>('ADMIN_AUDIT_RETENTION_DAYS');
+      const cutoff =
+        retentionDays === 0
+          ? null
+          : new Date(Date.now() - retentionDays * MILLISECONDS_PER_DAY);
+      const deleted =
+        cutoff === null ? 0 : await this.deleteAdminAuditEventsBefore(cutoff);
+
+      this.logger.info(
+        {
+          event: 'admin.audit.cleanup',
+          retention_days: retentionDays,
+          cutoff: cutoff === null ? null : cutoff.toISOString(),
+          deleted,
+        },
+        'admin audit retention job completed',
+      );
+
+      return { deleted };
+    } finally {
+      this.adminAuditRunning = false;
+    }
+  }
+
   @Cron('30 2 * * *', { name: 'idempotency-cleanup', timeZone: 'UTC' })
   async runIdempotencyCleanup(): Promise<IdempotencyCleanupResult> {
     if (this.idempotencyRunning) {
@@ -217,6 +260,34 @@ export class CleanupService {
       }
 
       const result = await this.prisma.templateAuditEvent.deleteMany({
+        where: { id: { in: rows.map((row) => row.id) } },
+      });
+
+      deleted += result.count;
+
+      if (rows.length < RETENTION_BATCH_SIZE) {
+        break;
+      }
+    }
+
+    return deleted;
+  }
+
+  private async deleteAdminAuditEventsBefore(cutoff: Date): Promise<number> {
+    let deleted = 0;
+
+    for (;;) {
+      const rows = await this.prisma.adminAuditEvent.findMany({
+        where: { occurredAt: { lt: cutoff } },
+        select: { id: true },
+        take: RETENTION_BATCH_SIZE,
+      });
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      const result = await this.prisma.adminAuditEvent.deleteMany({
         where: { id: { in: rows.map((row) => row.id) } },
       });
 

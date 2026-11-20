@@ -94,6 +94,7 @@ Aturan kerja:
 | Console P2c: compose/send dari console (reuse ingest) | selesai & terverifikasi (E44; 44 e2e) |
 | Console P3a: test Vitest/jsdom (18 test) di CI | selesai & terverifikasi |
 | Console P3b: lima method P1/P2 masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (25 SDK test; publish npm pending) |
+| Console P3c: retensi `AdminAuditEvent` (default 730 hari, cleanup 03:45 UTC) | selesai & terverifikasi (E45; 45 e2e, 30 unit; tanpa migrasi baru) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
@@ -258,7 +259,8 @@ npx prisma migrate status
    di `docs/design/platform-console-host-split.md` §10/§18.4.
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
-6. P3 console lanjutan: retensi audit admin. P3a (18 test Vitest/jsdom) dan P3b (lima method
-   P1/P2 masuk `@notifhub/js` source 0.3.1; publish npm pending) selesai:
-   `docs/design/console-quality-p3.md` §11–§12. `adminTemplates.ts` dan `platformClient.ts` tetap
+6. P3 console selesai: P3a (18 test Vitest/jsdom), P3b (lima method P1/P2 masuk `@notifhub/js`
+   source 0.3.1; publish npm pending), dan P3c (retensi `AdminAuditEvent` default 730 hari dengan
+   job 03:45 UTC; `0` menonaktifkan) — catatan dan bukti di
+   `docs/design/console-quality-p3.md` §11–§13. `adminTemplates.ts` dan `platformClient.ts` tetap
    lokal sampai rilis SDK berikutnya.

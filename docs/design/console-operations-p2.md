@@ -228,7 +228,8 @@ Authorization: Bearer <admin JWT>
 
 ### 5.5 Batasan
 
-- Belum ada retensi otomatis; tabel tumbuh. Kandidat P3: `ADMIN_AUDIT_RETENTION_DAYS` + job cleanup.
+- Retensi otomatis ditambahkan di P3c (env `ADMIN_AUDIT_RETENTION_DAYS`, default 730 hari, `0`
+  menonaktifkan); lihat `docs/design/console-quality-p3.md` §13.
 - Aksi yang tidak dicatat eksplisit tidak muncul; daftar di §5.2 adalah kontrak P2.
 - Tidak ada export audit di P2.
 
@@ -386,7 +387,8 @@ Tidak ada perubahan pada `Notification`, `ApiKey`, atau template.
 2. **Export 5.000 baris** membatasi laporan besar; streaming ditunda.
 3. **Resend all dapat menduplikasi pengiriman** ke penerima yang sudah sukses; wajib konfirmasi.
 4. **Compose membuka jalur kirim baru**; rate limit dan audit wajib, tetapi belum ada RBAC.
-5. **Audit tumbuh tanpa retensi** di P2.
+5. **Audit tumbuh tanpa retensi** di P2; P3c menambahkan cleanup terjadwal (lihat
+   `docs/design/console-quality-p3.md` §13).
 6. **CSV formula injection** ditangani dengan prefix, bukan sanitasi tipe sel.
 7. **Compose memakai template aktif saat diproses**; perubahan template setelah submit dapat
    mengubah hasil (sama seperti ingest).
@@ -470,7 +472,8 @@ Catatan:
 
 1. Cakupan audit adalah daftar action §5.2; endpoint mutasi baru harus menambahkan hook eksplisit.
    Tidak ada interceptor generik.
-2. Belum ada retensi/cleanup `AdminAuditEvent`; tabel tumbuh. Kandidat P3.
+2. Retensi/cleanup `AdminAuditEvent` selesai di P3c (default 730 hari, `0` menonaktifkan); lihat
+   `docs/design/console-quality-p3.md` §5 dan §13.
 3. Login/logout dan export tidak dicatat; password/API key/template/preference/topic/resend ya.
 4. Audit bersifat best-effort: kegagalan insert tidak menggagalkan mutasi (desain/log; E2E
    memastikan alur normal).

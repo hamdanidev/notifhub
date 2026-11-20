@@ -99,6 +99,7 @@ Di `development` email tidak pernah dikirim: provider mencatat `email.log_only` 
 | `RETENTION_DAYS` | `90` | Umur notifikasi sebelum soft delete oleh job retention (UTC 02:00) |
 | `TEMPLATE_TEST_SEND_RETENTION_DAYS` | `180` | Retensi `TemplateTestSend`; `0` menonaktifkan |
 | `TEMPLATE_AUDIT_RETENTION_DAYS` | `730` | Retensi `TemplateAuditEvent`; `0` menonaktifkan |
+| `ADMIN_AUDIT_RETENTION_DAYS` | `730` | Retensi `AdminAuditEvent` (job cleanup UTC 03:45); `0` menonaktifkan |
 | `TEMPLATE_MAX_PAYLOAD_BYTES` | `1048576` | Batas payload Admin API template/aset (1 MB) |
 | `TEMPLATE_IMAGE_DIR` | `var/template-images` | Direktori gambar template (di-ignore git) |
 | `TEMPLATE_IMAGE_MAX_BYTES` | `5242880` | Batas ukuran gambar (5 MB) |

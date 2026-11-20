@@ -53,6 +53,7 @@ export const envSchema = z
     RETENTION_DAYS: positiveInt(90),
     TEMPLATE_TEST_SEND_RETENTION_DAYS: nonNegativeInt(180),
     TEMPLATE_AUDIT_RETENTION_DAYS: nonNegativeInt(730),
+    ADMIN_AUDIT_RETENTION_DAYS: nonNegativeInt(730),
     INGEST_MAX_PAYLOAD_BYTES: positiveInt(65536),
     TEMPLATE_MAX_PAYLOAD_BYTES: positiveInt(1048576),
     TEMPLATE_IMAGE_DIR: z.string().min(1).default('var/template-images'),
