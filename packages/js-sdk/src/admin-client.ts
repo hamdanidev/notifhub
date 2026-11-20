@@ -1,10 +1,16 @@
 import type {
+  AdminAuditQuery,
+  AdminAuditResult,
   AdminLoginResult,
   AdminProfile,
   ApiKeyInput,
   ApiKeySummary,
+  ComposeNotificationInput,
+  ComposeNotificationResult,
   CreatedApiKey,
   CreateTemplateInput,
+  ExportNotificationsQuery,
+  ExportNotificationsResult,
   ListQuery,
   NotificationDetail,
   NotificationQuery,
@@ -13,6 +19,8 @@ import type {
   Paged,
   Preference,
   PreferenceInput,
+  ResendNotificationInput,
+  ResendNotificationResult,
   Subscriber,
   Template,
   TemplateQuery,
@@ -76,6 +84,13 @@ export class NotifHubAdminClient {
 
   me(): Promise<AdminProfile> {
     return this.transport.request<AdminProfile>('GET', '/auth/me');
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return this.transport.request<void>('POST', '/auth/change-password', {
+      retry: false,
+      body: { currentPassword, newPassword },
+    });
   }
 
   listApiKeys(): Promise<ApiKeySummary[]> {
@@ -222,6 +237,54 @@ export class NotifHubAdminClient {
       'GET',
       `/notifications/${encodeURIComponent(id)}`,
     );
+  }
+
+  resendNotification(
+    id: string,
+    input: ResendNotificationInput,
+  ): Promise<ResendNotificationResult> {
+    return this.transport.request<ResendNotificationResult>(
+      'POST',
+      `/notifications/${encodeURIComponent(id)}/resend`,
+      { retry: false, body: input },
+    );
+  }
+
+  exportNotifications(
+    query: ExportNotificationsQuery = {},
+  ): Promise<ExportNotificationsResult> {
+    return this.transport.request<ExportNotificationsResult>(
+      'GET',
+      `/notifications/export${queryString({
+        limit: query.limit,
+        offset: query.offset,
+        search: query.search,
+        status: query.status,
+        templateKey: query.templateKey,
+        from: query.from,
+        to: query.to,
+      })}`,
+    );
+  }
+
+  listAudit(query: AdminAuditQuery = {}): Promise<AdminAuditResult> {
+    return this.transport.request<AdminAuditResult>(
+      'GET',
+      `/audit${queryString({
+        action: query.action,
+        from: query.from,
+        to: query.to,
+        limit: query.limit,
+        offset: query.offset,
+      })}`,
+    );
+  }
+
+  composeNotification(input: ComposeNotificationInput): Promise<ComposeNotificationResult> {
+    return this.transport.request<ComposeNotificationResult>('POST', '/notifications', {
+      retry: false,
+      body: input,
+    });
   }
 }
 

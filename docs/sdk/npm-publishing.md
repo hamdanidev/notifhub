@@ -1,7 +1,8 @@
 # Desain publikasi npm SDK JavaScript dan React
 
 Status: **terpublikasi**. `@notifhub/js@0.3.0` dan `@notifhub/react@0.2.0` tersedia di npm
-(lihat §11).
+(lihat §11). Source workspace `@notifhub/js` kini `0.3.1` (lima method admin baru); versi itu
+**belum dipublikasikan** dan registry `latest` tetap `0.3.0`.
 Basis: `docs/architecture/project-brief.md`, `docs/usage/`, kondisi `packages/js-sdk` dan `packages/react`.
 
 **Isi dokumen**

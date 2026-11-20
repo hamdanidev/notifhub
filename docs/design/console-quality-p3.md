@@ -1,6 +1,6 @@
 # Kualitas console P3: test, SDK, dan retensi audit
 
-Status: **P3a terimplementasi dan terverifikasi** (2026-11-20); P3b–P3c belum. Lihat §11.
+Status: **P3a–P3b terimplementasi dan terverifikasi** (2026-11-20); P3c belum. Lihat §11–§12.
 Basis: `docs/design/console-operations-p2.md` §15, `docs/design/console-admin-hardening.md` §16,
 `console/`, `packages/js-sdk/`, `src/cleanup/cleanup.service.ts`, dan `.github/workflows/ci.yml`.
 
@@ -17,6 +17,7 @@ Basis: `docs/design/console-operations-p2.md` §15, `docs/design/console-admin-h
 - [9. Risiko dan batasan](#9-risiko-dan-batasan)
 - [10. Pertanyaan persetujuan](#10-pertanyaan-persetujuan)
 - [11. Catatan implementasi P3a](#11-catatan-implementasi-p3a)
+- [12. Catatan implementasi P3b](#12-catatan-implementasi-p3b)
 
 ---
 
@@ -193,3 +194,38 @@ Catatan:
 2. Halaman yang membutuhkan jaringan tetap ditutup E2E backend; komponen dialog/helper diuji unit.
 3. Dependency baru hanya dev; bundle produksi tidak berubah.
 4. P3b (SDK) dan P3c (retensi audit) belum dimulai.
+
+## 12. Catatan implementasi P3b
+
+P3b (konsolidasi SDK) selesai dan terverifikasi pada 2026-11-20; P3c belum.
+
+Yang sudah berjalan:
+
+- `NotifHubAdminClient` mendapat `changePassword`, `resendNotification`, `exportNotifications`,
+  `listAudit`, dan `composeNotification`, dengan tipe `ResendMode`, `ExportNotificationRow`,
+  `AdminAuditEvent`, `ComposeNotificationInput`, dan kawan-kawan diekspor dari paket.
+- Console menghapus `adminAccount.ts`, `adminResend.ts`, `adminAudit.ts`, dan `adminCompose.ts`;
+  `adminExport.ts` hanya menyisakan builder CSV/download dan memakai tipe SDK.
+- Semua pemanggilan memakai `adminClient`; tidak ada wrapper `HttpTransport` untuk lima method ini.
+- Versi source `@notifhub/js` menjadi **0.3.1**; package console tetap memakai workspace
+  `file:../packages/js-sdk`. Publish npm belum dilakukan.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run sdk:typecheck` + `sdk:test` | lulus; **25** test (2 test baru untuk method admin) |
+| `npm run sdk:build` | lulus; `dist/index.d.ts` memuat lima method |
+| `npm pack --workspace @notifhub/js` | `notifhub-js-0.3.1.tgz` (8 file, 48.127 byte); method ada di `.d.ts` |
+| `npm run console:typecheck` / `console:test` / `console:build` | lulus; 18 test console |
+| `grep` wrapper yang dihapus | tidak ada import tersisa |
+| `npm run ci` / `npm run docs:check` | `ci` lulus 59 s (44 e2e/29 unit); docs 491 tautan lulus |
+
+Catatan:
+
+1. **Belum publish npm.** Registry masih `0.3.0`; konsumen npm belum mendapat lima method ini sampai
+   proses rilis patch dijalankan.
+2. `adminTemplates.ts` dan `platformClient.ts` tetap lokal; surface-nya besar dan belum stabil.
+3. Tipe export menambah `ExportNotificationsQuery` (termasuk `offset` dari `ListQuery`) meskipun
+   endpoint export tidak memakai offset; nilai itu tidak dikirim oleh console.
+4. Tidak ada perubahan kontrak HTTP; hanya pemindahan pemanggilan ke SDK.

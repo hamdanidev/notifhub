@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
+import type { AdminAuditEvent } from '@notifhub/js';
 import { DataTable, type DataTableColumn } from '../components/DataTable';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
 import { QueryState } from '../components/QueryState';
 import { RefreshControl } from '../components/RefreshControl';
-import { listAdminAudit, type AdminAuditEvent } from '../lib/adminAudit';
+import { adminClient } from '../lib/adminClient';
 import { formatDateTime } from '../lib/format';
 
 const LIMIT = 50;
@@ -33,7 +34,7 @@ export function AuditPage(): JSX.Element {
   const query = useQuery({
     queryKey: ['admin-audit', { action, from, to, offset }],
     queryFn: () =>
-      listAdminAudit({
+      adminClient.listAudit({
         limit: LIMIT,
         offset,
         ...(action === '' ? {} : { action }),

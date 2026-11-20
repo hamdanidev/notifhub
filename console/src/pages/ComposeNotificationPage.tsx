@@ -1,4 +1,4 @@
-import type { Channel } from '@notifhub/js';
+import type { Channel, ComposePriority } from '@notifhub/js';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert, Button, Card, Col, Form, Row } from 'react-bootstrap';
@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
 import { adminClient } from '../lib/adminClient';
-import { composeNotification, type ComposePriority } from '../lib/adminCompose';
 import { describeError } from '../lib/format';
 
 const CHANNELS: Channel[] = ['inapp', 'email', 'whatsapp'];
@@ -69,7 +68,7 @@ export function ComposeNotificationPage(): JSX.Element {
         throw new Error('Pilih minimal satu channel.');
       }
 
-      return composeNotification({
+      return adminClient.composeNotification({
         requestKey: crypto.randomUUID(),
         templateKey: templateKey.trim(),
         ...(recipientIds.length === 0 ? {} : { recipients: recipientIds }),

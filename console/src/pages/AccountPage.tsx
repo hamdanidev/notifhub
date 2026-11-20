@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { useAuth } from '../auth/AuthContext';
 import { PageHeader } from '../components/PageHeader';
-import { changePassword } from '../lib/adminAccount';
+import { adminClient } from '../lib/adminClient';
 import { describeError } from '../lib/format';
 
 export function AccountPage(): JSX.Element {
@@ -34,7 +34,7 @@ export function AccountPage(): JSX.Element {
     setPending(true);
 
     try {
-      await changePassword(currentPassword, newPassword);
+      await adminClient.changePassword(currentPassword, newPassword);
       // tokenVersion naik di backend: semua sesi lama, termasuk sesi ini, tidak berlaku lagi.
       // Full reload avoids the ProtectedRoute redirect racing with the login banner.
       logout();

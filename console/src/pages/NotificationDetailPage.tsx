@@ -9,11 +9,7 @@ import { RefreshControl } from '../components/RefreshControl';
 import { ResendDialog } from '../components/ResendDialog';
 import { StatusBadge } from '../components/StatusBadge';
 import { adminClient } from '../lib/adminClient';
-import {
-  resendNotification,
-  type ResendMode,
-  type ResendNotificationResult,
-} from '../lib/adminResend';
+import type { ResendMode, ResendNotificationResult } from '@notifhub/js';
 import { asNumber, asString, describeError, formatDateTime } from '../lib/format';
 
 const AUTO_REFRESH_MS = 5_000;
@@ -82,7 +78,10 @@ export function NotificationDetailPage(): JSX.Element {
 
   const resend = useMutation({
     mutationFn: (input: { notificationId: string; requestKey: string; mode: ResendMode }) =>
-      resendNotification(input.notificationId, input.requestKey, input.mode),
+      adminClient.resendNotification(input.notificationId, {
+        requestKey: input.requestKey,
+        mode: input.mode,
+      }),
     onSuccess: (result) => {
       setResendOpen(false);
       setResendResult(result);

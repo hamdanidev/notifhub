@@ -1,5 +1,5 @@
 import { Alert, Button, Modal } from 'react-bootstrap';
-import type { ResendMode } from '../lib/adminResend';
+import type { ResendMode } from '@notifhub/js';
 import { ChannelBadge } from './ChannelBadge';
 
 export interface ResendDialogProps {

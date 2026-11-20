@@ -91,4 +91,87 @@ describe('NotifHubAdminClient', () => {
     expect((error as NotifHubError).code).toBe('not_found');
     expect((error as NotifHubError).retryable).toBe(false);
   });
+
+  it('posts password, compose, and resend requests without retrying', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(jsonResponse({ notification_id: 'n1' }, 202))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            notification_id: 'n2',
+            status: 'accepted',
+            mode: 'all',
+            recipient_count: 2,
+            channels: ['inapp'],
+          },
+          202,
+        ),
+      );
+
+    const client = createClient(fetchMock as unknown as typeof fetch);
+
+    await client.changePassword('old-password', 'new-password');
+    await client.composeNotification({
+      requestKey: '11111111-1111-4111-8111-111111111111',
+      templateKey: 'order.shipped',
+      recipients: ['user-1'],
+      channels: ['inapp'],
+    });
+    const resent = await client.resendNotification('n1', {
+      requestKey: '22222222-2222-4222-8222-222222222222',
+      mode: 'all',
+    });
+
+    expect(resent).toMatchObject({ mode: 'all', recipient_count: 2 });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const [passwordUrl, passwordInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(passwordUrl).toBe('http://localhost:3000/api/v1/admin/auth/change-password');
+    expect(JSON.parse(String(passwordInit.body))).toEqual({
+      currentPassword: 'old-password',
+      newPassword: 'new-password',
+    });
+
+    const [composeUrl, composeInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(composeUrl).toBe('http://localhost:3000/api/v1/admin/notifications');
+    expect(JSON.parse(String(composeInit.body))).toMatchObject({
+      templateKey: 'order.shipped',
+      channels: ['inapp'],
+    });
+
+    const [resendUrl] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(resendUrl).toBe(
+      'http://localhost:3000/api/v1/admin/notifications/n1/resend',
+    );
+  });
+
+  it('builds export and audit queries', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ items: [], total: 0, limit: 5000, truncated: false }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ items: [], total: 0, limit: 50, offset: 0 }));
+
+    const client = createClient(fetchMock as unknown as typeof fetch);
+
+    await client.exportNotifications({
+      status: 'failed',
+      templateKey: 'order.shipped',
+      limit: 5000,
+    });
+    await client.listAudit({ action: 'admin.template.published', limit: 50 });
+
+    const [exportUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(exportUrl).toBe(
+      'http://localhost:3000/api/v1/admin/notifications/export?limit=5000&status=failed&templateKey=order.shipped',
+    );
+
+    const [auditUrl] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(auditUrl).toBe(
+      'http://localhost:3000/api/v1/admin/audit?action=admin.template.published&limit=50',
+    );
+  });
 });

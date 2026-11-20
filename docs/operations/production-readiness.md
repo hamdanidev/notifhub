@@ -408,3 +408,8 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     console; CI job `packages` menjalankan `npm --prefix console run test`. Test mencakup CSV
     export, session storage, format helper, dan dialog resend. Detail:
     `docs/design/console-quality-p3.md` §11.
+22. **Console P3b (2026-11-20).** Lima method P1/P2 (`changePassword`, `resendNotification`,
+    `exportNotifications`, `listAudit`, `composeNotification`) masuk `NotifHubAdminClient`; wrapper
+    console dihapus. Versi source `@notifhub/js` `0.3.1`, tetapi **belum dipublish**; registry tetap
+    `0.3.0`. `npm pack` menghasilkan `notifhub-js-0.3.1.tgz`. Detail:
+    `docs/design/console-quality-p3.md` §12.

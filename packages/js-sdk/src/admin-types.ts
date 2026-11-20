@@ -190,6 +190,88 @@ export interface NotificationQuery extends ListQuery {
   to?: string;
 }
 
+export type ResendMode = 'failed' | 'all';
+
+export interface ResendNotificationInput {
+  requestKey: string;
+  mode: ResendMode;
+}
+
+export interface ResendNotificationResult {
+  notification_id: string;
+  status: 'accepted';
+  mode: ResendMode;
+  recipient_count: number;
+  channels: Channel[];
+}
+
+export interface ExportNotificationRow {
+  id: string;
+  createdAt: string;
+  templateKey: string;
+  overallStatus: OverallStatus;
+  targetType: string;
+  priority: number;
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  pendingCount: number;
+  skippedCount: number;
+}
+
+export interface ExportNotificationsQuery extends ListQuery {
+  status?: OverallStatus;
+  templateKey?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface ExportNotificationsResult {
+  items: ExportNotificationRow[];
+  total: number;
+  limit: number;
+  truncated: boolean;
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  actorAdminId: string;
+  actorEmail: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  metadata: unknown;
+  ip: string | null;
+  requestId: string | null;
+  occurredAt: string;
+}
+
+export interface AdminAuditQuery {
+  action?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AdminAuditResult extends Paged<AdminAuditEvent> {}
+
+export type ComposePriority = 'low' | 'normal' | 'high';
+
+export interface ComposeNotificationInput {
+  requestKey: string;
+  templateKey: string;
+  recipients?: string[];
+  topics?: string[];
+  channels: Channel[];
+  data?: Record<string, unknown>;
+  priority?: ComposePriority;
+}
+
+export interface ComposeNotificationResult {
+  notification_id: string;
+}
+
 export interface NotifHubAdminClientOptions {
   baseUrl: string;
   getToken: () => string | undefined | Promise<string | undefined>;

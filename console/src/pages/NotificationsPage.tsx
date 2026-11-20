@@ -13,7 +13,6 @@ import { adminClient } from '../lib/adminClient';
 import {
   downloadCsv,
   exportFileName,
-  exportNotifications,
   notificationsToCsv,
 } from '../lib/adminExport';
 import { describeError, formatDateTime } from '../lib/format';
@@ -103,7 +102,7 @@ export function NotificationsPage(): JSX.Element {
     setExporting(true);
 
     try {
-      const result = await exportNotifications({
+      const result = await adminClient.exportNotifications({
         limit: 5_000,
         ...(status === '' ? {} : { status }),
         ...(templateKey === '' ? {} : { templateKey }),
