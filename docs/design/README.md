@@ -27,6 +27,7 @@ selesai · **rencana** = belum dikerjakan.
 | [preference-center.md](preference-center.md) | Bagaimana end-user mengubah preferensinya sendiri tanpa lane admin? | terimplementasi | §3 arsitektur, §5 endpoint, §6 JWT per tenant |
 | [webhooks.md](webhooks.md) | Bagaimana callback provider diverifikasi, dicatat, dan menggulung status notifikasi? | terimplementasi | §2 signature, §3 rollup, §4 cleanup |
 | [whatsapp.md](whatsapp.md) | Bagaimana kanal WhatsApp memakai Meta Cloud API, termasuk webhook-nya? | terimplementasi | §3 Cloud API, §4 worker, §5 webhook |
+| [whatsapp-waha-provider.md](whatsapp-waha-provider.md) | Bagaimana menambahkan WAHA sebagai provider WhatsApp opsional tanpa mengubah default Meta? | rencana (menunggu persetujuan) | §3 keputusan, §5 sendText, §6 webhook, §7 pemetaan status |
 | [admin-api.md](admin-api.md) | Bagaimana tiga lane auth dipisahkan, API key dikelola, tenant diisolasi, dan endpoint admin disusun? | terimplementasi | §2 lane auth, §3 ApiKey, §6 Admin API |
 | [react-and-console.md](react-and-console.md) | Bagaimana `@notifhub/js` (admin client), `@notifhub/react`, dan console tenant admin dibangun? | terimplementasi | §2 auth frontend, §3 admin client, §4 React, §5 console |
 | [console-needs-analysis.md](console-needs-analysis.md) | Gap operasional console apa yang perlu ditutup, dan fase mana yang sudah jalan? | Fase A+B selesai; Fase C sebagian; P1 hardening selesai | §1 ringkasan, §4 refresh, §5 re-send, §11.1 audit 2026-11-20 |
@@ -45,7 +46,7 @@ selesai · **rencana** = belum dikerjakan.
 
 | Kalau Anda akan… | Baca |
 |---|---|
-| Menambah atau mengubah kanal | [in-app](in-app.md) → [email-and-preferences](email-and-preferences.md) → [whatsapp](whatsapp.md), lalu [webhooks](webhooks.md) untuk status |
+| Menambah atau mengubah kanal | [in-app](in-app.md) → [email-and-preferences](email-and-preferences.md) → [whatsapp](whatsapp.md) → [whatsapp-waha-provider](whatsapp-waha-provider.md), lalu [webhooks](webhooks.md) untuk status |
 | Menyentuh template atau render | [template-system-design](templates/template-system-design.md) → [block builder](templates/email-block-builder-design.md) → [limitations roadmap](templates/template-limitations-roadmap.md) |
 | Menyentuh auth, tenant, atau endpoint admin | [admin-api](admin-api.md) → [preference-center](preference-center.md) §6 → [in-app](in-app.md) §4 |
 | Menyentuh tenancy, provisioning, atau peran platform | [multi-tenant-platform-admin](multi-tenant-platform-admin.md) → [admin-api](admin-api.md) §2 |
