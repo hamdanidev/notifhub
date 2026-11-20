@@ -18,6 +18,7 @@ lalu ikuti tautannya; setiap dokumen bisa dibaca berdiri sendiri.
 | Mengelola tenant lewat console / admin API | [admin dan operasi](usage/admin-and-operations.md) → [React dan console](design/react-and-console.md) |
 | Mengelola tenant lintas tenant (provisioning, suspend, audit) | [platform admin](usage/platform-admin.md) → [desain multi-tenant](design/multi-tenant-platform-admin.md) |
 | Deploy, CI, dan observability | [production readiness](operations/production-readiness.md) → [local setup: Docker smoke stack](getting-started/local-setup.md#run-the-docker-smoke-stack) |
+| Deploy satu tenant (tanpa platform console) | [panduan single tenant](operations/single-tenant-deployment.md) → [production readiness](operations/production-readiness.md) |
 | Mengubah template email | [sistem template](design/templates/template-system-design.md) → [block builder](design/templates/email-block-builder-design.md) → [roadmap batasan](design/templates/template-limitations-roadmap.md) |
 | Merilis SDK | [publikasi npm](sdk/npm-publishing.md) · [Go SDK](sdk/go-sdk.md) |
 | Ada yang gagal | [troubleshooting](getting-started/troubleshooting.md) |
@@ -99,6 +100,7 @@ Indeks desain yang lebih rinci (pertanyaan yang dijawab dan arah baca) ada di
 | Dokumen | Isi |
 |---|---|
 | [operations/production-readiness.md](operations/production-readiness.md) | Arsitektur test e2e, skenario, image Docker, workflow CI, dan risiko rilis |
+| [operations/single-tenant-deployment.md](operations/single-tenant-deployment.md) | Panduan deployment satu tenant: topologi, env minimum, compose, console statis, reverse proxy, backup, go-live |
 
 ## Sumber kebenaran
 

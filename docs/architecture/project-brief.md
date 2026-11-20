@@ -123,7 +123,8 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.
   `docs/getting-started/` berisi setup, referensi konfigurasi, dan troubleshooting;
   `docs/architecture/` berisi gambaran sistem (dokumen ini salah satunya);
   `docs/design/` berisi dokumen desain per fitur dan indeksnya; `docs/usage/` panduan pemakaian;
-  `docs/sdk/` desain dan rilis SDK; `docs/operations/` kesiapan rilis dan CI.
+  `docs/sdk/` desain dan rilis SDK; `docs/operations/` kesiapan rilis, CI, dan panduan deployment
+  single tenant.
 
 ---
 

@@ -528,6 +528,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
   `docker build --target runner-platform -f console/Dockerfile .` (platform console),
   `docker build --target migrator .` (one-shot migration job). Tanpa `--target`, console image
   default tetap tenant.
+- For a production single-tenant deployment (static console, no platform console, no billing), see
+  the [single-tenant deployment guide](../operations/single-tenant-deployment.md).
 
 ## Notes
 

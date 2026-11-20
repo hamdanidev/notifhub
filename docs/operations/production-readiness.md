@@ -178,7 +178,8 @@ runner   node:24-bookworm-slim + openssl, copy /app, USER node,
 (`service_completed_successfully`) → `backend` → `console` (port 8080) dan `platform-console`
 (port 8081). Semua kredensial dari `.env.prod` (`--env-file .env.prod`), contoh tersedia di
 `.env.prod.example` tanpa secret nyata. Isi `PLATFORM_CONSOLE_URL` dan daftarkan kedua origin di
-`CORS_ORIGINS`.
+`CORS_ORIGINS`. Untuk deployment satu tenant tanpa console platform, lihat
+[panduan deployment single tenant](single-tenant-deployment.md).
 
 ---
 
