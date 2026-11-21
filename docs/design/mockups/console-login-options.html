@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NotifHub — eksplorasi login</title>
+    <style>
+      :root {
+        --bg: #fafaf9;
+        --surface: #ffffff;
+        --line: #e7e5e4;
+        --line-strong: #d6d3d1;
+        --ink: #1c1917;
+        --muted: #78716c;
+        --faint: #a8a29e;
+        --accent: #2563eb;
+        --accent-soft: #eff6ff;
+        --ok: #15803d;
+        --warn: #b45309;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      }
+
+      body.lane-platform {
+        --accent: #0f766e;
+        --accent-soft: #ecfdf5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding-top: 58px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      /* ------------------------------------------------------------ toolbar */
+
+      .toolbar {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 20;
+        height: 58px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.96);
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(6px);
+      }
+
+      .toolbar-title {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-right: 4px;
+        white-space: nowrap;
+      }
+
+      .toolbar-title span {
+        color: var(--faint);
+        font-weight: 400;
+      }
+
+      .seg {
+        display: flex;
+        padding: 2px;
+        border: 1px solid var(--line);
+        background: #f5f5f4;
+        gap: 2px;
+      }
+
+      .seg button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11.5px;
+        padding: 5px 9px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .seg button.active {
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: inset 0 0 0 1px var(--line-strong);
+      }
+
+      .seg button:focus-visible,
+      .btn:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .toolbar-hint {
+        margin-left: auto;
+        color: var(--faint);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      /* -------------------------------------------------------------- shared */
+
+      .option-panel {
+        display: none;
+        min-height: calc(100vh - 58px);
+      }
+
+      body.opt-ledger #panel-ledger,
+      body.opt-switchboard #panel-switchboard,
+      body.opt-quiet #panel-quiet {
+        display: block;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .mark {
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        background: var(--ink);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 650;
+        border-radius: 6px;
+      }
+
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .wordmark .lane {
+        margin-left: 4px;
+        padding-left: 10px;
+        border-left: 1px solid var(--line-strong);
+        color: var(--faint);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field span {
+        font-size: 12px;
+        font-weight: 550;
+        color: var(--ink);
+      }
+
+      .field input {
+        width: 100%;
+        height: 40px;
+        padding: 0 11px;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--ink);
+      }
+
+      .field input::placeholder {
+        color: var(--faint);
+      }
+
+      .field input:hover {
+        border-color: #a8a29e;
+      }
+
+      .field input:focus {
+        border-color: var(--accent);
+      }
+
+      .btn {
+        height: 40px;
+        border: 1px solid var(--ink);
+        border-radius: 6px;
+        background: var(--ink);
+        color: #fff;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        background: #292524;
+      }
+
+      .btn--accent {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .btn--accent:hover {
+        filter: brightness(0.94);
+      }
+
+      .fine {
+        margin: 14px 0 0;
+        font-size: 11px;
+        line-height: 1.55;
+        color: var(--faint);
+      }
+
+      .alert {
+        display: none;
+        padding: 9px 11px;
+        border: 1px solid #fecaca;
+        background: #fef2f2;
+        color: #991b1b;
+        font-size: 12px;
+        margin: 0 0 14px;
+      }
+
+      .alert--ok {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+      }
+
+      body.state-error .alert--error,
+      body.state-changed .alert--ok {
+        display: block;
+      }
+
+      .platform-only {
+        display: none !important;
+      }
+
+      body.lane-platform .platform-only {
+        display: revert !important;
+      }
+
+      body.lane-platform .ledger li.platform-only,
+      body.lane-platform .channel-list li.platform-only {
+        display: grid !important;
+      }
+
+      body.lane-platform .tenant-only {
+        display: none !important;
+      }
+
+      /* ------------------------------------------------------ 1 delivery ledger */
+
+      .ledger-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(380px, 0.85fr);
+        min-height: calc(100vh - 58px);
+      }
+
+      .ledger-aside {
+        position: relative;
+        padding: 48px clamp(28px, 6vw, 88px) 40px;
+        background: #f5f5f4;
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+      }
+
+      body.lane-platform .ledger-aside {
+        background: #1c1917;
+        color: #fafaf9;
+        border-right-color: #292524;
+      }
+
+      body.lane-platform .ledger-aside .eyebrow,
+      body.lane-platform .ledger-aside .lede,
+      body.lane-platform .ledger-aside .aside-foot,
+      body.lane-platform .ledger-aside time {
+        color: #a8a29e;
+      }
+
+      body.lane-platform .ledger-aside .mark {
+        background: var(--accent);
+      }
+
+      body.lane-platform .ledger-aside .wordmark .lane {
+        border-left-color: #44403c;
+      }
+
+      .ledger-aside h1 {
+        margin: 26px 0 10px;
+        max-width: 13ch;
+        font-size: clamp(30px, 3.6vw, 46px);
+        line-height: 1.02;
+        letter-spacing: -0.035em;
+        font-weight: 650;
+      }
+
+      .lede {
+        margin: 0 0 32px;
+        max-width: 44ch;
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      .ledger {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-top: 1px solid var(--line-strong);
+        max-width: 470px;
+      }
+
+      body.lane-platform .ledger {
+        border-top-color: #44403c;
+      }
+
+      .ledger li {
+        display: grid;
+        grid-template-columns: 74px 82px 1fr 10px;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      body.lane-platform .ledger li {
+        border-bottom-color: #292524;
+      }
+
+      .ledger time {
+        color: var(--faint);
+      }
+
+      .ledger .ch {
+        color: var(--accent);
+      }
+
+      body.lane-platform .ledger .ch {
+        color: #5eead4;
+      }
+
+      .ledger .ev {
+        color: var(--muted);
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--faint);
+      }
+
+      .dot--ok {
+        background: var(--ok);
+      }
+
+      .dot--warn {
+        background: var(--warn);
+      }
+
+      .dot--accent {
+        background: var(--accent);
+      }
+
+      .aside-foot {
+        margin: auto 0 0;
+        padding-top: 28px;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .ledger-form {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 48px clamp(24px, 5vw, 72px);
+        background: var(--surface);
+      }
+
+      .ledger-form h2 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        letter-spacing: -0.025em;
+      }
+
+      .ledger-form .sub {
+        margin: 0 0 26px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      /* --------------------------------------------------------- 2 switchboard */
+
+      #panel-switchboard {
+        padding: 28px;
+        background: #f5f5f4;
+      }
+
+      .switch-shell {
+        max-width: 1040px;
+        margin: 0 auto;
+        border: 1px solid var(--line-strong);
+        background: var(--surface);
+      }
+
+      .statusbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: center;
+        padding: 10px 14px;
+        background: var(--ink);
+        color: #e7e5e4;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.04em;
+      }
+
+      body.lane-platform .statusbar {
+        background: #0f2e2a;
+      }
+
+      .statusbar b {
+        color: #fff;
+        font-weight: 500;
+      }
+
+      .statusbar .spacer {
+        margin-left: auto;
+        color: #a8a29e;
+      }
+
+      .switch-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+      }
+
+      .channels {
+        padding: 26px 24px;
+        border-right: 1px solid var(--line);
+      }
+
+      .channels h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .channels .sub {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .channel-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .channel-list li {
+        display: grid;
+        grid-template-columns: 88px 1fr 10px;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .channel-list .name {
+        font-family: var(--mono);
+        font-size: 11.5px;
+      }
+
+      .channel-list .meta {
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+
+      .queue-card {
+        margin-top: 18px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .queue-card b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .switch-form {
+        padding: 30px 26px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .switch-form h2 {
+        margin: 0 0 4px;
+        font-size: 20px;
+        letter-spacing: -0.025em;
+      }
+
+      .switch-form .sub {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      /* ------------------------------------------------------------- 3 quiet */
+
+      #panel-quiet {
+        background: var(--bg);
+      }
+
+      .quiet-shell {
+        min-height: calc(100vh - 58px);
+        display: grid;
+        place-items: center;
+        padding: 40px 24px;
+      }
+
+      .quiet-inner {
+        width: 100%;
+        max-width: 520px;
+        padding-left: 30px;
+        border-left: 2px solid var(--accent);
+      }
+
+      .quiet-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 56px;
+      }
+
+      .quiet-head .wordmark .mark {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid var(--ink);
+      }
+
+      body.lane-platform .quiet-head .wordmark .mark {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .quiet-head .index {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--faint);
+        letter-spacing: 0.12em;
+      }
+
+      .quiet-inner h1 {
+        margin: 0 0 8px;
+        font-size: clamp(38px, 7vw, 64px);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+        font-weight: 650;
+      }
+
+      .quiet-inner .sub {
+        margin: 0 0 36px;
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      .quiet-inner .form-stack {
+        max-width: 360px;
+      }
+
+      .quiet-note {
+        max-width: 360px;
+        margin: 22px 0 0;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        color: var(--faint);
+      }
+
+      /* ----------------------------------------------------------- responsive */
+
+      @media (max-width: 920px) {
+        .toolbar {
+          height: auto;
+          min-height: 58px;
+          flex-wrap: wrap;
+          padding: 8px 12px;
+        }
+
+        .toolbar-hint {
+          display: none;
+        }
+
+        body {
+          padding-top: 96px;
+        }
+
+        .option-panel {
+          min-height: calc(100vh - 96px);
+        }
+
+        .ledger-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .ledger-aside {
+          padding: 32px 24px 24px;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .ledger-aside h1 {
+          margin-top: 20px;
+          max-width: 18ch;
+        }
+
+        .ledger {
+          margin-bottom: 4px;
+        }
+
+        .aside-foot {
+          display: none;
+        }
+
+        .ledger-form {
+          padding: 30px 24px 40px;
+        }
+
+        .switch-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .channels {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="opt-ledger lane-tenant">
+    <header class="toolbar">
+      <div class="toolbar-title">NotifHub <span>· eksplorasi login</span></div>
+      <div class="seg" role="tablist" aria-label="Opsi desain">
+        <button type="button" class="active" data-option="ledger">1 · Delivery Ledger</button>
+        <button type="button" data-option="switchboard">2 · Switchboard</button>
+        <button type="button" data-option="quiet">3 · Quiet Type</button>
+      </div>
+      <div class="seg" role="group" aria-label="Lane">
+        <button type="button" class="active" data-lane="tenant">Tenant</button>
+        <button type="button" data-lane="platform">Platform</button>
+      </div>
+      <div class="seg" role="group" aria-label="State">
+        <button type="button" class="active" data-state="normal">Normal</button>
+        <button type="button" data-state="error">Error</button>
+        <button type="button" data-state="changed">Password berubah</button>
+      </div>
+      <div class="toolbar-hint">Mockup statis · tidak terhubung ke API</div>
+    </header>
+
+    <main>
+      <!-- 1 ------------------------------------------------------- ledger -->
+      <section class="option-panel" id="panel-ledger" aria-label="Opsi 1 Delivery Ledger">
+        <div class="ledger-shell">
+          <aside class="ledger-aside">
+            <div class="wordmark">
+              <span class="mark">N</span>
+              NotifHub
+              <span class="lane tenant-only">Tenant console</span>
+              <span class="lane platform-only">Platform lane</span>
+            </div>
+
+            <h1>
+              <span class="tenant-only">Setiap notifikasi punya jejak.</span>
+              <span class="platform-only">Kendali lintas tenant.</span>
+            </h1>
+            <p class="lede">
+              <span class="tenant-only">
+                Antrean, pengiriman, dan status baca dalam satu tempat. Masuk untuk mengelola
+                template, subscriber, dan topik.
+              </span>
+              <span class="platform-only">
+                Provisioning, suspend, dan audit lintas tenant. Masuk dengan akun platform admin
+                untuk melanjutkan.
+              </span>
+            </p>
+
+            <ol class="ledger" aria-label="Contoh aktivitas">
+              <li class="tenant-only"><time>09:41:02</time><span class="ch">in-app</span><span class="ev">queued</span><span class="dot dot--accent"></span></li>
+              <li class="tenant-only"><time>09:41:03</time><span class="ch">email</span><span class="ev">sent</span><span class="dot dot--ok"></span></li>
+              <li class="tenant-only"><time>09:41:04</time><span class="ch">whatsapp</span><span class="ev">delivered</span><span class="dot dot--ok"></span></li>
+              <li class="platform-only"><time>09:38:11</time><span class="ch">tenant</span><span class="ev">acme · created</span><span class="dot dot--ok"></span></li>
+              <li class="platform-only"><time>09:39:27</time><span class="ch">tenant</span><span class="ev">beta · suspended</span><span class="dot dot--warn"></span></li>
+              <li class="platform-only"><time>09:40:02</time><span class="ch">audit</span><span class="ev">platform.login</span><span class="dot dot--accent"></span></li>
+            </ol>
+
+            <p class="aside-foot">
+              <span class="tenant-only">API · Queue · Providers · Audit</span>
+              <span class="platform-only">Provisioning · Suspend · Audit</span>
+            </p>
+          </aside>
+
+          <div class="ledger-form">
+            <p class="eyebrow">
+              <span class="tenant-only">Tenant admin</span>
+              <span class="platform-only">Platform admin</span>
+            </p>
+            <h2>
+              <span class="tenant-only">Masuk ke workspace</span>
+              <span class="platform-only">Masuk ke platform</span>
+            </h2>
+            <p class="sub">
+              <span class="tenant-only">Gunakan akun tenant admin untuk melanjutkan.</span>
+              <span class="platform-only">Gunakan akun platform admin untuk mengelola tenant.</span>
+            </p>
+
+            <div class="alert alert--ok">Password berhasil diubah. Silakan masuk dengan password baru.</div>
+            <div class="alert alert--error">Email atau password salah.</div>
+
+            <form class="form-stack" onsubmit="return false">
+              <label class="field">
+                <span>Email</span>
+                <input type="email" autocomplete="username" placeholder="admin@notifhub.local" />
+              </label>
+              <label class="field">
+                <span>Password</span>
+                <input type="password" autocomplete="current-password" />
+              </label>
+              <button class="btn btn--accent" type="submit">Masuk</button>
+            </form>
+
+            <p class="fine">
+              Dibatasi 5 percobaan per menit. Sesi mengikuti <code>ADMIN_JWT_EXPIRES_IN</code>.
+              <span class="platform-only"> · <a href="#">Kembali ke login tenant</a></span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 -------------------------------------------------- switchboard -->
+      <section class="option-panel" id="panel-switchboard" aria-label="Opsi 2 Switchboard">
+        <div class="switch-shell">
+          <div class="statusbar">
+            <span>API <b>● operational</b></span>
+            <span>QUEUE <b>3 workers</b></span>
+            <span class="tenant-only">CHANNELS <b>in-app · email · whatsapp</b></span>
+            <span class="platform-only">TENANTS <b>12 active · 1 suspended</b></span>
+            <span class="spacer">notifhub</span>
+          </div>
+          <div class="switch-grid">
+            <div class="channels">
+              <p class="eyebrow">Ringkasan operasional</p>
+              <h3>
+                <span class="tenant-only">Channel matrix</span>
+                <span class="platform-only">Tenant matrix</span>
+              </h3>
+              <p class="sub">
+                <span class="tenant-only">Status kanal dan antrean sebelum Anda masuk.</span>
+                <span class="platform-only">Status tenant dan audit terakhir sebelum Anda masuk.</span>
+              </p>
+
+              <ul class="channel-list">
+                <li class="tenant-only"><span class="name">in-app</span><span class="meta">SSE stream · 12 events</span><span class="dot dot--ok"></span></li>
+                <li class="tenant-only"><span class="name">email</span><span class="meta">SMTP · 4 queued</span><span class="dot dot--ok"></span></li>
+                <li class="tenant-only"><span class="name">whatsapp</span><span class="meta">WAHA · degraded</span><span class="dot dot--warn"></span></li>
+                <li class="platform-only"><span class="name">acme</span><span class="meta">active · 2 admins</span><span class="dot dot--ok"></span></li>
+                <li class="platform-only"><span class="name">beta</span><span class="meta">suspended · 0 admins</span><span class="dot dot--warn"></span></li>
+                <li class="platform-only"><span class="name">audit</span><span class="meta">platform.login · 2m ago</span><span class="dot dot--accent"></span></li>
+              </ul>
+
+              <div class="queue-card">
+                <span class="tenant-only">Queue depth <b>7</b> · p95 <b>1.2s</b></span>
+                <span class="platform-only">Tenant total <b>13</b> · suspended <b>1</b></span>
+                <span>env <b>staging</b></span>
+              </div>
+            </div>
+
+            <div class="switch-form">
+              <p class="eyebrow">Masuk</p>
+              <h2>
+                <span class="tenant-only">Tenant admin</span>
+                <span class="platform-only">Platform admin</span>
+              </h2>
+              <p class="sub">Gunakan kredensial akun Anda.</p>
+
+              <div class="alert alert--ok">Password berhasil diubah. Silakan masuk dengan password baru.</div>
+              <div class="alert alert--error">Email atau password salah.</div>
+
+              <form class="form-stack" onsubmit="return false">
+                <label class="field">
+                  <span>Email</span>
+                  <input type="email" autocomplete="username" placeholder="admin@notifhub.local" />
+                </label>
+                <label class="field">
+                  <span>Password</span>
+                  <input type="password" autocomplete="current-password" />
+                </label>
+                <button class="btn" type="submit">Masuk</button>
+              </form>
+              <p class="fine">5 percobaan/menit · sesi mengikuti ADMIN_JWT_EXPIRES_IN.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 ------------------------------------------------------- quiet -->
+      <section class="option-panel" id="panel-quiet" aria-label="Opsi 3 Quiet Type">
+        <div class="quiet-shell">
+          <div class="quiet-inner">
+            <div class="quiet-head">
+              <div class="wordmark"><span class="mark">N</span> NotifHub</div>
+              <span class="index">01 / LOGIN</span>
+            </div>
+
+            <h1>
+              <span class="tenant-only">Masuk.</span>
+              <span class="platform-only">Platform.</span>
+            </h1>
+            <p class="sub">
+              <span class="tenant-only">Tenant console · tenant admin</span>
+              <span class="platform-only">Platform lane · platform admin</span>
+            </p>
+
+            <div class="alert alert--ok">Password berhasil diubah. Silakan masuk dengan password baru.</div>
+            <div class="alert alert--error">Email atau password salah.</div>
+
+            <form class="form-stack" onsubmit="return false">
+              <label class="field">
+                <span>Email</span>
+                <input type="email" autocomplete="username" placeholder="admin@notifhub.local" />
+              </label>
+              <label class="field">
+                <span>Password</span>
+                <input type="password" autocomplete="current-password" />
+              </label>
+              <button class="btn" type="submit">Lanjutkan</button>
+            </form>
+
+            <p class="quiet-note">
+              Dibatasi 5 percobaan per menit. Sesi mengikuti <code>ADMIN_JWT_EXPIRES_IN</code>.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const body = document.body;
+
+      document.querySelectorAll('[data-option]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const value = button.dataset.option;
+          document.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('active', item === button));
+          body.classList.remove('opt-ledger', 'opt-switchboard', 'opt-quiet');
+          body.classList.add(`opt-${value}`);
+        });
+      });
+
+      document.querySelectorAll('[data-lane]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const value = button.dataset.lane;
+          document.querySelectorAll('[data-lane]').forEach((item) => item.classList.toggle('active', item === button));
+          body.classList.remove('lane-tenant', 'lane-platform');
+          body.classList.add(`lane-${value}`);
+        });
+      });
+
+      document.querySelectorAll('[data-state]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const value = button.dataset.state;
+          document.querySelectorAll('[data-state]').forEach((item) => item.classList.toggle('active', item === button));
+          body.classList.remove('state-normal', 'state-error', 'state-changed');
+          body.classList.add(`state-${value}`);
+        });
+      });
+
+      // Deep link for screenshots: ?option=ledger&lane=platform&state=error
+      const params = new URLSearchParams(window.location.search);
+      ['option', 'lane', 'state'].forEach((key) => {
+        const value = params.get(key);
+        if (value === null) return;
+        const button = document.querySelector(`[data-${key}="${value}"]`);
+        if (button instanceof HTMLElement) button.click();
+      });
+    </script>
+  </body>
+</html>
