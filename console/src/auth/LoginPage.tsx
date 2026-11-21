@@ -49,7 +49,6 @@ export function LoginPage(): JSX.Element {
       intro="Gunakan akun tenant admin untuk melanjutkan."
       headline="Setiap notifikasi punya jejak."
       lede="Antrean, pengiriman, dan status baca dalam satu tempat. Masuk untuk mengelola template, subscriber, dan topik."
-      asideFoot="API · Queue · Providers · Audit"
       alert={
         <>
           {passwordChanged ? (
@@ -58,11 +57,6 @@ export function LoginPage(): JSX.Element {
             </Alert>
           ) : null}
           {error !== null ? <Alert variant="danger">{error}</Alert> : null}
-        </>
-      }
-      footer={
-        <>
-          Dibatasi 5 percobaan per menit. Sesi mengikuti <code>ADMIN_JWT_EXPIRES_IN</code>.
         </>
       }
     >

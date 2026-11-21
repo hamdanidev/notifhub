@@ -21,6 +21,8 @@ Mockup visual (buka di browser, ada pengalih opsi/lane/state):
 - [9. Risiko](#9-risiko)
 - [10. Pertanyaan persetujuan](#10-pertanyaan-persetujuan)
 - [11. Catatan implementasi](#11-catatan-implementasi)
+- [12. Revisi setelah review (2026-11-22)](#12-revisi-setelah-review-2026-11-22)
+- [13. Logo (draf, menunggu pilihan)](#13-logo-draf-menunggu-pilihan)
 
 ---
 
@@ -196,19 +198,21 @@ Setelah dipilih, implementasi mengikuti §7 dan diverifikasi sesuai §8.
 
 ## 11. Catatan implementasi
 
-Opsi **A — Delivery Ledger** dipilih dan diimplementasikan pada 2026-11-21.
+Opsi **A — Delivery Ledger** dipilih dan diimplementasikan pada 2026-11-21, lalu direvisi pada
+2026-11-22 berdasarkan review (lihat §12).
 
 Yang berubah:
 
-- `console/src/auth/LoginShell.tsx` (baru): layout dua kolom, brand + lane label, narasi, ledger
-  contoh (label “Contoh alur”), slot alert, dan footer. Baris ledger memakai `role="list"`/
-  `role="listitem"` agar tidak bergantung pada marker `<ol>`.
+- `console/src/auth/LoginShell.tsx` (baru): layout dua kolom, brand + lane label, narasi,
+  **signal map** dekoratif (hub API ke tiga kanal, garis putus-putus beranimasi), slot alert, dan
+  panel form dengan lebar maksimum 360 px.
+- Ledger “Contoh alur” dan catatan throttle/`ADMIN_JWT_EXPIRES_IN` dihapus dari UI. Login platform
+  hanya menyisakan tautan “Kembali ke login tenant admin” di bawah tombol.
 - `LoginPage` dan `PlatformLoginPage` memakai `LoginShell`; logika `useForm`, `login`,
   `passwordChanged`, redirect, dan `platformLoginError` tidak berubah.
 - CSS login-scoped di `console/src/styles.css`: panel tenant terang, panel platform ink dengan
-  aksen teal, tombol mengikuti `--login-accent`, layout menumpuk di bawah 920 px.
-- Label bahasa Indonesia (“Contoh alur”, “Masuk ke workspace/platform”, “Kendali lintas tenant”);
-  tidak ada kredensial contoh dan tidak ada data operasional nyata di layar.
+  aksen teal, tombol mengikuti `--login-accent`, layout menumpuk di bawah 920 px, animasi dash
+  dimatikan saat `prefers-reduced-motion`.
 
 Verifikasi:
 
@@ -223,7 +227,37 @@ Verifikasi:
 
 Deviasi:
 
-1. Ledger memakai timestamp dan baris contoh yang diberi label “Contoh alur”; ini bukan data live.
-2. Platform memakai panel gelap + aksen teal seperti mockup; tenant memakai panel terang + biru.
+1. Signal map bersifat dekoratif; label kanal berbeda per lane (tenant: in-app/email/whatsapp,
+   platform: provision/suspend/audit) dan tidak menampilkan data operasional.
+2. Platform memakai panel gelap + aksen teal; tenant memakai panel terang + biru.
 3. Test halaman memakai mock `useAuth`/`platformClient`; tidak memanggil backend.
-4. `prefers-reduced-motion` tetap dihormati karena tidak ada animasi baru.
+4. `prefers-reduced-motion` mematikan animasi dash.
+
+## 12. Revisi setelah review (2026-11-22)
+
+Masukan yang diterapkan:
+
+1. **“Contoh alur” dihapus** — ledger dianggap tidak penting; diganti signal map dekoratif.
+2. **Area form dipersempit** — panel kanan memakai `.login-panel-inner` dengan `max-width: 360px`.
+3. **Catatan development dihapus** — teks “Dibatasi 5 percobaan per menit…” dan
+   `ADMIN_JWT_EXPIRES_IN` tidak lagi tampil; tautan platform tetap ada.
+4. **Panel kiri diberi visual** — peta hub → tiga kanal dengan garis putus-putus yang bergerak
+   lambat (tanpa gradient/glow); animasi dimatikan pada `prefers-reduced-motion`.
+5. **Logo** — mark “N” saat ini terlalu mirip Notion; opsi dan rekomendasi ada di §13 dan
+   `mockups/logo-options.html`. Belum diterapkan.
+
+Mockup awal `mockups/console-login-options.html` masih menampilkan ledger karena merupakan artefak
+eksplorasi; implementasi final mengikuti §11–§12.
+
+## 13. Logo (draf, menunggu pilihan)
+
+Tiga arah mark ada di [mockups/logo-options.html](mockups/logo-options.html):
+
+| Opsi | Karakter | Catatan |
+|---|---|---|
+| A · Hub | Titik pusat + tiga kanal | **Rekomendasi**: paling spesifik untuk produk multi-channel, berbeda dari mark huruf, bisa dianimasikan halus |
+| B · Signal bars | Tiga baris pesan + titik status | Mudah dibaca di 16 px, tetapi lebih generik |
+| C · Notch N | Huruf N dengan diagonal terputus + titik aksen | Paling dekat dengan identitas sekarang, tanpa menyerupai Notion |
+
+Jika A disetujui, perubahan mencakup mark sidebar tenant/platform, halaman login, `favicon.svg`,
+dan `theme-color` platform. Belum ada perubahan logo pada implementasi ini.

@@ -774,81 +774,66 @@ a:hover {
   font-size: 13.5px;
 }
 
-.login-ledger-label {
-  margin: 0 0 6px;
+.login-map {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  aspect-ratio: 400 / 320;
+  margin: auto 0;
+  overflow: visible;
+}
+
+.login-map-base path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.login-map-flow path {
+  fill: none;
+  stroke: var(--login-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 2.5 14;
+  opacity: 0.85;
+  animation: login-dash 9s linear infinite;
+}
+
+.login-map-node {
+  fill: var(--surface);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.login-map-hub {
+  fill: var(--ink);
+}
+
+.login-map-label {
+  fill: var(--faint);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--faint);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
 }
 
-.login-ledger {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-width: 470px;
-  border-top: 1px solid var(--line-strong);
-}
-
-.login-ledger-row {
-  display: grid;
-  grid-template-columns: 74px 82px 1fr 10px;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-}
-
-.login-ledger time {
-  color: var(--faint);
-}
-
-.login-ledger .channel {
-  color: var(--login-accent);
-}
-
-.login-ledger .login-status {
-  color: var(--muted);
-}
-
-.login-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--faint);
-}
-
-.login-dot--accent {
-  background: var(--login-accent);
-}
-
-.login-dot--ok {
-  background: #15803d;
-}
-
-.login-dot--warn {
-  background: #b45309;
-}
-
-.login-aside-foot {
-  margin: auto 0 0;
-  padding-top: 28px;
-  color: var(--faint);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+@keyframes login-dash {
+  to {
+    stroke-dashoffset: -180;
+  }
 }
 
 .login-panel {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   padding: 48px clamp(24px, 5vw, 72px);
   background: var(--surface);
+}
+
+.login-panel-inner {
+  width: 100%;
+  max-width: 360px;
 }
 
 .login-eyebrow {
@@ -889,23 +874,12 @@ a:hover {
   font-size: 12.5px;
 }
 
-.login-footnote {
-  margin: 18px 0 0;
-  color: var(--faint);
-  font-size: 11.5px;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
+.login-back {
+  margin: 16px 0 0;
+  font-size: 12px;
 }
 
-.login-footnote code {
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: #f5f5f4;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.login-page--platform .login-footnote a {
+.login-page--platform .login-back a {
   color: var(--login-accent);
 }
 
@@ -928,30 +902,25 @@ a:hover {
   color: #a8a29e;
 }
 
-.login-page--platform .login-lede,
-.login-page--platform .login-aside-foot,
-.login-page--platform .login-ledger time {
+.login-page--platform .login-lede {
   color: #a8a29e;
 }
 
-.login-page--platform .login-ledger-label {
-  color: #78716c;
+.login-page--platform .login-map-base path {
+  stroke: #44403c;
 }
 
-.login-page--platform .login-ledger {
-  border-top-color: #44403c;
+.login-page--platform .login-map-node {
+  fill: #1c1917;
+  stroke: #44403c;
 }
 
-.login-page--platform .login-ledger-row {
-  border-bottom-color: #292524;
+.login-page--platform .login-map-hub {
+  fill: var(--login-accent);
 }
 
-.login-page--platform .login-ledger .channel {
-  color: #5eead4;
-}
-
-.login-page--platform .login-ledger .login-status {
-  color: #d6d3d1;
+.login-page--platform .login-map-label {
+  fill: #78716c;
 }
 
 @media (max-width: 920px) {
@@ -970,12 +939,21 @@ a:hover {
     max-width: 18ch;
   }
 
-  .login-aside-foot {
-    display: none;
+  .login-map {
+    width: 100%;
+    height: 240px;
+    margin-top: 24px;
   }
 
   .login-panel {
     padding: 30px 24px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-map-flow path {
+    opacity: 0.5;
+    animation: none;
   }
 }
 

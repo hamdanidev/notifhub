@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NotifHub — opsi logo</title>
+    <style>
+      :root {
+        --bg: #fafaf9;
+        --surface: #ffffff;
+        --line: #e7e5e4;
+        --ink: #1c1917;
+        --muted: #78716c;
+        --faint: #a8a29e;
+        --accent: #2563eb;
+        --teal: #0f766e;
+        --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 40px 28px 64px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 14px;
+      }
+
+      header {
+        max-width: 1160px;
+        margin: 0 auto 28px;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 26px;
+        letter-spacing: -0.03em;
+      }
+
+      header p {
+        margin: 0;
+        max-width: 70ch;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .grid {
+        max-width: 1160px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .card-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .card-head strong {
+        font-size: 14px;
+      }
+
+      .tag {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .tag--pick {
+        color: var(--accent);
+      }
+
+      .stage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 172px;
+      }
+
+      .stage > div {
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .stage .light {
+        background: #f5f5f4;
+      }
+
+      .stage .dark {
+        background: #1c1917;
+      }
+
+      .sizes {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 14px 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .sizes .label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--faint);
+        margin-right: auto;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .lockup small {
+        display: block;
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0.08em;
+        color: var(--faint);
+        text-transform: uppercase;
+      }
+
+      .copy {
+        padding: 14px 16px 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12.5px;
+        line-height: 1.55;
+      }
+
+      .copy b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .footer {
+        max-width: 1160px;
+        margin: 22px auto 0;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .footer strong {
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Opsi logo NotifHub</h1>
+      <p>
+        Tiga arah mark untuk mengganti huruf “N” di kotak yang sekarang terasa seperti Notion.
+        Semua versi datar, satu warna + aksen, dan tetap terbaca pada 16 px (favicon).
+      </p>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <div class="card-head">
+          <strong>A · Hub</strong>
+          <span class="tag tag--pick">rekomendasi</span>
+        </div>
+        <div class="stage">
+          <div class="light">
+            <svg width="96" height="96" viewBox="0 0 24 24" aria-label="Hub mark">
+              <rect width="24" height="24" rx="6" fill="#1c1917" />
+              <path d="M12 12 L12 5.5 M12 12 L6 17.5 M12 12 L18 17.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" />
+              <circle cx="12" cy="12" r="2.1" fill="#fff" />
+              <circle cx="12" cy="5.5" r="1.2" fill="#fff" />
+              <circle cx="6" cy="17.5" r="1.2" fill="#fff" />
+              <circle cx="18" cy="17.5" r="1.2" fill="#fff" />
+            </svg>
+          </div>
+          <div class="dark">
+            <svg width="96" height="96" viewBox="0 0 24 24" aria-label="Hub mark dark">
+              <rect width="24" height="24" rx="6" fill="#0f766e" />
+              <path d="M12 12 L12 5.5 M12 12 L6 17.5 M12 12 L18 17.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" />
+              <circle cx="12" cy="12" r="2.1" fill="#fff" />
+              <circle cx="12" cy="5.5" r="1.2" fill="#fff" />
+              <circle cx="6" cy="17.5" r="1.2" fill="#fff" />
+              <circle cx="18" cy="17.5" r="1.2" fill="#fff" />
+            </svg>
+          </div>
+        </div>
+        <div class="sizes">
+          <span class="label">16 · 24 · 32</span>
+          <svg width="32" height="32" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M12 12 L12 5.5 M12 12 L6 17.5 M12 12 L18 17.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" /><circle cx="12" cy="12" r="2.2" fill="#fff" /></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M12 12 L12 5.5 M12 12 L6 17.5 M12 12 L18 17.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" /><circle cx="12" cy="12" r="2.3" fill="#fff" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M12 12 L12 5.5 M12 12 L6 17.5 M12 12 L18 17.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" /><circle cx="12" cy="12" r="2.5" fill="#fff" /></svg>
+        </div>
+        <div class="copy">
+          <b>Hub:</b> satu titik pusat dengan tiga kanal — cocok dengan nama dan arsitektur
+          multi-channel. Paling berbeda dari mark huruf di kotak. Cocok untuk animasi halus di login.
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <strong>B · Signal bars</strong>
+          <span class="tag">alternatif</span>
+        </div>
+        <div class="stage">
+          <div class="light">
+            <svg width="96" height="96" viewBox="0 0 24 24" aria-label="Signal bars mark">
+              <rect width="24" height="24" rx="6" fill="#1c1917" />
+              <path d="M6 8h7 M6 12h11 M6 16h5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+              <circle cx="17.5" cy="8" r="1.5" fill="#fff" />
+            </svg>
+          </div>
+          <div class="dark">
+            <svg width="96" height="96" viewBox="0 0 24 24" aria-label="Signal bars mark dark">
+              <rect width="24" height="24" rx="6" fill="#0f766e" />
+              <path d="M6 8h7 M6 12h11 M6 16h5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+              <circle cx="17.5" cy="8" r="1.5" fill="#fff" />
+            </svg>
+          </div>
+        </div>
+        <div class="sizes">
+          <span class="label">16 · 24 · 32</span>
+          <svg width="32" height="32" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M6 8h7 M6 12h11 M6 16h5" stroke="#fff" stroke-width="1.9" stroke-linecap="round" /><circle cx="17.5" cy="8" r="1.6" fill="#fff" /></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M6 8h7 M6 12h11 M6 16h5" stroke="#fff" stroke-width="2" stroke-linecap="round" /><circle cx="17.5" cy="8" r="1.7" fill="#fff" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M6 8h7 M6 12h11 M6 16h5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" /><circle cx="17.5" cy="8" r="1.8" fill="#fff" /></svg>
+        </div>
+        <div class="copy">
+          <b>Signal bars:</b> tiga baris pesan dengan satu titik status. Sangat mudah dibaca di
+          ukuran kecil dan langsung terasa “notifikasi”, tetapi sedikit lebih generik.
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <strong>C · Notch N</strong>
+          <span class="tag">konservatif</span>
+        </div>
+        <div class="stage">
+          <div class="light">
+            <svg width="96" height="96" viewBox="0 0 24 24" aria-label="Notch N mark">
+              <rect width="24" height="24" rx="6" fill="#1c1917" />
+              <path d="M7 18V6l9 12V6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="18" cy="6" r="2" fill="#2563eb" />
+            </svg>
+          </div>
+          <div class="dark">
+            <svg width="96" height="96" viewBox="0 0 24 24" aria-label="Notch N mark dark">
+              <rect width="24" height="24" rx="6" fill="#0f766e" />
+              <path d="M7 18V6l9 12V6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="18" cy="6" r="2" fill="#5eead4" />
+            </svg>
+          </div>
+        </div>
+        <div class="sizes">
+          <span class="label">16 · 24 · 32</span>
+          <svg width="32" height="32" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M7 18V6l9 12V6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><circle cx="18" cy="6" r="2" fill="#2563eb" /></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M7 18V6l9 12V6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /><circle cx="18" cy="6" r="2.1" fill="#2563eb" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1c1917" /><path d="M7 18V6l9 12V6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /><circle cx="18" cy="6" r="2.2" fill="#2563eb" /></svg>
+        </div>
+        <div class="copy">
+          <b>Notch N:</b> tetap huruf N, tetapi diagonalnya terputus dan diberi titik aksen —
+          paling dekat dengan identitas sekarang, tanpa menyerupai Notion.
+        </div>
+      </section>
+    </main>
+
+    <div class="footer">
+      <strong>Rekomendasi: A · Hub.</strong> Paling spesifik untuk produk multi-channel/hub,
+      berbeda dari mark huruf biasa, dan bisa dianimasikan halus (titik pusat berdenyut) di panel
+      login tanpa gradient/glow. B dan C tetap tersedia sebagai alternatif.
+    </div>
+  </body>
+</html>

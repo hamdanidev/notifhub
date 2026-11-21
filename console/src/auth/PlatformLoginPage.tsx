@@ -58,14 +58,7 @@ export function PlatformLoginPage(): JSX.Element {
       intro="Gunakan akun platform admin untuk mengelola tenant."
       headline="Kendali lintas tenant."
       lede="Provisioning, suspend, dan audit lintas tenant. Masuk dengan akun platform admin untuk melanjutkan."
-      asideFoot="Provisioning · Suspend · Audit"
       alert={error !== null ? <Alert variant="danger">{error}</Alert> : null}
-      footer={
-        <>
-          Dibatasi 5 percobaan per menit. Sesi mengikuti <code>ADMIN_JWT_EXPIRES_IN</code>.{' '}
-          <Link to="/login">Kembali ke login tenant admin</Link>
-        </>
-      }
     >
       <Form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Form.Group className="mb-3" controlId="platform-login-email">
@@ -105,6 +98,9 @@ export function PlatformLoginPage(): JSX.Element {
           )}
         </Button>
       </Form>
+      <p className="login-back">
+        <Link to="/login">Kembali ke login tenant admin</Link>
+      </p>
     </LoginShell>
   );
 }

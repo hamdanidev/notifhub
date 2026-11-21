@@ -12,8 +12,6 @@ describe('LoginShell', () => {
         intro="Gunakan akun tenant admin untuk melanjutkan."
         headline="Setiap notifikasi punya jejak."
         lede="Antrean, pengiriman, dan status baca dalam satu tempat."
-        asideFoot="API · Queue · Providers · Audit"
-        footer="Dibatasi 5 percobaan per menit."
       >
         <button type="button">Masuk</button>
       </LoginShell>,
@@ -21,8 +19,8 @@ describe('LoginShell', () => {
 
     expect(screen.getByText('Setiap notifikasi punya jejak.')).toBeInTheDocument();
     expect(screen.getByText('Tenant console')).toBeInTheDocument();
-    expect(screen.getByText('Contoh alur')).toBeInTheDocument();
-    expect(screen.getByText('in-app')).toBeInTheDocument();
+    expect(screen.getByText('IN-APP')).toBeInTheDocument();
+    expect(screen.queryByText('Contoh alur')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Masuk' })).toBeInTheDocument();
     expect(container.querySelector('.login-page--tenant')).not.toBeNull();
     expect(container.querySelector('.login-context')).not.toBeNull();
@@ -37,16 +35,14 @@ describe('LoginShell', () => {
         intro="Gunakan akun platform admin untuk mengelola tenant."
         headline="Kendali lintas tenant."
         lede="Provisioning, suspend, dan audit lintas tenant."
-        asideFoot="Provisioning · Suspend · Audit"
         alert={<div role="alert">Email atau password salah.</div>}
-        footer="Kembali ke login tenant admin"
       >
         <form aria-label="form platform" />
       </LoginShell>,
     );
 
     expect(screen.getByText('Platform lane')).toBeInTheDocument();
-    expect(screen.getByText('beta · suspended')).toBeInTheDocument();
+    expect(screen.getByText('PROVISION')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Email atau password salah.');
     expect(container.querySelector('.login-page--platform')).not.toBeNull();
   });
