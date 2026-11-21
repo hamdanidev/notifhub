@@ -462,3 +462,9 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     18 console test, `npm run ci` 102 s, dan instalasi dari registry. Detail:
     `docs/design/templates/in-app-markdown-design.md` §11; rilis:
     `docs/sdk/npm-publishing.md` §13.
+29. **Redesain login console (2026-11-21).** Login tenant dan platform memakai `LoginShell`
+    dua kolom dengan panel “Delivery Ledger” (contoh alur berlabel), lane label eksplisit, panel
+    platform gelap + aksen teal, dan layout menumpuk di bawah 920 px. Logika auth, endpoint, dan
+    dependency tidak berubah. Verifikasi: 22 test console (+4 test login), typecheck/build,
+    isolasi bundle tenant/platform, dan screenshot headless 1440×960 serta 390×844. Detail:
+    `docs/design/console-login-experience.md` §11.

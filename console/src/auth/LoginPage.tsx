@@ -6,6 +6,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { loginSchema, type LoginValues } from '../forms/schemas';
 import { describeError } from '../lib/format';
+import { LoginShell } from './LoginShell';
 
 export function LoginPage(): JSX.Element {
   const { session, login } = useAuth();
@@ -41,62 +42,62 @@ export function LoginPage(): JSX.Element {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-brand">
-          <div className="brand-mark">N</div>
-          <span className="brand-name">NotifHub</span>
-        </div>
+    <LoginShell
+      lane="tenant"
+      eyebrow="Tenant admin"
+      title="Masuk ke workspace"
+      intro="Gunakan akun tenant admin untuk melanjutkan."
+      headline="Setiap notifikasi punya jejak."
+      lede="Antrean, pengiriman, dan status baca dalam satu tempat. Masuk untuk mengelola template, subscriber, dan topik."
+      asideFoot="API · Queue · Providers · Audit"
+      alert={
+        <>
+          {passwordChanged ? (
+            <Alert variant="success">
+              Password berhasil diubah. Silakan masuk dengan password baru.
+            </Alert>
+          ) : null}
+          {error !== null ? <Alert variant="danger">{error}</Alert> : null}
+        </>
+      }
+      footer={
+        <>
+          Dibatasi 5 percobaan per menit. Sesi mengikuti <code>ADMIN_JWT_EXPIRES_IN</code>.
+        </>
+      }
+    >
+      <Form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Form.Group className="mb-3" controlId="login-email">
+          <Form.Label>Email</Form.Label>
+          <Form.Control
+            type="email"
+            autoComplete="username"
+            placeholder="admin@notifhub.local"
+            isInvalid={errors.email !== undefined}
+            {...register('email')}
+          />
+          {errors.email !== undefined ? (
+            <div className="text-danger small mt-1">{errors.email.message}</div>
+          ) : null}
+        </Form.Group>
 
-        <h1>Masuk</h1>
-        <p className="login-intro">Gunakan akun tenant admin untuk melanjutkan.</p>
+        <Form.Group className="mb-4" controlId="login-password">
+          <Form.Label>Password</Form.Label>
+          <Form.Control
+            type="password"
+            autoComplete="current-password"
+            isInvalid={errors.password !== undefined}
+            {...register('password')}
+          />
+          {errors.password !== undefined ? (
+            <div className="text-danger small mt-1">{errors.password.message}</div>
+          ) : null}
+        </Form.Group>
 
-        {passwordChanged ? (
-          <Alert variant="success">
-            Password berhasil diubah. Silakan masuk dengan password baru.
-          </Alert>
-        ) : null}
-
-        {error !== null ? <Alert variant="danger">{error}</Alert> : null}
-
-        <Form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Form.Group className="mb-3" controlId="login-email">
-            <Form.Label>Email</Form.Label>
-            <Form.Control
-              type="email"
-              autoComplete="username"
-              placeholder="admin@notifhub.local"
-              isInvalid={errors.email !== undefined}
-              {...register('email')}
-            />
-            {errors.email !== undefined ? (
-              <div className="text-danger small mt-1">{errors.email.message}</div>
-            ) : null}
-          </Form.Group>
-
-          <Form.Group className="mb-4" controlId="login-password">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
-              autoComplete="current-password"
-              isInvalid={errors.password !== undefined}
-              {...register('password')}
-            />
-            {errors.password !== undefined ? (
-              <div className="text-danger small mt-1">{errors.password.message}</div>
-            ) : null}
-          </Form.Group>
-
-          <Button type="submit" className="w-100" disabled={isSubmitting}>
-            {isSubmitting ? <Spinner animation="border" size="sm" /> : 'Lanjutkan'}
-          </Button>
-        </Form>
-
-        <p className="login-footnote">
-          Login dibatasi 5 percobaan per menit. Sesi mengikuti nilai{' '}
-          {'ADMIN_JWT_EXPIRES_IN'}.
-        </p>
-      </div>
-    </div>
+        <Button type="submit" className="w-100" disabled={isSubmitting}>
+          {isSubmitting ? <Spinner animation="border" size="sm" /> : 'Masuk'}
+        </Button>
+      </Form>
+    </LoginShell>
   );
 }

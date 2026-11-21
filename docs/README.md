@@ -71,7 +71,7 @@ tanggal di dalamnya bukan urutan baca. Semua desain terindeks di [design/README.
 | [console-operations-p2.md](design/console-operations-p2.md) | P2 console: export CSV, resend all, audit aksi admin tenant, compose/send | P2a–P2c selesai |
 | [console-quality-p3.md](design/console-quality-p3.md) | P3 console: test Vitest/jsdom, konsolidasi SDK, retensi audit | P3a–P3c selesai |
 | [console-sdk-consolidation.md](design/console-sdk-consolidation.md) | Lanjutan P3b: pindahkan client template v2 dan platform dari console ke `@notifhub/js` | selesai & terverifikasi (36 SDK test; `0.3.1` terbit 2026-11-21) |
-| [console-login-experience.md](design/console-login-experience.md) | Redesain halaman login tenant/platform: tiga opsi visual (Delivery Ledger, Switchboard, Quiet Type) | draf; menunggu pilihan opsi |
+| [console-login-experience.md](design/console-login-experience.md) | Redesain halaman login tenant/platform: Opsi A Delivery Ledger (panel ledger + lane) | selesai & terverifikasi (22 console test; screenshot 1440/390) |
 | [sample-in-app-design.md](design/sample-in-app-design.md) | Sample React 18 in-app: sesi, SSE, read receipt, preference center, middleware dev | terimplementasi (dev-only) |
 | [templates/template-system-design.md](design/templates/template-system-design.md) | Sistem template v2: draft/publish/rollback/clone, versi, preview, test send, layout/theme/partial, sanitasi, pipeline render | terimplementasi |
 | [templates/email-authoring-ui-design.md](design/templates/email-authoring-ui-design.md) | Form theme dan galeri layout untuk admin non-teknis | terimplementasi |

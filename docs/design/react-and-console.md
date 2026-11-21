@@ -318,7 +318,9 @@ README console.
    `notifhub-console` `0.1.0`.
 10. **UI console dirombak** setelah review: desain netral/minimal (sidebar terang, tanpa gradient
     atau glow, tipografi tenang, stat strip, status berbasis teks + titik, skeleton loading,
-    responsif). Fungsionalitas dan alur data tidak berubah.
+    responsif). Fungsionalitas dan alur data tidak berubah. **Login 2026-11-21:** memakai
+    `LoginShell` dua kolom (Delivery Ledger) untuk tenant/platform; lihat
+    `docs/design/console-login-experience.md`.
 
 ---
 

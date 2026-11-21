@@ -1,6 +1,6 @@
 # Pengalaman login console (tenant & platform)
 
-Status: **draf; tiga opsi, menunggu pilihan** (2026-11-21).
+Status: **terimplementasi — Opsi A Delivery Ledger** (2026-11-21). Lihat §11.
 Basis: `console/src/auth/LoginPage.tsx`, `console/src/auth/PlatformLoginPage.tsx`,
 `console/src/styles.css` (§login), `README.md` (posisi produk), `docs/architecture/project-brief.md`
 §4 (desain minimal/netral, tanpa gradient/glow), dan `docs/design/react-and-console.md` §10.
@@ -20,6 +20,7 @@ Mockup visual (buka di browser, ada pengalih opsi/lane/state):
 - [8. Verifikasi](#8-verifikasi)
 - [9. Risiko](#9-risiko)
 - [10. Pertanyaan persetujuan](#10-pertanyaan-persetujuan)
+- [11. Catatan implementasi](#11-catatan-implementasi)
 
 ---
 
@@ -192,3 +193,37 @@ Tidak termasuk: perubahan auth/API, ilustrasi, dependency UI baru, rebranding pe
    baru?
 
 Setelah dipilih, implementasi mengikuti §7 dan diverifikasi sesuai §8.
+
+## 11. Catatan implementasi
+
+Opsi **A — Delivery Ledger** dipilih dan diimplementasikan pada 2026-11-21.
+
+Yang berubah:
+
+- `console/src/auth/LoginShell.tsx` (baru): layout dua kolom, brand + lane label, narasi, ledger
+  contoh (label “Contoh alur”), slot alert, dan footer. Baris ledger memakai `role="list"`/
+  `role="listitem"` agar tidak bergantung pada marker `<ol>`.
+- `LoginPage` dan `PlatformLoginPage` memakai `LoginShell`; logika `useForm`, `login`,
+  `passwordChanged`, redirect, dan `platformLoginError` tidak berubah.
+- CSS login-scoped di `console/src/styles.css`: panel tenant terang, panel platform ink dengan
+  aksen teal, tombol mengikuti `--login-accent`, layout menumpuk di bawah 920 px.
+- Label bahasa Indonesia (“Contoh alur”, “Masuk ke workspace/platform”, “Kendali lintas tenant”);
+  tidak ada kredensial contoh dan tidak ada data operasional nyata di layar.
+
+Verifikasi:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run console:typecheck` | lulus |
+| `npm --prefix console run test` | **22** test lulus (7 file); +4 test login (`LoginShell`, `LoginPage`, `PlatformLoginPage`) |
+| `npm run console:build` | lulus; `dist/tenant` dan `dist/platform` terbentuk |
+| Bundle isolation | tenant tanpa marker `NotifHub Platform`; platform tanpa `notifhub.console.session` |
+| Manual headless | screenshot 1440×960 tenant/platform dan 390×844 mobile; state normal/error/`passwordChanged` dicek |
+| Perubahan auth/API/dependency | tidak ada; tanpa migrasi |
+
+Deviasi:
+
+1. Ledger memakai timestamp dan baris contoh yang diberi label “Contoh alur”; ini bukan data live.
+2. Platform memakai panel gelap + aksen teal seperti mockup; tenant memakai panel terang + biru.
+3. Test halaman memakai mock `useAuth`/`platformClient`; tidak memanggil backend.
+4. `prefers-reduced-motion` tetap dihormati karena tidak ada animasi baru.

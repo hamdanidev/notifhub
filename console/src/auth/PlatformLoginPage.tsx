@@ -8,6 +8,7 @@ import { loginSchema, type LoginValues } from '../forms/schemas';
 import { platformClient } from '../lib/platformApiClient';
 import { describeError } from '../lib/format';
 import { loadPlatformSession, savePlatformSession } from '../lib/platformSession';
+import { LoginShell } from './LoginShell';
 
 function platformLoginError(error: unknown): string {
   if (isNotifHubError(error)) {
@@ -50,62 +51,60 @@ export function PlatformLoginPage(): JSX.Element {
   };
 
   return (
-    <div className="login-page login-page--platform">
-      <div className="login-card">
-        <div className="login-brand">
-          <div className="brand-mark">P</div>
-          <span className="brand-name">NotifHub</span>
-          <span className="brand-sub">Platform</span>
-        </div>
-
-        <h1>Platform</h1>
-        <p className="login-intro">Gunakan akun platform admin untuk mengelola tenant.</p>
-
-        {error !== null ? <Alert variant="danger">{error}</Alert> : null}
-
-        <Form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Form.Group className="mb-3" controlId="platform-login-email">
-            <Form.Label>Email</Form.Label>
-            <Form.Control
-              type="email"
-              autoComplete="username"
-              placeholder="ops@notifhub.local"
-              isInvalid={errors.email !== undefined}
-              {...register('email')}
-            />
-            {errors.email !== undefined ? (
-              <div className="text-danger small mt-1">{errors.email.message}</div>
-            ) : null}
-          </Form.Group>
-
-          <Form.Group className="mb-4" controlId="platform-login-password">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
-              autoComplete="current-password"
-              isInvalid={errors.password !== undefined}
-              {...register('password')}
-            />
-            {errors.password !== undefined ? (
-              <div className="text-danger small mt-1">{errors.password.message}</div>
-            ) : null}
-          </Form.Group>
-
-          <Button type="submit" className="w-100" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Spinner animation="border" size="sm" className="me-2" /> Masuk...
-              </>
-            ) : (
-              'Masuk'
-            )}
-          </Button>
-        </Form>
-
-        <p className="login-footnote mt-3 mb-0">
+    <LoginShell
+      lane="platform"
+      eyebrow="Platform admin"
+      title="Masuk ke platform"
+      intro="Gunakan akun platform admin untuk mengelola tenant."
+      headline="Kendali lintas tenant."
+      lede="Provisioning, suspend, dan audit lintas tenant. Masuk dengan akun platform admin untuk melanjutkan."
+      asideFoot="Provisioning · Suspend · Audit"
+      alert={error !== null ? <Alert variant="danger">{error}</Alert> : null}
+      footer={
+        <>
+          Dibatasi 5 percobaan per menit. Sesi mengikuti <code>ADMIN_JWT_EXPIRES_IN</code>.{' '}
           <Link to="/login">Kembali ke login tenant admin</Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <Form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Form.Group className="mb-3" controlId="platform-login-email">
+          <Form.Label>Email</Form.Label>
+          <Form.Control
+            type="email"
+            autoComplete="username"
+            placeholder="ops@notifhub.local"
+            isInvalid={errors.email !== undefined}
+            {...register('email')}
+          />
+          {errors.email !== undefined ? (
+            <div className="text-danger small mt-1">{errors.email.message}</div>
+          ) : null}
+        </Form.Group>
+
+        <Form.Group className="mb-4" controlId="platform-login-password">
+          <Form.Label>Password</Form.Label>
+          <Form.Control
+            type="password"
+            autoComplete="current-password"
+            isInvalid={errors.password !== undefined}
+            {...register('password')}
+          />
+          {errors.password !== undefined ? (
+            <div className="text-danger small mt-1">{errors.password.message}</div>
+          ) : null}
+        </Form.Group>
+
+        <Button type="submit" className="w-100" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Spinner animation="border" size="sm" className="me-2" /> Masuk...
+            </>
+          ) : (
+            'Masuk'
+          )}
+        </Button>
+      </Form>
+    </LoginShell>
   );
 }
