@@ -1007,8 +1007,9 @@ function ContentTab({
           />
           <div className="d-flex justify-content-between small text-muted mt-1">
             <span>
-              Handlebars: {'{{var}}'} escape HTML untuk email; {'{{{var}}}'} mentah. Teks memakai
-              nilai apa adanya.
+              {form.channel === 'inapp' && form.format === 'markdown'
+                ? 'Markdown subset: **tebal**, *miring*, `kode`, [teks](https://...), list, dan heading #/##/###. HTML mentah ditolak.'
+                : "Handlebars: {{var}} escape HTML untuk email; {{{var}}} mentah. Teks memakai nilai apa adanya."}
             </span>
             <span>{form.body.length} karakter</span>
           </div>
@@ -1258,6 +1259,26 @@ function SettingsTab({
           }
         />
       </Col>
+      {form.channel === 'inapp' ? (
+        <Col xs={12} md={6}>
+          <Form.Group controlId="template-format">
+            <Form.Label>Format body</Form.Label>
+            <Form.Select
+              value={form.format}
+              disabled={readOnly}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, format: event.target.value as TemplateFormat }))
+              }
+            >
+              <option value="text">text</option>
+              <option value="markdown">markdown</option>
+            </Form.Select>
+            <Form.Text>
+              Markdown dirender server-side ke HTML aman; klien lama tetap menerima teks biasa.
+            </Form.Text>
+          </Form.Group>
+        </Col>
+      ) : null}
       <Col xs={12} md={6}>
         <Form.Group controlId="template-fallback-channel">
           <Form.Label>Fallback channel</Form.Label>
@@ -1292,8 +1313,8 @@ function SettingsTab({
       </Col>
       <Col xs={12}>
         <Alert variant="light" className="small mb-0">
-          Format ditentukan channel: email html, lainnya text. Perubahan pada versi published harus
-          lewat draft baru; editor ini akan meminta clone.
+          Format: email html; inapp text atau markdown; whatsapp/sms text. Perubahan pada versi
+          published harus lewat draft baru; editor ini akan meminta clone.
         </Alert>
       </Col>
     </Row>

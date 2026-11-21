@@ -11,6 +11,7 @@ import {
 import { prepareTemplateData, parseVariableSchema } from './template.variables';
 import { sanitizeEmailHtml, sanitizeHeaderValue } from './template.safety';
 import { htmlToPlainText } from './template.text';
+import { renderMarkdownSubset } from './template.markdown';
 
 const MAX_CACHE_ENTRIES = 200;
 const MAX_EMAIL_BYTES = 262_144;
@@ -54,6 +55,7 @@ export class TemplateRenderer {
     const bodyRaw = compiled.body(prepared.data, runtimeOptions);
 
     let body = bodyRaw;
+    let bodyHtml: string | null = null;
 
     if (compiled.layout !== null) {
       body = compiled.layout(
@@ -70,6 +72,13 @@ export class TemplateRenderer {
         },
         runtimeOptions,
       );
+    }
+
+    if (template.format === 'markdown') {
+      const markdown = renderMarkdownSubset(body);
+      body = markdown.text;
+      bodyHtml = markdown.html;
+      warnings.push(...markdown.warnings);
     }
 
     if (template.format === 'html') {
@@ -109,6 +118,7 @@ export class TemplateRenderer {
       preheader:
         template.preheader === null ? null : sanitizeHeaderValue(preheaderRaw, 200),
       body,
+      bodyHtml,
       text,
       format: template.format,
       warnings: [...new Set(warnings)],

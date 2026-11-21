@@ -16,6 +16,7 @@ import {
   builderDocumentUsesColumns,
   parseBuilderDocument,
 } from '../../templates/template.builder';
+import { validateMarkdownSubset } from '../../templates/template.markdown';
 import {
   TemplateRenderError,
   type RenderableTemplate,
@@ -48,16 +49,24 @@ export class AdminTemplateValidationService {
     options: ValidationOptions = {},
   ): TemplateValidationIssue[] {
     const issues: TemplateValidationIssue[] = [];
-    const expectedFormat =
-      template.channel === Channel.email ? TemplateFormat.html : TemplateFormat.text;
+    const allowedFormats: TemplateFormat[] =
+      template.channel === Channel.email
+        ? [TemplateFormat.html]
+        : template.channel === Channel.inapp
+          ? [TemplateFormat.text, TemplateFormat.markdown]
+          : [TemplateFormat.text];
 
-    if (template.format !== expectedFormat) {
+    if (!allowedFormats.includes(template.format)) {
       issues.push({
         code: 'template_channel_mismatch',
         path: 'format',
-        message: `channel ${template.channel} hanya mendukung format ${expectedFormat}`,
+        message: `channel ${template.channel} hanya mendukung format ${allowedFormats.join(' atau ')}`,
         severity: 'error',
       });
+    }
+
+    if (template.channel === Channel.inapp && template.format === TemplateFormat.markdown) {
+      issues.push(...validateMarkdownSubset(template.body, 'body'));
     }
 
     const hasEmailAssets =

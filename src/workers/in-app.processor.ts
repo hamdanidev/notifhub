@@ -148,6 +148,8 @@ export class InAppProcessor extends WorkerHost {
         templateKey: data.templateKey,
         subject: rendered.subject,
         body: rendered.body,
+        bodyHtml: rendered.bodyHtml,
+        format: rendered.format,
         data: data.data,
         to: data.recipientId,
       });

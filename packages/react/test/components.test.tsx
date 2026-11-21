@@ -63,4 +63,35 @@ describe('@notifhub/react', () => {
 
     expect(html).toContain('Kosong');
   });
+
+  it('renders sanitized bodyHtml only when safe-html is opted in', () => {
+    const notification: InAppNotification = {
+      notificationId: 'n2',
+      templateKey: 'markdown.notification',
+      subject: null,
+      body: 'Halo Budi',
+      bodyHtml: '<p>Halo <strong>Budi</strong></p>',
+      format: 'markdown',
+      data: {},
+      priority: 3,
+      status: 'sent',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      readAt: null,
+    };
+
+    const textHtml = renderToStaticMarkup(
+      <NotifHubContext.Provider value={contextValue({ notifications: [notification] })}>
+        <NotificationInbox />
+      </NotifHubContext.Provider>,
+    );
+    expect(textHtml).toContain('Halo Budi');
+    expect(textHtml).not.toContain('<strong>');
+
+    const safeHtml = renderToStaticMarkup(
+      <NotifHubContext.Provider value={contextValue({ notifications: [notification] })}>
+        <NotificationInbox renderBody="safe-html" />
+      </NotifHubContext.Provider>,
+    );
+    expect(safeHtml).toContain('<strong>Budi</strong>');
+  });
 });

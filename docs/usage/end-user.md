@@ -240,7 +240,9 @@ function Unread() {
 }
 ```
 
-Komponen tidak membawa style (headless): beri CSS/`className` sendiri. Untuk preference center:
+Komponen tidak membawa style (headless): beri CSS/`className` sendiri. Untuk template markdown
+in-app, kirim `renderBody="safe-html"` pada `NotificationInbox` agar `bodyHtml` (sudah disanitasi
+server) dirender; default tetap memakai `body` sebagai teks. Untuk preference center:
 
 ```tsx
 import { usePreferences } from '@notifhub/react';

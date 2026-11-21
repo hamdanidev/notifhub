@@ -1,10 +1,18 @@
 import type { InAppNotification } from '@notifhub/js';
 import { useNotifHub } from './provider';
 
+export type NotificationBodyRenderMode = 'text' | 'safe-html';
+
 export interface NotificationInboxProps {
   limit?: number;
   className?: string;
   emptyState?: React.ReactNode;
+  /**
+   * `safe-html` renders `bodyHtml` (server-sanitized subset for markdown templates) with
+   * `dangerouslySetInnerHTML`. Only enable it against a trusted NotifHub backend; the default
+   * `text` renders `body` as plain text.
+   */
+  renderBody?: NotificationBodyRenderMode;
   renderItem?: (notification: InAppNotification) => React.ReactNode;
   onNotificationClick?: (notification: InAppNotification) => void;
 }
@@ -14,6 +22,7 @@ export function NotificationInbox({
   limit = 20,
   className,
   emptyState,
+  renderBody = 'text',
   renderItem,
   onNotificationClick,
 }: NotificationInboxProps): JSX.Element {
@@ -51,7 +60,14 @@ export function NotificationInbox({
                 void markRead(notification.notificationId).catch(() => undefined);
               }}
             >
-              <span className="notifhub-inbox__body">{notification.body}</span>
+              {renderBody === 'safe-html' && notification.bodyHtml != null ? (
+                <span
+                  className="notifhub-inbox__body"
+                  dangerouslySetInnerHTML={{ __html: notification.bodyHtml }}
+                />
+              ) : (
+                <span className="notifhub-inbox__body">{notification.body}</span>
+              )}
               <time className="notifhub-inbox__time" dateTime={notification.createdAt}>
                 {new Date(notification.createdAt).toLocaleString()}
               </time>

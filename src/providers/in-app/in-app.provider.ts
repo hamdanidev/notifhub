@@ -21,6 +21,8 @@ export class InAppProvider implements NotificationProvider {
       templateKey: input.templateKey,
       subject: input.subject,
       body: input.body,
+      bodyHtml: input.bodyHtml ?? null,
+      format: input.format === 'markdown' ? 'markdown' : 'text',
       data: input.data,
       priority: input.priority,
       createdAt: new Date().toISOString(),

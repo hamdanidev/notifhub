@@ -46,6 +46,20 @@ export class InAppNotificationItem {
   })
   body!: string | null;
 
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      'Sanitized HTML for markdown templates. Null for plain-text templates and missing templates.',
+  })
+  bodyHtml?: string | null;
+
+  @ApiPropertyOptional({
+    enum: ['text', 'markdown'],
+    description: 'Body format of the template that produced this notification.',
+  })
+  format?: string;
+
   @ApiProperty({ type: 'object', additionalProperties: true })
   data!: Record<string, unknown>;
 

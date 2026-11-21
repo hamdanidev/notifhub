@@ -50,7 +50,7 @@ terpisah dengan persetujuan baru.
 | 6 | Retensi audit/test send/aset | **P0/P1** | Cleanup test send 180 hari, audit 730 hari (bisa dimatikan); aset P1: hapus manual hanya jika usage=0 |
 | 7 | Belum approval maker-checker/diff | **P2** | Ditunda; butuh RBAC/role yang belum ada. Audit actor sudah tersedia |
 | 8 | Email HTML-only, tanpa plain-text | **P0** | Generate plain-text dari HTML final di server; fallback aman ke HTML-only; provider kirim multipart |
-| 9 | Markdown in-app tertunda | **P2** | Tetap ditunda; prasyarat rilis SDK yang mendukung render markdown |
+| 9 | Markdown in-app | **P2** | Selesai 2026-11-21: subset aman dirender server-side; SDK/React terbit; lihat `docs/design/templates/in-app-markdown-design.md` |
 | 10 | Meta approved WhatsApp tertunda | **P2** | Tetap ditunda; provider masih text-only, butuh model template Meta terpisah |
 | 11 | Sanitizer pola, preview manual tanpa Playwright | **P0/P2** | P0: tetap pola + sandbox + CSP, tambah corpus test; P2: evaluasi parser penuh/Playwright dengan persetujuan |
 | 12 | Versi template tidak dicatat per notifikasi | **P2 (selesai)** | Kolom nullable `NotificationRecipient.templateId/templateVersion/templateResolvedAt`; worker mengisi saat resolve; tanpa backfill |
@@ -89,7 +89,7 @@ terpisah dengan persetujuan baru.
 | Retensi | `CleanupService` hanya punya `runRetention` (notifikasi) dan `runIdempotencyCleanup`. `TemplateAuditEvent` dan `TemplateTestSend` tumbuh tanpa batas. Aset append-only tanpa delete. |
 | Approval/diff | Tidak ada role selain `tenant_admin`; `platform_admin` ditolak. Audit menyimpan actor. Tidak ada diff. |
 | Plain-text | `RenderedTemplate` hanya `subject/preheader/body/format`; `ProviderSendInput` tidak punya field teks; `EmailProvider.sendMail` hanya `{ html: input.body }`. Preview email selalu `text: null`. |
-| Markdown | `TemplateFormat.markdown` ada di enum tetapi ditolak service; SDK terbit belum merender markdown. |
+| Markdown | Didukung untuk `inapp` (subset aman, dirender server-side ke `bodyHtml`); `email`/`whatsapp`/`sms` tetap menolak markdown. |
 | Meta WhatsApp | Provider WhatsApp hanya `type: "text"`; belum ada template name/parameter/approval. |
 | Sanitizer | `template.safety.ts` berbasis regex pola; preview memakai iframe `sandbox=""` + CSP. Verifikasi UI manual. |
 | Versi per notifikasi | Worker memanggil `TemplateService.resolve` saat memproses; tidak ada kolom template di `NotificationRecipient`/`DeliveryAttempt`. |
@@ -140,7 +140,7 @@ terpisah dengan persetujuan baru.
 | Upload gambar/storage | Butuh storage, MIME sniffing, limit, signing, dan keputusan dependency; URL-only masih aman. |
 | Approval maker-checker/diff | Butuh RBAC/role dan tabel approval; belum ada role selain `tenant_admin`. |
 | Template version per notifikasi | Perlu kolom baru + perubahan worker/admin; bukan bug, hanya keterbatasan audit. |
-| Markdown in-app | Terblokir rilis SDK (`@notifhub/js`/`@notifhub/react`) yang belum mendukung render markdown. |
+| Markdown in-app | Selesai 2026-11-21 (backend + console + `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0); lihat `docs/design/templates/in-app-markdown-design.md`. |
 | Meta approved WhatsApp | Terblokir model provider yang masih text-only. |
 | Parser sanitizer penuh/Playwright | Investasi keamanan/test yang butuh evaluasi dependency dan persetujuan terpisah. |
 
@@ -476,12 +476,12 @@ penuh/Playwright ditunda ke P2.**
 
 **Default: tetap ditunda; tidak ada perubahan di fase ini.**
 
-- **Markdown in-app**:
-  - `TemplateFormat.markdown` tetap ditolak untuk template baru.
-  - Prasyarat: rilis `@notifhub/js`/`@notifhub/react` yang mendukung render markdown (versi
-    terbit tidak boleh diubah di pekerjaan ini).
-  - Setelah SDK siap: aktifkan `markdown` hanya untuk `inapp`, tambah validasi subset aman,
-    preview render markdown, dan test regresi SDK.
+- **Markdown in-app (selesai 2026-11-21):**
+  - `TemplateFormat.markdown` diterima hanya untuk `inapp`; dirender server-side ke `bodyHtml`
+    subset aman (tanpa dependency, escape-first), dan `body` tetap teks biasa untuk klien lama.
+  - `@notifhub/js` `0.4.0` menambahkan tipe `bodyHtml`/`format`; `@notifhub/react` `0.3.0`
+    menyediakan opt-in `renderBody="safe-html"`.
+  - Detail keputusan, subset, dan verifikasi: `docs/design/templates/in-app-markdown-design.md`.
 - **Meta approved WhatsApp**:
   - Provider masih `type: "text"`; belum ada template name, language, components, parameter,
     atau status approval.
@@ -822,7 +822,7 @@ Catatan implementasi test:
 | Upload gambar | Storage/MIME/keamanan | P2 + desain storage |
 | Approval maker-checker/diff | RBAC belum ada | P2 + role/permission |
 | Versi template per notifikasi | Perubahan tiga worker + schema | P2 + persetujuan |
-| Markdown in-app | SDK terbit belum mendukung | Rilis SDK baru (versi terpisah) |
+| Markdown in-app | Selesai (backend subset aman + SDK/React terbit) | Tidak ada; lihat `docs/design/templates/in-app-markdown-design.md` |
 | Meta approved WhatsApp | Provider text-only | Desain provider Meta terpisah |
 | Parser sanitizer penuh | Dependency/keamanan | P2 + evaluasi lisensi/ukuran |
 | Playwright/browser automation | Batasan eksplisit | Persetujuan terpisah |
@@ -909,8 +909,8 @@ saja, tanpa perubahan data).
 ### 11.4 Berikutnya
 
 P1 sudah diimplementasikan (lihat §12). P2 (impor HTML, upload, approval/diff, versi template per
-notifikasi, markdown, Meta WhatsApp, parser sanitizer/Playwright) belum dimulai dan memerlukan
-persetujuan fase masing-masing.
+notifikasi, Meta WhatsApp, parser sanitizer/Playwright) belum dimulai dan memerlukan
+persetujuan fase masing-masing. Markdown in-app selesai 2026-11-21.
 
 ---
 
@@ -954,8 +954,9 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 ### 12.4 Berikutnya
 
 Slice P2 D10 sudah diimplementasikan (lihat §13). Item P2 lain (impor HTML, upload gambar,
-approval maker-checker/diff, markdown in-app, Meta WhatsApp, parser sanitizer penuh/Playwright)
-belum dimulai dan memerlukan persetujuan fase masing-masing.
+approval maker-checker/diff, Meta WhatsApp, parser sanitizer penuh/Playwright)
+belum dimulai dan memerlukan persetujuan fase masing-masing. Markdown in-app selesai
+2026-11-21 (dokumen terpisah).
 
 ---
 
@@ -999,9 +1000,10 @@ dan urutan diverifikasi pada database fresh. Ini penting untuk deployment/CI bar
 - Jika template tidak ditemukan, metadata tetap `null`; job gagal seperti sebelumnya.
 - Kolom `templateId` sengaja tanpa foreign key: versi template tidak boleh terhapus/hilang dari
   histori delivery.
-- Item P2 lain (impor HTML, approval/diff, markdown, Meta WhatsApp, parser sanitizer penuh/
-  Playwright) tetap ditunda karena membutuhkan RBAC, parser dependency, rilis SDK, atau
-  perubahan provider WhatsApp. Upload gambar diimplementasikan terpisah di §14.
+- Item P2 lain (impor HTML, approval/diff, Meta WhatsApp, parser sanitizer penuh/Playwright)
+  tetap ditunda karena membutuhkan RBAC, parser dependency, rilis SDK, atau perubahan provider
+  WhatsApp. Markdown in-app dan upload gambar diimplementasikan terpisah (§14 dan
+  `docs/design/templates/in-app-markdown-design.md`).
 
 ---
 
@@ -1049,5 +1051,5 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 ### 14.4 Berikutnya
 
 Approval maker-checker/diff dipindahkan ke task berikutnya (posisi 2) sesuai permintaan. Item
-P2 lain (impor HTML, markdown, Meta WhatsApp, parser sanitizer penuh/Playwright) tetap menunggu
-keputusan fase.
+P2 lain (impor HTML, Meta WhatsApp, parser sanitizer penuh/Playwright) tetap menunggu
+keputusan fase; markdown in-app sudah selesai 2026-11-21.

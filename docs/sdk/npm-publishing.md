@@ -1,8 +1,8 @@
 # Desain publikasi npm SDK JavaScript dan React
 
-Status: **terpublikasi**. `@notifhub/js@0.3.1` dan `@notifhub/react@0.2.0` tersedia di npm
-(lihat §11–§12). Registry `latest` untuk `@notifhub/js` kini `0.3.1` (lima method admin baru,
-client template v2, dan platform client).
+Status: **terpublikasi**. `@notifhub/js@0.4.0` dan `@notifhub/react@0.3.0` tersedia di npm
+(lihat §11–§13). Registry `latest` sudah menunjuk kedua versi tersebut (js: client template v2,
+platform client, dan tipe `bodyHtml`; react: opt-in `renderBody="safe-html"`).
 Basis: `docs/architecture/project-brief.md`, `docs/usage/`, kondisi `packages/js-sdk` dan `packages/react`.
 
 **Isi dokumen**
@@ -19,6 +19,7 @@ Basis: `docs/architecture/project-brief.md`, `docs/usage/`, kondisi `packages/js
 - [10. Minta persetujuan](#10-minta-persetujuan)
 - [11. Catatan implementasi](#11-catatan-implementasi)
 - [12. Rilis 0.3.1 (2026-11-21)](#12-rilis-031-2026-11-21)
+- [13. Rilis 0.4.0 dan 0.3.0 (2026-11-21)](#13-rilis-040-dan-030-2026-11-21)
 
 ---
 
@@ -329,3 +330,29 @@ Catatan:
 2. Tidak ada perubahan pada `@notifhub/react`; dependency `^0.3.0` otomatis memakai `0.3.1`.
 3. Publish manual tidak menghasilkan provenance/attestation; workflow `publish-npm.yml` tetap
    tersedia untuk rilis berikutnya dengan `NPM_TOKEN` dan tag guard.
+
+## 13. Rilis 0.4.0 dan 0.3.0 (2026-11-21)
+
+Rilis ini membawa dukungan markdown in-app:
+
+- `@notifhub/js@0.4.0`: tipe `InAppNotification.bodyHtml` dan `format`.
+- `@notifhub/react@0.3.0`: `NotificationInbox` menerima `renderBody="safe-html"`; dependency js
+  dinaikkan ke `^0.4.0`.
+
+| Bukti | Nilai |
+|---|---|
+| Perintah | `npm publish --workspace @notifhub/js --access public`, lalu `npm publish --workspace @notifhub/react --access public` |
+| Hasil | `+ @notifhub/js@0.4.0`, `+ @notifhub/react@0.3.0` |
+| Ukuran tarball | js 63,7 kB (8 file); react 9,7 kB (8 file) |
+| Integritas js | `sha512-m7MMjK1k1hUqFdd6PdWSrvsXwqr+fbzy8GKd5PoGCkjTnMRF1LDwxmYVZlHZ1EHi9SXe7unWTNJijUKCtLSjfg==` |
+| Integritas react | `sha512-j4S7XerCXhi+6VygWpVuI4K0D4aXR2RxWulaV6+FBebFTYwry5SfMV6rAi/RyWVRlbpw74ed9K56eIFm3AbZMg==` |
+| `dist-tags` | js `latest=0.4.0`; react `latest=0.3.0`; react dependency `@notifhub/js: ^0.4.0` |
+| Tag git | `js-v0.4.0`, `react-v0.3.0` |
+| Verifikasi registry | proyek bersih: CJS/ESM, render `NotificationInbox` (default teks; `safe-html` menghasilkan `<strong>`), `tsc --noEmit` lulus |
+
+Catatan:
+
+1. Urutan rilis js lalu react dipertahankan agar dependency `^0.4.0` resolve.
+2. `renderBody="safe-html"` memakai HTML yang dihasilkan server dari subset markdown; jangan
+   memakainya dengan backend yang tidak menyediakan `bodyHtml` tersanitasi.
+3. `@notifhub/react` tidak menambah dependency runtime baru; hanya peer React 18 seperti sebelumnya.

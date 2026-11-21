@@ -1278,11 +1278,17 @@ export class AdminTemplatesService {
 }
 
 function normalizeFormat(channel: Channel, requested: TemplateFormat | undefined): TemplateFormat {
-  const expected = channel === Channel.email ? TemplateFormat.html : TemplateFormat.text;
+  const allowed: TemplateFormat[] =
+    channel === Channel.email
+      ? [TemplateFormat.html]
+      : channel === Channel.inapp
+        ? [TemplateFormat.text, TemplateFormat.markdown]
+        : [TemplateFormat.text];
+  const expected = allowed[0] ?? TemplateFormat.text;
 
-  if (requested !== undefined && requested !== expected) {
+  if (requested !== undefined && !allowed.includes(requested)) {
     throw new BadRequestException(
-      `channel ${channel} only supports format ${expected}`,
+      `channel ${channel} only supports format ${allowed.join(' or ')}`,
     );
   }
 

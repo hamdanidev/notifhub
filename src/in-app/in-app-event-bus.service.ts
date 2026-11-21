@@ -14,6 +14,9 @@ export interface InAppEventContent {
   templateKey: string;
   subject: string | null;
   body: string;
+  /** Sanitized HTML for markdown templates; null for plain text. */
+  bodyHtml: string | null;
+  format: 'text' | 'markdown';
   data: Record<string, unknown>;
   priority: number;
   createdAt: string;

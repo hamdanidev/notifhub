@@ -9,6 +9,10 @@ export interface ProviderSendInput {
   templateKey: string;
   subject: string | null;
   body: string;
+  /** Sanitized HTML body for in-app markdown; ignored by other channels. */
+  bodyHtml?: string | null;
+  /** Source format of the template; in-app consumes text/markdown. */
+  format?: 'text' | 'html' | 'markdown';
   /** Optional plain-text alternative for email; ignored by text-only providers. */
   text?: string | null;
   data: Record<string, unknown>;

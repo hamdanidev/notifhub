@@ -95,6 +95,8 @@ export class InAppService {
         templateKey: row.templateKey,
         subject: rendered === null ? null : rendered.subject,
         body: rendered === null ? null : rendered.body,
+        bodyHtml: rendered === null ? null : rendered.bodyHtml,
+        format: rendered === null ? undefined : rendered.format,
         data,
         priority: row.priority,
         status: recipient.status,

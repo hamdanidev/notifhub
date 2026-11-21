@@ -86,7 +86,7 @@ Aturan kerja:
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E40), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
-| Distribusi SDK: `@notifhub/js` `0.3.1` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
+| Distribusi SDK: `@notifhub/js` `0.4.0` + `@notifhub/react` `0.3.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
 | Multi-tenant F1–F5: entitas `Tenant` + FK, idempotency per tenant, lane platform, provisioning tenant/admin, suspend, audit, `allowedOrigins`, console platform | selesai & terverifikasi (e2e E30–E37, console build + verifikasi manual, docs:check) |
 | Host split console platform: dua artifact (`dist/tenant`, `dist/platform`), dua image nginx, CI dua target, redirect `/platform/*` | selesai & terverifikasi (P1–P4 di smoke stack; rollout domain produksi = langkah operator) |
 | Hardening console P1: ganti password + `tokenVersion`, secret API key, search notifikasi, CSP | selesai & terverifikasi (E38–E40; 40 e2e, 29 unit, CSP pada image) |
@@ -96,8 +96,9 @@ Aturan kerja:
 | Console P3a: test Vitest/jsdom (18 test) di CI | selesai & terverifikasi |
 | Console P3b + lanjutan: lima method P1/P2, client template v2, dan platform client masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (36 SDK test; `0.3.1` terbit 2026-11-21) |
 | Console P3c: retensi `AdminAuditEvent` (default 730 hari, cleanup 03:45 UTC) | selesai & terverifikasi (E45; 45 e2e, 30 unit; tanpa migrasi baru) |
+| Markdown in-app (subset aman, `bodyHtml` aditif) + `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0 | selesai & terverifikasi (E47; 47 e2e/73 unit; terbit di npm) |
 
-Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.1`, `@notifhub/react` `0.2.0`;
+Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.4.0`, `@notifhub/react` `0.3.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
 
 ---
@@ -213,9 +214,12 @@ npx prisma migrate status
   tidak ada. Lihat `docs/design/console-admin-hardening.md` §16,
   `docs/design/console-operations-p2.md` §13–§15, dan
   `docs/design/console-sdk-consolidation.md`.
-- Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
+- Template system v2: loop/conditional visual, MJML/juice, Meta approved
   WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
-  ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage count/proteksi hapus aset,
+  ada. Markdown in-app tersedia sebagai subset aman (dirender server-side ke `bodyHtml`; email,
+  WhatsApp, dan SMS tetap menolak markdown) dan `@notifhub/react` menyediakan opt-in
+  `renderBody="safe-html"`. Drag-and-drop/undo-redo block builder, ekspor HTML, usage
+  count/proteksi hapus aset,
   pencatatan versi template per recipient, serta upload gambar tervalidasi sudah tersedia
   (P1/P2). Upload memakai storage lokal (`TEMPLATE_IMAGE_DIR`) dan URL publik UUID; belum ada
   EXIF stripping/optimasi/orphan cleanup. `builderData` divalidasi ketat oleh backend (schema v1,
@@ -274,3 +278,6 @@ npx prisma migrate status
 7. WAHA lanjutan (opsional): media/gambar, pesan masuk/reply, sesi per tenant, dan pengelolaan
    QR/session dari console. Saat ini WAHA hanya teks dan satu sesi per deployment
    (`docs/design/whatsapp-waha-provider.md` §10/§15).
+8. Markdown in-app selesai (2026-11-21): subset aman dirender server-side ke `bodyHtml`,
+   `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0 terbit; lihat
+   `docs/design/templates/in-app-markdown-design.md`.

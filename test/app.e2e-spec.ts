@@ -2652,3 +2652,123 @@ describe('WhatsApp WAHA e2e', () => {
     expect(await countEvents()).toBe(3);
   });
 });
+
+describe('Markdown in-app e2e', () => {
+  it('E47 markdown in-app dirender aman dan tersedia di catch-up', async () => {
+    if (adminToken === '') {
+      const login = await request(server)
+        .post('/api/v1/admin/auth/login')
+        .send({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD });
+
+      adminToken = login.body.accessToken as string;
+    }
+
+    const created = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        key: 'e2e.markdown.inapp',
+        channel: 'inapp',
+        locale: 'id',
+        format: 'markdown',
+        status: 'draft',
+        body: 'Halo **{{nama}}**\n\n- satu\n- dua\n\n[tautan](https://example.com)',
+        variables: {
+          version: 1,
+          variables: [{ key: 'nama', type: 'string', required: true, example: 'Budi' }],
+        },
+        sampleData: { nama: 'Budi' },
+      });
+
+    expect(created.status).toBe(201);
+    expect(created.body.validation).toEqual([]);
+    const templateId = created.body.id as string;
+
+    const preview = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/preview`)
+      .set('Authorization', bearer(adminToken))
+      .send({ sampleData: { nama: 'Budi' } });
+    expect(preview.status).toBe(200);
+    expect(preview.body.html).toContain('<strong>Budi</strong>');
+    expect(preview.body.text).toContain('Halo Budi');
+
+    const publish = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: created.body.revision as number });
+    expect(publish.status).toBe(200);
+
+    const notify = await postNotify({
+      idempotency_key: `e2e-markdown-${randomUUID()}`,
+      template_key: 'e2e.markdown.inapp',
+      recipients: [RECIPIENT],
+      channels: ['inapp'],
+      data: { nama: 'Budi' },
+    });
+    expect(notify.status).toBe(202);
+    const notificationId = notify.body.notification_id as string;
+
+    await waitFor(
+      async () => {
+        const row = await prisma.notificationRecipient.findFirst({
+          where: {
+            notificationId,
+            recipientId: RECIPIENT,
+            channel: Channel.inapp,
+          },
+          select: { status: true },
+        });
+
+        return row !== null && row.status !== 'pending' ? row : null;
+      },
+      'recipient markdown in-app selesai diproses worker',
+    );
+
+    const page = await request(server)
+      .get('/api/v1/in-app/notifications')
+      .set('Authorization', bearer(subscriberToken('default', SUBSCRIBER_SECRET)));
+
+    expect(page.status).toBe(200);
+    const item = (page.body.items as Array<Record<string, unknown>>).find(
+      (candidate) => candidate.notificationId === notificationId,
+    );
+
+    expect(item).toBeDefined();
+    expect(item?.format).toBe('markdown');
+    expect(String(item?.bodyHtml)).toContain('<strong>Budi</strong>');
+    expect(String(item?.body)).toContain('Halo Budi');
+    expect(String(item?.body)).not.toContain('**');
+    expect(String(item?.bodyHtml)).not.toContain('<script>');
+
+    const unsafe = await request(server)
+      .post('/api/v1/admin/templates/preview')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        channel: 'inapp',
+        format: 'markdown',
+        body: '<script>alert(1)</script>\n\n**tebal**',
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+      });
+    expect(unsafe.status).toBe(200);
+    expect(
+      unsafe.body.errors.some(
+        (issue: { code: string }) => issue.code === 'markdown_raw_html',
+      ),
+    ).toBe(true);
+
+    const emailMarkdown = await request(server)
+      .post('/api/v1/admin/templates/preview')
+      .set('Authorization', bearer(adminToken))
+      .send({
+        channel: 'email',
+        format: 'markdown',
+        subject: 'Markdown',
+        body: '**tidak boleh**',
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+      });
+    expect(emailMarkdown.status).toBe(400);
+    expect(String(emailMarkdown.body.message)).toContain('only supports format');
+  });
+});

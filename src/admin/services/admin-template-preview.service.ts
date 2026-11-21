@@ -105,6 +105,9 @@ export class AdminTemplatePreviewService {
       if (template.channel === Channel.email) {
         html = wrapPreviewDocument(body);
         text = rendered.text;
+      } else if (template.format === TemplateFormat.markdown) {
+        html = rendered.bodyHtml;
+        text = rendered.body;
       } else {
         text = body;
       }
@@ -211,10 +214,18 @@ function normalizePreviewFormat(
   channel: Channel,
   requested: TemplateFormat | undefined,
 ): TemplateFormat {
-  const expected = channel === Channel.email ? TemplateFormat.html : TemplateFormat.text;
+  const allowed: TemplateFormat[] =
+    channel === Channel.email
+      ? [TemplateFormat.html]
+      : channel === Channel.inapp
+        ? [TemplateFormat.text, TemplateFormat.markdown]
+        : [TemplateFormat.text];
+  const expected = allowed[0] ?? TemplateFormat.text;
 
-  if (requested !== undefined && requested !== expected) {
-    throw new BadRequestException(`channel ${channel} only supports format ${expected}`);
+  if (requested !== undefined && !allowed.includes(requested)) {
+    throw new BadRequestException(
+      `channel ${channel} only supports format ${allowed.join(' or ')}`,
+    );
   }
 
   return requested ?? expected;

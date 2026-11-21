@@ -1,5 +1,9 @@
 export { NotificationBell, type NotificationBellProps } from './bell';
-export { NotificationInbox, type NotificationInboxProps } from './inbox';
+export {
+  NotificationInbox,
+  type NotificationBodyRenderMode,
+  type NotificationInboxProps,
+} from './inbox';
 export {
   usePreferences,
   type PreferencesStatus,

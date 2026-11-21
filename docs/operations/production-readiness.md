@@ -453,3 +453,12 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     (CJS, ESM, `tsc --noEmit`) lulus; kedua client baru tersedia. `@notifhub/react` tidak berubah
     dan tetap memakai `^0.3.0` (resolusi ke `0.3.1`). Detail:
     `docs/sdk/npm-publishing.md` §12.
+28. **Markdown in-app + rilis js 0.4.0/react 0.3.0 (2026-11-21).** `TemplateFormat.markdown` kini
+    diterima untuk kanal `inapp` dan dirender server-side ke `bodyHtml` subset aman (tanpa
+    dependency, HTML mentah ditolak, link http/https/mailto). Payload in-app/SSE/API memuat
+    `bodyHtml`/`format` secara aditif; console punya pilihan format dan preview HTML.
+    `@notifhub/js@0.4.0` menambah tipe, `@notifhub/react@0.3.0` menambah opt-in
+    `renderBody="safe-html"`. Verifikasi: E47 (47 e2e), 73 unit, 36 SDK test, 5 React test,
+    18 console test, `npm run ci` 102 s, dan instalasi dari registry. Detail:
+    `docs/design/templates/in-app-markdown-design.md` §11; rilis:
+    `docs/sdk/npm-publishing.md` §13.

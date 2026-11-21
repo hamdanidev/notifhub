@@ -76,6 +76,7 @@ tanggal di dalamnya bukan urutan baca. Semua desain terindeks di [design/README.
 | [templates/email-authoring-ui-design.md](design/templates/email-authoring-ui-design.md) | Form theme dan galeri layout untuk admin non-teknis | terimplementasi |
 | [templates/email-block-builder-design.md](design/templates/email-block-builder-design.md) | Block builder body email dan model `builderData` | terimplementasi |
 | [templates/template-limitations-roadmap.md](design/templates/template-limitations-roadmap.md) | 13 batasan template, prioritas P0/P1/P2, migrasi, keamanan, regresi | P0, P1, sebagian P2 selesai |
+| [templates/in-app-markdown-design.md](design/templates/in-app-markdown-design.md) | Markdown in-app subset aman: render server-side, kontrak `bodyHtml`, rilis SDK/React | selesai & terverifikasi (E47; js 0.4.0/react 0.3.0) |
 | [multi-tenant-platform-admin.md](design/multi-tenant-platform-admin.md) | Entitas tenant, provisioning, platform admin, suspend, audit, isolasi antar tenant | terimplementasi penuh (F1–F5) |
 | [platform-console-host-split.md](design/platform-console-host-split.md) | Pemisahan console platform ke host/origin sendiri: dua entry build, dua image, CORS, rollout | P1–P4 selesai (smoke stack); rollout produksi operasional |
 

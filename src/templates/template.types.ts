@@ -68,6 +68,8 @@ export interface RenderedTemplate {
   subject: string | null;
   preheader: string | null;
   body: string;
+  /** Sanitized HTML for in-app markdown; `null` for text and email templates. */
+  bodyHtml: string | null;
   /** Generated alternative part for email; `null` means HTML-only. */
   text: string | null;
   format: 'text' | 'html' | 'markdown';

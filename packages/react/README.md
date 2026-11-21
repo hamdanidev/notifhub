@@ -52,7 +52,9 @@ function UnreadCounter() {
 - `useNotifHub()` — `{ client, status, notifications, unreadCount, markRead, refresh }`.
 - `NotificationBell` — headless button with `notifhub-bell` class names, optional `renderBadge`.
 - `NotificationInbox` — headless list with `notifhub-inbox` class names; clicking an item marks
-  it read. Optional `renderItem`, `emptyState`, `onNotificationClick`.
+  it read. Optional `renderItem`, `emptyState`, `onNotificationClick`, and
+  `renderBody="safe-html"` to render the server-sanitized `bodyHtml` of markdown templates
+  (default renders `body` as plain text).
 
 Components are unstyled: provide your own CSS (or Bootstrap classes via `className`). The unread
 count is derived from fetched notifications plus live SSE events; there is no separate

@@ -6,6 +6,10 @@ export interface InAppNotification {
   templateKey: string;
   subject: string | null;
   body: string | null;
+  /** Sanitized HTML for markdown templates; absent/null for plain-text templates. */
+  bodyHtml?: string | null;
+  /** Template body format; `markdown` means `bodyHtml` is the rendered version. */
+  format?: 'text' | 'markdown';
   data: Record<string, unknown>;
   priority: number;
   status?: string;
