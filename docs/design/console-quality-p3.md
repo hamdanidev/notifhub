@@ -228,8 +228,9 @@ Verifikasi:
 
 Catatan:
 
-1. **Belum publish npm.** Registry masih `0.3.0`; konsumen npm belum mendapat lima method ini sampai
-   proses rilis patch dijalankan.
+1. **Belum publish npm pada saat P3b.** Registry saat itu masih `0.3.0`; konsumen npm baru mendapat
+   lima method ini setelah rilis patch. **Realisasi 2026-11-21:** `0.3.1` sudah terbit; lihat
+   `docs/sdk/npm-publishing.md` §12.
 2. `adminTemplates.ts` dan `platformClient.ts` awalnya tetap lokal; keduanya dipindahkan ke SDK pada
    2026-11-21 (`docs/design/console-sdk-consolidation.md`) sehingga paket source `0.3.1` memuat
    surface template v2 dan platform.

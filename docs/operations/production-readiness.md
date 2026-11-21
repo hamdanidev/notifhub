@@ -410,8 +410,8 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     `docs/design/console-quality-p3.md` §11.
 22. **Console P3b (2026-11-20).** Lima method P1/P2 (`changePassword`, `resendNotification`,
     `exportNotifications`, `listAudit`, `composeNotification`) masuk `NotifHubAdminClient`; wrapper
-    console dihapus. Versi source `@notifhub/js` `0.3.1`, tetapi **belum dipublish**; registry tetap
-    `0.3.0`. `npm pack` menghasilkan `notifhub-js-0.3.1.tgz`. Detail:
+    console dihapus. Versi source `@notifhub/js` `0.3.1`; versi ini **dipublikasikan 2026-11-21**
+    (lihat catatan 27). `npm pack` menghasilkan `notifhub-js-0.3.1.tgz`. Detail:
     `docs/design/console-quality-p3.md` §12.
 23. **Console P3c (2026-11-20).** `AdminAuditEvent` mendapat retensi terjadwal: env
     `ADMIN_AUDIT_RETENTION_DAYS` (default `730`, `0` menonaktifkan) dan job
@@ -443,5 +443,13 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     dari modul terpisah `platformApiClient.ts` agar isolasi bundle tenant/platform tetap terjaga.
     Verifikasi: 36 SDK test (+11), 18 test console, `npm run ci` 95 s (66 unit/46 e2e/14 migrasi),
     `docs:check` 523 tautan/43 file, build tenant+platform. Tanpa perubahan backend, kontrak HTTP,
-    migrasi, atau dependency; publish npm masih pending. Detail:
+    migrasi, atau dependency; `0.3.1` dipublikasikan 2026-11-21 (catatan 27). Detail:
     `docs/design/console-sdk-consolidation.md` §11.
+27. **Rilis `@notifhub/js` 0.3.1 (2026-11-21).** Publish manual
+    `npm publish --workspace @notifhub/js --access public` berhasil (`+ @notifhub/js@0.3.1`, registry
+    `202`); tarball 8 file/63,4 kB, integritas
+    `sha512-zyNWCcUT4em/nMuny+PZJDK4rnTQpdCv0nGArijkveIANIro4/JAAvruO7eVZQLf+t8bCiNmxqb8hLA8FrYbkw==`.
+    `dist-tags`: `latest=0.3.1`. Tag `js-v0.3.1` di-push. Verifikasi dari registry di proyek bersih
+    (CJS, ESM, `tsc --noEmit`) lulus; kedua client baru tersedia. `@notifhub/react` tidak berubah
+    dan tetap memakai `^0.3.0` (resolusi ke `0.3.1`). Detail:
+    `docs/sdk/npm-publishing.md` §12.

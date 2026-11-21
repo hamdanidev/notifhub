@@ -86,7 +86,7 @@ Aturan kerja:
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E40), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
-| Distribusi SDK: `@notifhub/js` `0.3.0` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
+| Distribusi SDK: `@notifhub/js` `0.3.1` + `@notifhub/react` `0.2.0` di npm, Go mirror `v0.10.0` | selesai & terverifikasi dari registry |
 | Multi-tenant F1–F5: entitas `Tenant` + FK, idempotency per tenant, lane platform, provisioning tenant/admin, suspend, audit, `allowedOrigins`, console platform | selesai & terverifikasi (e2e E30–E37, console build + verifikasi manual, docs:check) |
 | Host split console platform: dua artifact (`dist/tenant`, `dist/platform`), dua image nginx, CI dua target, redirect `/platform/*` | selesai & terverifikasi (P1–P4 di smoke stack; rollout domain produksi = langkah operator) |
 | Hardening console P1: ganti password + `tokenVersion`, secret API key, search notifikasi, CSP | selesai & terverifikasi (E38–E40; 40 e2e, 29 unit, CSP pada image) |
@@ -94,10 +94,10 @@ Aturan kerja:
 | Console P2b: audit aksi admin tenant (tabel + API + halaman) | selesai & terverifikasi (E43; 43 e2e) |
 | Console P2c: compose/send dari console (reuse ingest) | selesai & terverifikasi (E44; 44 e2e) |
 | Console P3a: test Vitest/jsdom (18 test) di CI | selesai & terverifikasi |
-| Console P3b + lanjutan: lima method P1/P2, client template v2, dan platform client masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (36 SDK test; publish npm pending) |
+| Console P3b + lanjutan: lima method P1/P2, client template v2, dan platform client masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (36 SDK test; `0.3.1` terbit 2026-11-21) |
 | Console P3c: retensi `AdminAuditEvent` (default 730 hari, cleanup 03:45 UTC) | selesai & terverifikasi (E45; 45 e2e, 30 unit; tanpa migrasi baru) |
 
-Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
+Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.1`, `@notifhub/react` `0.2.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).
 
 ---
@@ -267,7 +267,7 @@ npx prisma migrate status
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
 6. P3 console selesai: P3a (18 test Vitest/jsdom), P3b (lima method P1/P2 masuk `@notifhub/js`
-   source 0.3.1; publish npm pending), P3c (retensi `AdminAuditEvent` default 730 hari dengan
+   source 0.3.1; `0.3.1` terbit 2026-11-21), P3c (retensi `AdminAuditEvent` default 730 hari dengan
    job 03:45 UTC; `0` menonaktifkan), dan lanjutan P3b (template v2 + platform client dipindahkan
    ke SDK, 36 SDK test) — catatan dan bukti di `docs/design/console-quality-p3.md` §11–§13 dan
    `docs/design/console-sdk-consolidation.md`.

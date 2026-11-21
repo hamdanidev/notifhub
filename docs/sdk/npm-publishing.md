@@ -1,8 +1,8 @@
 # Desain publikasi npm SDK JavaScript dan React
 
-Status: **terpublikasi**. `@notifhub/js@0.3.0` dan `@notifhub/react@0.2.0` tersedia di npm
-(lihat §11). Source workspace `@notifhub/js` kini `0.3.1` (lima method admin baru, client template
-v2, dan platform client); versi itu **belum dipublikasikan** dan registry `latest` tetap `0.3.0`.
+Status: **terpublikasi**. `@notifhub/js@0.3.1` dan `@notifhub/react@0.2.0` tersedia di npm
+(lihat §11–§12). Registry `latest` untuk `@notifhub/js` kini `0.3.1` (lima method admin baru,
+client template v2, dan platform client).
 Basis: `docs/architecture/project-brief.md`, `docs/usage/`, kondisi `packages/js-sdk` dan `packages/react`.
 
 **Isi dokumen**
@@ -18,6 +18,7 @@ Basis: `docs/architecture/project-brief.md`, `docs/usage/`, kondisi `packages/js
 - [9. Risiko dan batasan](#9-risiko-dan-batasan)
 - [10. Minta persetujuan](#10-minta-persetujuan)
 - [11. Catatan implementasi](#11-catatan-implementasi)
+- [12. Rilis 0.3.1 (2026-11-21)](#12-rilis-031-2026-11-21)
 
 ---
 
@@ -305,3 +306,26 @@ seluruh verifikasi di §7, lalu melaporkan hasil beserta deviasi. Publikasi ke n
     sebelum rilis; `latest` sudah menunjuk ke versi rilis (`0.3.0`/`0.2.0`), jadi `npm install
     @notifhub/js` memasang versi yang benar. Placeholder itu tidak dihapus/dideprecate tanpa
     keputusan pemilik.
+
+## 12. Rilis 0.3.1 (2026-11-21)
+
+`@notifhub/js@0.3.1` dipublikasikan untuk membawa lima method admin P3b, client template v2
+(`NotifHubTemplatesClient`), dan client platform (`NotifHubPlatformClient`) ke konsumen npm.
+
+| Bukti | Nilai |
+|---|---|
+| Perintah | `npm publish --workspace @notifhub/js --access public` |
+| Hasil | `+ @notifhub/js@0.3.1`; registry `202` |
+| Isi tarball | 8 file (63,4 kB): `dist` ESM/CJS + `.d.ts` + sourcemap, README, `package.json` |
+| Integritas | `sha512-zyNWCcUT4em/nMuny+PZJDK4rnTQpdCv0nGArijkveIANIro4/JAAvruO7eVZQLf+t8bCiNmxqb8hLA8FrYbkw==` |
+| `npm view @notifhub/js dist-tags` | `{"latest":"0.3.1"}` |
+| Tag git | `js-v0.3.1` (annotated) di-push ke `origin` |
+| Verifikasi registry | proyek bersih `npm install @notifhub/js@0.3.1`; `require` (CJS), `import` (ESM), dan `tsc --noEmit` untuk tipe/kelas baru lulus |
+
+Catatan:
+
+1. Dua kelas baru terverifikasi tersedia dari registry: `NotifHubTemplatesClient` dan
+   `NotifHubPlatformClient` (CJS/ESM sama-sama `function`).
+2. Tidak ada perubahan pada `@notifhub/react`; dependency `^0.3.0` otomatis memakai `0.3.1`.
+3. Publish manual tidak menghasilkan provenance/attestation; workflow `publish-npm.yml` tetap
+   tersedia untuk rilis berikutnya dengan `NPM_TOKEN` dan tag guard.

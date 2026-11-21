@@ -248,7 +248,8 @@ Yang sudah berjalan:
   dan platform tidak saling menarik session/client); `adminTemplates.ts`, `platformClient.ts`, dan
   `templateTypes.ts` dihapus. Sembilan call site + empat komponen tipe dimigrasikan tanpa perubahan
   perilaku UI.
-- Versi source tetap `0.3.1`; publish npm tidak dilakukan pada langkah ini.
+- Versi source tetap `0.3.1`; versi ini **dipublikasikan 2026-11-21** setelah langkah konsolidasi
+  (lihat `docs/sdk/npm-publishing.md` §12).
 
 Verifikasi:
 
