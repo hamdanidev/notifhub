@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
-import { platformClient } from '../../lib/adminClient';
+import { platformClient } from '../../lib/platformApiClient';
 import { describeError, formatDateTime } from '../../lib/format';
 import type { TenantAdmin } from '@notifhub/js';
 

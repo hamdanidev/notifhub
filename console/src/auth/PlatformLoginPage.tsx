@@ -5,7 +5,7 @@ import { Alert, Button, Form, Spinner } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { loginSchema, type LoginValues } from '../forms/schemas';
-import { platformClient } from '../lib/adminClient';
+import { platformClient } from '../lib/platformApiClient';
 import { describeError } from '../lib/format';
 import { loadPlatformSession, savePlatformSession } from '../lib/platformSession';
 

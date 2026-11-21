@@ -439,7 +439,8 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     versi, audit, preview/test send, aset, upload gambar) dan `NotifHubPlatformClient` (login,
     tenant, admin tenant, audit) masuk `@notifhub/js` source `0.3.1`; tipe template v2 dan platform
     diekspor dari paket. Console menghapus `adminTemplates.ts`, `platformClient.ts`, dan
-    `templateTypes.ts` serta memakai tiga instance dari `console/src/lib/adminClient.ts`.
+    `templateTypes.ts` serta memakai `templatesClient` dari `adminClient.ts` dan `platformClient`
+    dari modul terpisah `platformApiClient.ts` agar isolasi bundle tenant/platform tetap terjaga.
     Verifikasi: 36 SDK test (+11), 18 test console, `npm run ci` 95 s (66 unit/46 e2e/14 migrasi),
     `docs:check` 523 tautan/43 file, build tenant+platform. Tanpa perubahan backend, kontrak HTTP,
     migrasi, atau dependency; publish npm masih pending. Detail:

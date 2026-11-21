@@ -199,6 +199,7 @@ sudah tercakup e2e admin/platform yang ada.
 | `packages/js-sdk/src/index.ts` | Ekspor kelas + tipe baru |
 | `packages/js-sdk/src/admin-types.ts` | Hanya bila perlu berbagi `Paged`/`Channel`; tidak mengubah tipe v1 |
 | `console/src/lib/adminClient.ts` atau file client baru | Instance `templatesClient`/`platformClient` |
+| `console/src/lib/platformApiClient.ts` | Instance `platformClient` (dipisah untuk isolasi bundel) |
 | 9 call site console | Impor dan pemanggilan method |
 | `docs/design/console-quality-p3.md` | Catatan lanjutan P3b (tautan ke dokumen ini) |
 | `docs/architecture/project-brief.md`, `docs/README.md`, `docs/design/README.md` | Status setelah implementasi |
@@ -242,8 +243,9 @@ Yang sudah berjalan:
   `Paged<TemplateSummary>`.
 - `uploadTemplateImage` memakai `fetch` + `FormData` dengan token dari `getToken` dan memetakan
   kegagalan ke `NotifHubError`; `HttpTransport` tidak diubah.
-- Console memakai tiga instance dari `console/src/lib/adminClient.ts` (`adminClient`,
-  `templatesClient`, `platformClient`); `adminTemplates.ts`, `platformClient.ts`, dan
+- Console memakai `adminClient` + `templatesClient` dari `console/src/lib/adminClient.ts` dan
+  `platformClient` dari `console/src/lib/platformApiClient.ts` (file terpisah agar bundle tenant
+  dan platform tidak saling menarik session/client); `adminTemplates.ts`, `platformClient.ts`, dan
   `templateTypes.ts` dihapus. Sembilan call site + empat komponen tipe dimigrasikan tanpa perubahan
   perilaku UI.
 - Versi source tetap `0.3.1`; publish npm tidak dilakukan pada langkah ini.
