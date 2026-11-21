@@ -22,7 +22,7 @@ Mockup visual (buka di browser, ada pengalih opsi/lane/state):
 - [10. Pertanyaan persetujuan](#10-pertanyaan-persetujuan)
 - [11. Catatan implementasi](#11-catatan-implementasi)
 - [12. Revisi setelah review (2026-11-22)](#12-revisi-setelah-review-2026-11-22)
-- [13. Logo (draf, menunggu pilihan)](#13-logo-draf-menunggu-pilihan)
+- [13. Logo (dipilih: A · Hub, diterapkan 2026-11-22)](#13-logo-dipilih-a--hub-diterapkan-2026-11-22)
 
 ---
 
@@ -219,7 +219,7 @@ Verifikasi:
 | Pemeriksaan | Hasil |
 |---|---|
 | `npm run console:typecheck` | lulus |
-| `npm --prefix console run test` | **22** test lulus (7 file); +4 test login (`LoginShell`, `LoginPage`, `PlatformLoginPage`) |
+| `npm --prefix console run test` | **23** test lulus (8 file); +5 test login/mark (`LoginShell`, `LoginPage`, `PlatformLoginPage`, `BrandMark`) |
 | `npm run console:build` | lulus; `dist/tenant` dan `dist/platform` terbentuk |
 | Bundle isolation | tenant tanpa marker `NotifHub Platform`; platform tanpa `notifhub.console.session` |
 | Manual headless | screenshot 1440×960 tenant/platform dan 390×844 mobile; state normal/error/`passwordChanged` dicek |
@@ -249,15 +249,20 @@ Masukan yang diterapkan:
 Mockup awal `mockups/console-login-options.html` masih menampilkan ledger karena merupakan artefak
 eksplorasi; implementasi final mengikuti §11–§12.
 
-## 13. Logo (draf, menunggu pilihan)
+## 13. Logo (dipilih: A · Hub, diterapkan 2026-11-22)
 
-Tiga arah mark ada di [mockups/logo-options.html](mockups/logo-options.html):
+Mark “N” lama diganti **Hub**: satu titik pusat dengan tiga kanal. Opsi awal tetap
+terdokumentasi di [mockups/logo-options.html](mockups/logo-options.html) (A Hub, B Signal bars,
+C Notch N); **A dipilih** dan sudah diterapkan.
 
-| Opsi | Karakter | Catatan |
-|---|---|---|
-| A · Hub | Titik pusat + tiga kanal | **Rekomendasi**: paling spesifik untuk produk multi-channel, berbeda dari mark huruf, bisa dianimasikan halus |
-| B · Signal bars | Tiga baris pesan + titik status | Mudah dibaca di 16 px, tetapi lebih generik |
-| C · Notch N | Huruf N dengan diagonal terputus + titik aksen | Paling dekat dengan identitas sekarang, tanpa menyerupai Notion |
+| File | Perubahan |
+|---|---|
+| `console/src/components/BrandMark.tsx` | Komponen SVG `BrandMark` dengan varian `tenant`/`platform` |
+| `console/src/layout/AppLayout.tsx`, `PlatformLayout.tsx` | Sidebar memakai `BrandMark` |
+| `console/src/auth/LoginShell.tsx` | Mark login memakai `BrandMark` sesuai lane |
+| `console/public/favicon.svg` | Favicon diganti mark Hub |
+| `console/src/styles.css` | `.brand-mark__*` (SVG) menggantikan kotak huruf; varian platform teal |
 
-Jika A disetujui, perubahan mencakup mark sidebar tenant/platform, halaman login, `favicon.svg`,
-dan `theme-color` platform. Belum ada perubahan logo pada implementasi ini.
+Verifikasi: `BrandMark` test baru (total 23 test console), `console:typecheck`/`build`, screenshot
+login tenant/platform, dan favicon SVG tersaji oleh build. Mark tetap datar, satu warna + aksen,
+tanpa gradient/glow; pada varian platform latar menjadi teal.

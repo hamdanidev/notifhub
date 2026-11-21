@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { BrandMark } from '../components/BrandMark';
 import { Icon, type IconName } from '../components/Icon';
 
 interface NavItem {
@@ -132,7 +133,7 @@ export function AppLayout(): JSX.Element {
         aria-label="Navigasi utama"
       >
         <div className="app-brand">
-          <div className="brand-mark">N</div>
+          <BrandMark />
           <div className="brand-text">
             <div className="brand-name">NotifHub</div>
             <div className="brand-sub">Console</div>

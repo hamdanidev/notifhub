@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { BrandMark } from '../components/BrandMark';
 import { Icon, type IconName } from '../components/Icon';
 import { clearPlatformSession, loadPlatformSession } from '../lib/platformSession';
 
@@ -118,7 +119,7 @@ export function PlatformLayout(): JSX.Element {
         aria-label="Navigasi platform"
       >
         <div className="app-brand">
-          <div className="brand-mark">P</div>
+          <BrandMark variant="platform" />
           <div className="brand-text">
             <div className="brand-name">NotifHub</div>
             <div className="brand-sub">Platform</div>

@@ -466,6 +466,7 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     `LoginShell` dua kolom: panel kiri dengan signal map dekoratif (hub ke tiga kanal, garis
     putus-putus beranimasi halus), panel kanan dengan form maksimum 360 px. Ledger “Contoh alur”
     dan catatan throttle/`ADMIN_JWT_EXPIRES_IN` dihapus; login platform hanya menyisakan tautan
-    ke login tenant. Logika auth, endpoint, dan dependency tidak berubah. Verifikasi: 22 test
-    console (+4 test login), typecheck/build, isolasi bundle tenant/platform, dan screenshot
+    ke login tenant. Logika auth, endpoint, dan dependency tidak berubah. Mark “N” diganti mark
+    **Hub** (`BrandMark`, sidebar tenant/platform, login, dan `favicon.svg`). Verifikasi: 23 test
+    console (+5 test login/mark), typecheck/build, isolasi bundle tenant/platform, dan screenshot
     headless 1440×960 serta 390×844. Detail: `docs/design/console-login-experience.md` §11–§13.

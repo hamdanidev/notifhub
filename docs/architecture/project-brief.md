@@ -97,7 +97,7 @@ Aturan kerja:
 | Console P3b + lanjutan: lima method P1/P2, client template v2, dan platform client masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (36 SDK test; `0.3.1` terbit 2026-11-21) |
 | Console P3c: retensi `AdminAuditEvent` (default 730 hari, cleanup 03:45 UTC) | selesai & terverifikasi (E45; 45 e2e, 30 unit; tanpa migrasi baru) |
 | Markdown in-app (subset aman, `bodyHtml` aditif) + `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0 | selesai & terverifikasi (E47; 47 e2e/73 unit; terbit di npm) |
-| Console login tenant/platform: split panel + signal map beranimasi, form 360 px, lane terpisah | selesai & terverifikasi (22 console test; screenshot 1440/390; isolasi bundle) |
+| Console login tenant/platform: split panel + signal map beranimasi, form 360 px, mark Hub | selesai & terverifikasi (23 console test; screenshot 1440/390; isolasi bundle; favicon baru) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.4.0`, `@notifhub/react` `0.3.0`;
 `notifhub-console` `0.2.0`; Go module `github.com/hamdanidev/notifhub-go` `v0.10.0` (Go 1.23).

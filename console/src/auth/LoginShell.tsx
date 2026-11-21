@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { BrandMark } from '../components/BrandMark';
 
 export type LoginLane = 'tenant' | 'platform';
 
@@ -50,7 +51,7 @@ export function LoginShell({
       <div className="login-shell">
         <aside className="login-context">
           <div className="login-brand">
-            <span className="brand-mark">N</span>
+            <BrandMark variant={lane} />
             <span className="brand-name">NotifHub</span>
             <span className="login-lane">{LANE_LABEL[lane]}</span>
           </div>
