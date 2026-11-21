@@ -281,3 +281,6 @@ npx prisma migrate status
 8. Markdown in-app selesai (2026-11-21): subset aman dirender server-side ke `bodyHtml`,
    `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0 terbit; lihat
    `docs/design/templates/in-app-markdown-design.md`.
+9. Template P2 tersisa (belum dikerjakan, perlu draf desain + persetujuan): **impor HTML ke
+   Visual** dan **approval maker-checker/diff versi**. Keduanya sengaja diparkir agar fokus UI
+   console; rujukan batasan di `docs/design/templates/template-limitations-roadmap.md` §14.4.

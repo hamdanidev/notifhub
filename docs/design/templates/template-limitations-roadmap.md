@@ -1052,4 +1052,6 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 
 Approval maker-checker/diff dipindahkan ke task berikutnya (posisi 2) sesuai permintaan. Item
 P2 lain (impor HTML, Meta WhatsApp, parser sanitizer penuh/Playwright) tetap menunggu
-keputusan fase; markdown in-app sudah selesai 2026-11-21.
+keputusan fase; markdown in-app sudah selesai 2026-11-21. **Backlog 2026-11-21:** impor HTML ke
+Visual dan approval maker-checker/diff dicatat di `docs/architecture/project-brief.md` §7 butir 9
+dan belum dikerjakan (fokus sementara pindah ke UI console).
