@@ -127,6 +127,47 @@ describe('WahaProvider', () => {
     });
   });
 
+  it('menerima id objek WEBJS dan menormalkan _serialized', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        id: {
+          fromMe: true,
+          remote: '133943588327559@lid',
+          id: '3EB0WEBJS01',
+          $1: 'true_133943588327559@lid_3EB0WEBJS01',
+          _serialized: 'true_133943588327559@lid_3EB0WEBJS01',
+        },
+        _data: {
+          id: { _serialized: 'true_133943588327559@lid_3EB0WEBJS01', id: '3EB0WEBJS01' },
+        },
+      }),
+    );
+
+    const { provider } = createProvider('production');
+
+    await expect(provider.send(input)).resolves.toEqual({
+      providerMessageId: '3EB0WEBJS01',
+    });
+  });
+
+  it('menerima id objek tanpa _serialized dan fallback _data.id objek', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: { id: '3EB0PLAINID' } }));
+
+    const { provider } = createProvider('production');
+
+    await expect(provider.send(input)).resolves.toEqual({
+      providerMessageId: '3EB0PLAINID',
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ _data: { id: { _serialized: 'true_628123456789@c.us_3EB0DATAID' } } }),
+    );
+
+    await expect(provider.send(input)).resolves.toEqual({
+      providerMessageId: '3EB0DATAID',
+    });
+  });
+
   it('staging mengganti nomor dengan catch-all WhatsApp', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: 'true_628999999999@c.us_X' }));
 

@@ -32,26 +32,55 @@ export function toWahaChatId(phoneE164: string): string {
   return `${phoneE164.slice(1)}@c.us`;
 }
 
+/**
+ * Accepts both id shapes WAHA engines use: a plain string (`3EB0...` or `true_<jid>_<id>`)
+ * and the object form returned by browser engines such as WEBJS
+ * (`{ id: "3EB0...", _serialized: "true_<jid>_<id>" }`).
+ */
+function extractWahaIdValue(value: unknown): string | null {
+  if (typeof value === 'string' && value.length > 0) {
+    return normalizeWahaMessageId(value);
+  }
+
+  if (isRecord(value)) {
+    if (typeof value._serialized === 'string' && value._serialized.length > 0) {
+      return normalizeWahaMessageId(value._serialized);
+    }
+
+    if (typeof value.id === 'string' && value.id.length > 0) {
+      return normalizeWahaMessageId(value.id);
+    }
+  }
+
+  return null;
+}
+
 /** Accepts `key.id` (NOWEB), top-level `id`, and the engine-specific `_data.id` fallback. */
 export function extractWahaMessageId(payload: WahaSendTextResponse | null): string | null {
   if (payload === null) {
     return null;
   }
 
-  if (isRecord(payload.key) && typeof payload.key.id === 'string' && payload.key.id.length > 0) {
-    return normalizeWahaMessageId(payload.key.id);
+  if (isRecord(payload.key)) {
+    const fromKey = extractWahaIdValue(payload.key.id);
+
+    if (fromKey !== null) {
+      return fromKey;
+    }
   }
 
-  if (typeof payload.id === 'string' && payload.id.length > 0) {
-    return normalizeWahaMessageId(payload.id);
+  const direct = extractWahaIdValue(payload.id);
+
+  if (direct !== null) {
+    return direct;
   }
 
-  if (
-    isRecord(payload._data) &&
-    typeof payload._data.id === 'string' &&
-    payload._data.id.length > 0
-  ) {
-    return normalizeWahaMessageId(payload._data.id);
+  if (isRecord(payload._data)) {
+    const fromData = extractWahaIdValue(payload._data.id);
+
+    if (fromData !== null) {
+      return fromData;
+    }
   }
 
   return null;

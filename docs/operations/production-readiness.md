@@ -423,7 +423,15 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     self-hosted WAHA (`POST /api/sendText`, `X-Api-Key`) sebagai alternatif Meta; default tetap
     `meta`. Status masuk lewat webhook baru `POST /api/v1/webhooks/waha/events` dengan HMAC-SHA512
     (`X-Webhook-Hmac`) dan pemetaan `message.ack`; payload disimpan minimal tanpa `_data`/body.
-    E46 + 34 unit test menambah cakupan menjadi 46 e2e/64 unit; 14 migrasi dan tanpa dependency
-    baru. Smoke WAHA nyata berhasil untuk pengiriman + ack `sent` (termasuk perbaikan normalisasi
-    `key.id` vs ack `true_<jid>_<id>`); `delivered`/`read` menunggu nomor kedua.
+    E46 + 36 unit test menambah cakupan menjadi 46 e2e/66 unit; 14 migrasi dan tanpa dependency
+    baru. Smoke pengiriman WAHA berhasil (termasuk perbaikan normalisasi `key.id` vs ack
+    `true_<jid>_<id>`); `delivered`/`read` belum tertutup (lihat catatan 25).
     Detail: `docs/design/whatsapp-waha-provider.md` §15.
+25. **Verifikasi ack WAHA (2026-11-21).** Percobaan menutup `delivered`/`read` dengan nomor kedua
+    menunjukkan masalah di sisi WAHA `2026.10.1`: NOWEB membiarkan `ack=0`/`PENDING` dan tidak
+    memancarkan `message.ack` meskipun pesan sudah dibaca (issue upstream #1379); WEBJS menerima
+    `201` tetapi ack outbound ke kontak LID tidak datang (#2118); GOWS gagal pairing (QR channel
+    timeout/EOF) dan menyisakan database sesi tanpa tabel. `deliveredAt`/`readAt` tetap `NULL` dan
+    `delivery_events` kosong, jadi status itu **tidak diklaim**. Ditemukan dan diperbaiki bug
+    normalisasi id WEBJS (nilai id berbentuk objek `{ id, _serialized }`); dua unit test baru
+    (total 66 unit). Detail + tabel bukti: `docs/design/whatsapp-waha-provider.md` §15.4.

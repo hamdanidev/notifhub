@@ -1,7 +1,8 @@
 # Provider WhatsApp WAHA
 
-Status: **terimplementasi; verifikasi otomatis lulus; smoke WAHA nyata: kirim + ack `sent` OK,
-`delivered`/`read` menunggu nomor kedua** (2026-11-20). Lihat §15.
+Status: **terimplementasi; verifikasi otomatis lulus; smoke WAHA: kirim + ack `sent` OK;
+`delivered`/`read` belum tertutup — WAHA 2026.10.1 tidak memancarkan `message.ack` live untuk nomor
+kedua** (2026-11-21). Lihat §15.4.
 Basis: `docs/design/whatsapp.md` (provider Meta, worker, webhook), `docs/design/webhooks.md`
 (pipeline status), `src/providers/`, `src/workers/whatsapp.processor.ts`, dan dokumentasi resmi
 WAHA: [Send messages](https://waha.devlike.pro/docs/how-to/send-messages/),
@@ -154,7 +155,9 @@ Body:
 ### 5.2 Response dan error
 
 - Response 2xx dianggap sukses. Id pesan dibaca dari `key.id` (NOWEB), lalu `id`, lalu `_data.id`
-  (fallback engine lain), dan dinormalkan menjadi **bare message id** (`3EB0…`).
+  (fallback engine lain), dan dinormalkan menjadi **bare message id** (`3EB0…`). Nilai id boleh
+  berupa string atau objek engine browser (WEBJS: `{ id, _serialized }`); `_serialized` (komposit)
+  atau `id` diambil lalu dinormalkan dengan aturan yang sama.
 - `message.ack` mengirim id komposit (`true_<jid>_<id>` atau `true__<id>`); parser menormalkannya
   dengan aturan yang sama sebelum lookup `providerMessageId`, sehingga provider dan webhook tetap
   cocok meskipun bentuk id berbeda antar-engine.
@@ -459,9 +462,9 @@ Verifikasi:
 
 | Pemeriksaan | Hasil |
 |---|---|
-| `npm run test:unit` | **64** test lulus (13 suite); 34 test baru untuk WAHA |
+| `npm run test:unit` | **66** test lulus (13 suite); 36 test baru untuk WAHA |
 | `npm run test:e2e` | **46** test lulus; E46 lulus (ack DEVICE/READ, duplikat, PENDING, event asing, id tak dikenal, HMAC salah, algoritma hilang) |
-| `npm run ci` | lulus **85 s**; typecheck, build, 64 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
+| `npm run ci` | lulus **85 s**; typecheck, build, 66 unit, 46 e2e, 14 migrasi, `Database schema is up to date!` |
 | Perubahan schema/migrasi | tidak ada (tetap 14) |
 | Dependency baru | tidak ada |
 | `npm run docs:check` | lulus (511 tautan/anchor, 42 file) |
@@ -511,8 +514,38 @@ Catatan smoke:
 2. `DEVICE`/`READ` belum teramati karena pesan dikirim ke **nomor sendiri** (self-chat) dan WAHA
    NOWEB melaporkan `ack=0`/`PENDING` untuk pesan tersebut. Untuk menutup pemetaan
    `delivered`/`read`, kirim ke nomor WhatsApp kedua lalu buka pesannya; status akan diperbarui di
-   dokumen ini.
+   dokumen ini. **Koreksi 2026-11-21:** dengan nomor kedua pun NOWEB tetap `PENDING`; lihat §15.4.
 3. WEBJS sempat `FAILED` setelah logout dan browser ditutup; sesi NOWEB dibuat baru. Tidak ada
    perubahan kode yang diperlukan untuk itu, tetapi engine sebaiknya dipatok di deployment.
 4. Instance smoke, container WAHA, dan file env sementara berada di `var/` (gitignored) dan tidak
    menjadi bagian dari repo; hentikan dengan `docker rm -f notifhub-waha-smoke` setelah selesai.
+
+### 15.4 Percobaan menutup `delivered`/`read` (2026-11-21)
+
+Tujuan: memverifikasi pemetaan `DEVICE` → `delivered` dan `READ` → `read` dengan **nomor kedua**
+(+62 812-****-339), di luar self-chat. Lingkungan: WAHA `2026.10.1` (`devlikeapro/waha:latest`),
+volume `waha_smoke_sessions`, engine diuji bergantian; instance NotifHub smoke `:3199` (DB
+`notifhub_test`, Redis DB 14, mode `staging`, catch-all ke nomor kedua); webhook
+`http://host.docker.internal:3199/api/v1/webhooks/waha/events` dengan HMAC-SHA512.
+
+| Engine | Pairing | Kirim | `message.ack` / status |
+|---|---|---|---|
+| NOWEB | volume lama, `WORKING` tanpa QR | `201`; `providerMessageId` tersimpan; pesan sampai dan dibaca (konfirmasi pengguna) | `GET /api/default/chats/.../messages` tetap `ack=0`/`PENDING`; monitor WebSocket (`message.ack`, `message.any`, `engine.event`) tidak menerima `message.ack`; `deliveredAt`/`readAt` `NULL`, `delivery_events` kosong |
+| WEBJS | scan berhasil setelah `--shm-size=1g` | `201`; sebelum perbaikan, provider gagal `waha response did not include a message id` karena `id` berbentuk objek | setelah perbaikan id, `providerMessageId` tersimpan; tidak ada `message.ack` live; pesan baru tidak muncul di store `/chats/.../messages` (pola issue #2118) |
+| GOWS | QR channel berakhir `status timeout` + `WebSocket EOF`, sesi `FAILED` | `500` sebelum pairing; setelah database sesi dibersihkan: `failed to get LID ... no such table: whatsmeow_lid_map` | tidak ada ack |
+
+Perbaikan kode: `extractWahaMessageId` menerima nilai id berbentuk objek (`_serialized` atau `id`)
+dan menormalkannya ke bare id; dua unit test baru (total 66). Jalur NOWEB (`key.id`) dan default
+provider tidak berubah.
+
+Kesimpulan: `delivered`/`read` **belum terverifikasi end-to-end** dan sengaja tidak diklaim. Semua
+bukti menunjukkan masalah ada di sisi WAHA, bukan di webhook NotifHub: NOWEB tidak memancarkan ack
+([#1379](https://github.com/devlikeapro/waha/issues/1379)) dan WEBJS bisa menerima `201` tetapi ack
+outbound ke kontak LID gagal ([#2118](https://github.com/devlikeapro/waha/issues/2118)); GOWS tidak
+berhasil pairing di lingkungan ini. Pemetaan `DEVICE`/`READ` di NotifHub tetap terverifikasi lewat
+E46 dengan payload dan HMAC asli yang dihitung test.
+
+Untuk menutup smoke ini diperlukan deployment WAHA dengan receipt live yang bekerja (versi/engine
+yang memperbaiki isu di atas) atau akun pengirim yang tidak terkena batasan LID, lalu ulangi
+langkah §12.2 dan catat buktinya di sini. Self-chat tidak boleh dipakai sebagai bukti
+`delivered`/`read`.

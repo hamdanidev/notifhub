@@ -82,7 +82,7 @@ Aturan kerja:
 | Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode + block builder email (heading/teks/gambar/tombol/divider/spacer/dua kolom) | selesai & terverifikasi (E12–E20, UI manual tanpa browser automation) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
-| Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46); smoke nyata: kirim + `sent` OK, `delivered`/`read` pending nomor kedua |
+| Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46); smoke: kirim OK, `delivered`/`read` belum tertutup karena WAHA 2026.10.1 tidak memancarkan ack live (§15.4) |
 | Go SDK dari OpenAPI publik + wrapper + contoh + test | selesai & terverifikasi |
 | Preference center end-user + API preferensi publik + secret subscriber per tenant | selesai & terverifikasi |
 | Otomasi rilis: Jest e2e (E1–E40), image Docker backend/console, compose smoke stack, workflow CI | selesai & terverifikasi (CI berjalan di GitHub) |
@@ -183,7 +183,9 @@ npx prisma migrate status
 - WhatsApp hanya mengirim teks (`type: "text"`), belum approved-template Meta; inbound reply tidak
   ditangani. Provider alternatif WAHA (self-hosted, tidak resmi, `WHATSAPP_PROVIDER=waha`) tersedia
   untuk deployment yang menerima risiko banned; default tetap Meta. Lihat
-  `docs/design/whatsapp-waha-provider.md`.
+  `docs/design/whatsapp-waha-provider.md`. Smoke kirim berhasil, tetapi ack `delivered`/`read`
+  belum berfungsi di WAHA `2026.10.1` (NOWEB/WEBJS tidak memancarkan ack live); jangan mengklaim
+  status itu sampai ada deployment WAHA dengan receipt live yang terbukti (§15.4).
 - `platform_admin` sudah punya lane sendiri (`/platform/auth/*`, provisioning tenant, suspend,
   audit) dan console platform (`/platform/*` di `console/`); tenant yang di-suspend ditolak
   `403 tenant_suspended` di tiga lane. Yang belum: RBAC granular dan pengelolaan akun platform
