@@ -10,14 +10,9 @@ import { Pagination } from '../components/Pagination';
 import { QueryState } from '../components/QueryState';
 import { RefreshControl } from '../components/RefreshControl';
 import { TemplateStatusBadge } from '../components/TemplateStatusBadge';
-import {
-  activateTemplate,
-  cloneTemplate,
-  deactivateTemplate,
-  listTemplates,
-} from '../lib/adminTemplates';
+import { templatesClient } from '../lib/adminClient';
 import { describeError, formatDateTime } from '../lib/format';
-import type { Channel, TemplateStatus, TemplateSummary } from '../lib/templateTypes';
+import type { Channel, TemplateStatus, TemplateSummary } from '@notifhub/js';
 
 const LIMIT = 20;
 const CHANNEL_OPTIONS: Array<Channel | ''> = ['', 'inapp', 'email', 'whatsapp', 'sms'];
@@ -36,7 +31,7 @@ export function TemplatesPage(): JSX.Element {
   const query = useQuery({
     queryKey: ['templates', { search, channel, status, offset }],
     queryFn: () =>
-      listTemplates({
+      templatesClient.listTemplates({
         limit: LIMIT,
         offset,
         ...(search === '' ? {} : { search }),
@@ -46,7 +41,7 @@ export function TemplatesPage(): JSX.Element {
   });
 
   const deactivate = useMutation({
-    mutationFn: (id: string) => deactivateTemplate(id),
+    mutationFn: (id: string) => templatesClient.deactivateTemplate(id),
     onSuccess: () => {
       setSelected(null);
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
@@ -54,7 +49,7 @@ export function TemplatesPage(): JSX.Element {
   });
 
   const activate = useMutation({
-    mutationFn: (id: string) => activateTemplate(id),
+    mutationFn: (id: string) => templatesClient.activateTemplate(id),
     onSuccess: () => {
       setSelected(null);
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
@@ -62,7 +57,7 @@ export function TemplatesPage(): JSX.Element {
   });
 
   const clone = useMutation({
-    mutationFn: (id: string) => cloneTemplate(id, {}),
+    mutationFn: (id: string) => templatesClient.cloneTemplate(id, {}),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
       navigate(`/templates/${result.id}/edit`);
@@ -110,7 +105,7 @@ export function TemplatesPage(): JSX.Element {
             </Button>
             {row.status === 'draft' ? (
               <Link to={`/templates/${row.id}/edit`} className="btn btn-sm btn-dark">
-                Publish…
+                Publishâ€¦
               </Link>
             ) : row.active ? (
               <Button size="sm" variant="outline-danger" onClick={() => setSelected(row)}>

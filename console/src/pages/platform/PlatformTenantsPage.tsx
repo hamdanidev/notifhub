@@ -7,15 +7,9 @@ import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { PageHeader } from '../../components/PageHeader';
 import { Pagination } from '../../components/Pagination';
 import { QueryState } from '../../components/QueryState';
+import { platformClient } from '../../lib/adminClient';
 import { describeError, formatDateTime } from '../../lib/format';
-import {
-  createTenant,
-  listTenants,
-  resumeTenant,
-  suspendTenant,
-  type TenantStatus,
-  type TenantSummary,
-} from '../../lib/platformClient';
+import type { TenantStatus, TenantSummary } from '@notifhub/js';
 
 const PAGE_SIZE = 20;
 
@@ -33,7 +27,7 @@ export function PlatformTenantsPage(): JSX.Element {
   const query = useQuery({
     queryKey: ['platform-tenants', { status, q, offset }],
     queryFn: () =>
-      listTenants({
+      platformClient.listTenants({
         ...(status === '' ? {} : { status }),
         ...(q === '' ? {} : { q }),
         limit: PAGE_SIZE,
@@ -46,7 +40,7 @@ export function PlatformTenantsPage(): JSX.Element {
   };
 
   const create = useMutation({
-    mutationFn: () => createTenant({ id: newId.trim(), name: newName.trim() }),
+    mutationFn: () => platformClient.createTenant({ id: newId.trim(), name: newName.trim() }),
     onSuccess: (tenant) => {
       setCreatedId(tenant.id);
       setNewId('');
@@ -56,7 +50,7 @@ export function PlatformTenantsPage(): JSX.Element {
   });
 
   const suspend = useMutation({
-    mutationFn: (tenant: TenantSummary) => suspendTenant(tenant.id),
+    mutationFn: (tenant: TenantSummary) => platformClient.suspendTenant(tenant.id),
     onSuccess: () => {
       setSuspending(null);
       invalidate();
@@ -65,7 +59,7 @@ export function PlatformTenantsPage(): JSX.Element {
   });
 
   const resume = useMutation({
-    mutationFn: (tenant: TenantSummary) => resumeTenant(tenant.id),
+    mutationFn: (tenant: TenantSummary) => platformClient.resumeTenant(tenant.id),
     onSuccess: () => {
       invalidate();
       void queryClient.invalidateQueries({ queryKey: ['platform-tenant'] });

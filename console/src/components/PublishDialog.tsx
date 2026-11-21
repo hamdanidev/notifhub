@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
-import type { TemplateValidationIssue } from '../lib/templateTypes';
+import type { TemplateValidationIssue } from '@notifhub/js';
 
 export interface PublishDialogProps {
   show: boolean;

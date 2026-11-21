@@ -6,14 +6,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
 import { TemplateStatusBadge } from '../components/TemplateStatusBadge';
-import {
-  listTemplateAudit,
-  listTemplateTestSends,
-  listTemplateVersions,
-  rollbackTemplate,
-} from '../lib/adminTemplates';
+import { templatesClient } from '../lib/adminClient';
 import { describeError, formatDateTime } from '../lib/format';
-import type { TemplateSummary } from '../lib/templateTypes';
+import type { TemplateSummary } from '@notifhub/js';
 
 export function TemplateHistoryPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -23,22 +18,22 @@ export function TemplateHistoryPage(): JSX.Element {
 
   const versions = useQuery({
     queryKey: ['template-versions', id],
-    queryFn: () => listTemplateVersions(id ?? ''),
+    queryFn: () => templatesClient.listTemplateVersions(id ?? ''),
     enabled: id !== undefined,
   });
   const audit = useQuery({
     queryKey: ['template-audit', id],
-    queryFn: () => listTemplateAudit(id ?? '', 100, 0),
+    queryFn: () => templatesClient.listTemplateAudit(id ?? '', 100, 0),
     enabled: id !== undefined,
   });
   const testSends = useQuery({
     queryKey: ['template-test-sends', id],
-    queryFn: () => listTemplateTestSends(id ?? '', 50, 0),
+    queryFn: () => templatesClient.listTemplateTestSends(id ?? '', 50, 0),
     enabled: id !== undefined,
   });
 
   const rollback = useMutation({
-    mutationFn: (sourceVersion: number) => rollbackTemplate(id ?? '', sourceVersion),
+    mutationFn: (sourceVersion: number) => templatesClient.rollbackTemplate(id ?? '', sourceVersion),
     onSuccess: (result) => {
       setRollbackTarget(null);
       void queryClient.invalidateQueries({ queryKey: ['templates'] });

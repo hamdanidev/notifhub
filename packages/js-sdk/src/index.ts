@@ -1,5 +1,7 @@
 export { NotifHubClient } from './client';
 export { NotifHubAdminClient } from './admin-client';
+export { NotifHubTemplatesClient } from './templates-client';
+export { NotifHubPlatformClient } from './platform-client';
 export {
   NotifHubError,
   isNotifHubError,
@@ -49,6 +51,40 @@ export type {
   TopicSummary,
   UpdateTemplateInput,
 } from './admin-types';
+export type {
+  CreateTemplateV2Input,
+  LayoutAsset,
+  PartialAsset,
+  PreviewInlineInput,
+  PreviewResult,
+  TemplateAuditEvent,
+  TemplateDirection,
+  TemplateFormat,
+  TemplateImageAsset,
+  TemplateListQuery,
+  TemplateListResult,
+  TemplateMutation,
+  TemplateStatus,
+  TemplateSummary,
+  TemplateTestSendHistory,
+  TemplateValidationIssue,
+  TemplateVariableDefinition,
+  TemplateVariableSchema,
+  TestSendResult,
+  ThemeAsset,
+  UpdateTemplateV2Input,
+} from './template-types';
+export type {
+  AuditListQuery,
+  AuditListResult,
+  PlatformAuditEvent,
+  PlatformLoginResult,
+  TenantAdmin,
+  TenantListQuery,
+  TenantListResult,
+  TenantStatus,
+  TenantSummary,
+} from './platform-types';
 export type {
   ChannelPreference,
   GetNotificationsParams,

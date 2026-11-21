@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Form, Spinner } from 'react-bootstrap';
-import { uploadTemplateImage } from '../lib/adminTemplates';
+import { templatesClient } from '../lib/adminClient';
 
 export interface TemplateImageUploadProps {
   onUploaded: (url: string) => void;
@@ -30,7 +30,7 @@ export function TemplateImageUpload({
     setError(null);
 
     try {
-      const asset = await uploadTemplateImage(file);
+      const asset = await templatesClient.uploadTemplateImage(file);
       onUploaded(asset.url);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Upload gambar gagal.');

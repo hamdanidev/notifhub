@@ -94,7 +94,7 @@ Aturan kerja:
 | Console P2b: audit aksi admin tenant (tabel + API + halaman) | selesai & terverifikasi (E43; 43 e2e) |
 | Console P2c: compose/send dari console (reuse ingest) | selesai & terverifikasi (E44; 44 e2e) |
 | Console P3a: test Vitest/jsdom (18 test) di CI | selesai & terverifikasi |
-| Console P3b: lima method P1/P2 masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (25 SDK test; publish npm pending) |
+| Console P3b + lanjutan: lima method P1/P2, client template v2, dan platform client masuk `@notifhub/js` source 0.3.1 | selesai & terverifikasi (36 SDK test; publish npm pending) |
 | Console P3c: retensi `AdminAuditEvent` (default 730 hari, cleanup 03:45 UTC) | selesai & terverifikasi (E45; 45 e2e, 30 unit; tanpa migrasi baru) |
 
 Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.3.0`, `@notifhub/react` `0.2.0`;
@@ -208,9 +208,11 @@ npx prisma migrate status
   secret subscriber per API key saat create, search notifikasi **exact** ID/recipient + page size
   20/50/100, CSP, export CSV, re-send `failed`/`all` non-SMS, audit aksi admin tenant, dan
   compose/send. Re-send memakai template aktif/data Subscriber saat ini; inline override dari
-  ingest awal tidak tersimpan. Endpoint console yang belum ada di SDK terbit memakai wrapper
-  `HttpTransport` sementara. Lihat `docs/design/console-admin-hardening.md` §16 dan
-  `docs/design/console-operations-p2.md` §13–§15.
+  ingest awal tidak tersimpan. Operasi template v2 dan lane platform kini memakai
+  `NotifHubTemplatesClient`/`NotifHubPlatformClient` dari SDK; wrapper `HttpTransport` lokal sudah
+  tidak ada. Lihat `docs/design/console-admin-hardening.md` §16,
+  `docs/design/console-operations-p2.md` §13–§15, dan
+  `docs/design/console-sdk-consolidation.md`.
 - Template system v2: loop/conditional visual, MJML/juice, markdown in-app, Meta approved
   WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
   ada. Drag-and-drop/undo-redo block builder, ekspor HTML, usage count/proteksi hapus aset,
@@ -265,10 +267,10 @@ npx prisma migrate status
 5. Session/revocation token subscriber, CORS per tenant bila dibutuhkan, RBAC granular
    (`platform_readonly`), dan upgrade dependensi untuk menutup temuan `npm audit`.
 6. P3 console selesai: P3a (18 test Vitest/jsdom), P3b (lima method P1/P2 masuk `@notifhub/js`
-   source 0.3.1; publish npm pending), dan P3c (retensi `AdminAuditEvent` default 730 hari dengan
-   job 03:45 UTC; `0` menonaktifkan) — catatan dan bukti di
-   `docs/design/console-quality-p3.md` §11–§13. `adminTemplates.ts` dan `platformClient.ts` tetap
-   lokal sampai rilis SDK berikutnya.
+   source 0.3.1; publish npm pending), P3c (retensi `AdminAuditEvent` default 730 hari dengan
+   job 03:45 UTC; `0` menonaktifkan), dan lanjutan P3b (template v2 + platform client dipindahkan
+   ke SDK, 36 SDK test) — catatan dan bukti di `docs/design/console-quality-p3.md` §11–§13 dan
+   `docs/design/console-sdk-consolidation.md`.
 7. WAHA lanjutan (opsional): media/gambar, pesan masuk/reply, sesi per tenant, dan pengelolaan
    QR/session dari console. Saat ini WAHA hanya teks dan satu sesi per deployment
    (`docs/design/whatsapp-waha-provider.md` §10/§15).

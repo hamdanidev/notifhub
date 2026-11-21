@@ -462,7 +462,9 @@ Test send:
 - `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 **tidak diubah**. Console menambahkan modul
   lokal `console/src/lib/adminTemplates.ts` dan tipe lokal, memakai `HttpTransport` yang sudah
   diekspor (pola yang sama dengan `adminResend.ts`). Saat rilis SDK berikutnya, method dipindahkan
-  ke `NotifHubAdminClient`.
+  ke `NotifHubAdminClient`. **Realisasi 2026-11-21:** dipindahkan ke `NotifHubTemplatesClient`
+  (client terpisah) dan `templateTypes.ts` dihapus; lihat
+  `docs/design/console-sdk-consolidation.md`.
 - OpenAPI konsumen (`openapi/notifhub.json`) tidak berubah karena hanya memuat endpoint consumer.
   Swagger admin diperbarui.
 - Body parser admin dinaikkan khusus: middleware JSON 1 MB untuk path `/api/v1/admin`, sementara
@@ -1133,7 +1135,8 @@ Error validasi (contoh):
 - `console/src/lib/templateTypes.ts`: tipe lokal (`TemplateDetail`, `TemplateVersion`,
   `TemplateAuditEvent`, `PreviewResult`, `PublishResult`, `TestSendResult`, `LayoutVersion`,
   `ThemeVersion`, `PartialVersion`). Tipe `Template` dari SDK tetap dipakai untuk field lama;
-  field baru opsional agar kompatibel.
+  field baru opsional agar kompatibel. **Sejak 2026-11-21:** modul dan tipe ini dihapus dari
+  console dan dipindahkan ke SDK (`docs/design/console-sdk-consolidation.md`).
 - Tidak ada import `fetch`/`axios` langsung; tidak mengubah `@notifhub/js`.
 
 ### 10.2 Halaman dan komponen

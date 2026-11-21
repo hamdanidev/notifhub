@@ -5,8 +5,9 @@ import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { PageHeader } from '../../components/PageHeader';
 import { Pagination } from '../../components/Pagination';
 import { QueryState } from '../../components/QueryState';
+import { platformClient } from '../../lib/adminClient';
 import { formatDateTime } from '../../lib/format';
-import { listAuditEvents, type PlatformAuditEvent } from '../../lib/platformClient';
+import type { PlatformAuditEvent } from '@notifhub/js';
 
 const PAGE_SIZE = 50;
 
@@ -38,7 +39,7 @@ export function PlatformAuditPage(): JSX.Element {
   const query = useQuery({
     queryKey: ['platform-audit', { ...filters, offset }],
     queryFn: () =>
-      listAuditEvents({
+      platformClient.listAuditEvents({
         ...(filters.tenantId === '' ? {} : { tenantId: filters.tenantId }),
         ...(filters.action === '' ? {} : { action: filters.action }),
         ...(filters.from === '' ? {} : { from: filters.from }),

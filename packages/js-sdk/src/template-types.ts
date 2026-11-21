@@ -1,4 +1,5 @@
-export type Channel = 'inapp' | 'email' | 'whatsapp' | 'sms';
+import type { Channel, Paged } from './admin-types';
+
 export type TemplateStatus = 'draft' | 'published';
 export type TemplateFormat = 'text' | 'html' | 'markdown';
 export type TemplateDirection = 'auto' | 'ltr' | 'rtl';
@@ -10,6 +11,7 @@ export interface TemplateValidationIssue {
   severity: 'error' | 'warning';
 }
 
+/** Template v2 row returned by the tenant Admin API (`view=summary` or `view=full`). */
 export interface TemplateSummary {
   id: string;
   tenantId: string;
@@ -45,13 +47,6 @@ export interface TemplateSummary {
 
 export interface TemplateMutation extends TemplateSummary {
   validation: TemplateValidationIssue[];
-}
-
-export interface TemplateListResult {
-  items: TemplateSummary[];
-  total: number;
-  limit: number;
-  offset: number;
 }
 
 export interface TemplateVariableDefinition {
@@ -126,13 +121,6 @@ export interface TemplateTestSendHistory {
   createdAt: string;
 }
 
-export interface Paged<T> {
-  items: T[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
 export interface LayoutAsset {
   id: string;
   tenantId: string;
@@ -179,7 +167,11 @@ export interface TemplateImageAsset {
   createdAt: string;
 }
 
-export interface CreateTemplateInput {
+/**
+ * Payload for creating a template v2 row. Named with the `V2` suffix so it does not clash with
+ * the legacy `CreateTemplateInput` exported by `admin-types`.
+ */
+export interface CreateTemplateV2Input {
   key: string;
   channel: Channel;
   locale: string;
@@ -203,7 +195,8 @@ export interface CreateTemplateInput {
   note?: string;
 }
 
-export interface UpdateTemplateInput {
+/** Payload for updating a template v2 row; see `CreateTemplateV2Input` for the name. */
+export interface UpdateTemplateV2Input {
   subject?: string | null;
   preheader?: string | null;
   body?: string;
@@ -238,3 +231,15 @@ export interface PreviewInlineInput {
   themeId?: string | null;
   partialIds?: string[];
 }
+
+export interface TemplateListQuery {
+  search?: string;
+  channel?: Channel;
+  status?: TemplateStatus;
+  locale?: string;
+  limit: number;
+  offset: number;
+  view?: 'summary' | 'full';
+}
+
+export type TemplateListResult = Paged<TemplateSummary>;

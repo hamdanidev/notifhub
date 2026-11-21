@@ -14,20 +14,7 @@ import {
 import { PageHeader } from '../components/PageHeader';
 import { QueryState } from '../components/QueryState';
 import { TemplateImageUpload } from '../components/TemplateImageUpload';
-import {
-  createLayout,
-  createPartial,
-  createTheme,
-  deleteLayout,
-  deletePartial,
-  deleteTheme,
-  getLayout,
-  getPartial,
-  getTheme,
-  listLayouts,
-  listPartials,
-  listThemes,
-} from '../lib/adminTemplates';
+import { templatesClient } from '../lib/adminClient';
 import {
   DEFAULT_LAYOUT_OPTIONS,
   DEFAULT_PARTIAL_OPTIONS,
@@ -86,11 +73,11 @@ export function TemplateAssetsPage(): JSX.Element {
   const [partialOptions, setPartialOptions] = useState<PartialOptions>(DEFAULT_PARTIAL_OPTIONS);
   const [partialContent, setPartialContent] = useState('');
 
-  const layouts = useQuery({ queryKey: ['template-assets', 'layouts'], queryFn: () => listLayouts() });
-  const themes = useQuery({ queryKey: ['template-assets', 'themes'], queryFn: () => listThemes() });
+  const layouts = useQuery({ queryKey: ['template-assets', 'layouts'], queryFn: () => templatesClient.listLayouts() });
+  const themes = useQuery({ queryKey: ['template-assets', 'themes'], queryFn: () => templatesClient.listThemes() });
   const partials = useQuery({
     queryKey: ['template-assets', 'partials'],
-    queryFn: () => listPartials(),
+    queryFn: () => templatesClient.listPartials(),
   });
 
   useEffect(() => {
@@ -169,7 +156,7 @@ export function TemplateAssetsPage(): JSX.Element {
           ? parseJsonRecord(themeJson, 'Tokens theme')
           : themeTokensFromForm(themeForm);
 
-        return createTheme({ key: key.trim(), name: name.trim(), tokens });
+        return templatesClient.createTheme({ key: key.trim(), name: name.trim(), tokens });
       }
 
       if (activeType === 'layouts') {
@@ -179,7 +166,7 @@ export function TemplateAssetsPage(): JSX.Element {
           throw new Error('Konten layout wajib diisi.');
         }
 
-        return createLayout({ key: key.trim(), name: name.trim(), content });
+        return templatesClient.createLayout({ key: key.trim(), name: name.trim(), content });
       }
 
       const content = advanced ? partialContent : buildPartialHtml(partialPreset, partialOptions);
@@ -188,7 +175,7 @@ export function TemplateAssetsPage(): JSX.Element {
         throw new Error('Konten partial wajib diisi.');
       }
 
-      return createPartial({ key: key.trim(), name: name.trim(), content });
+      return templatesClient.createPartial({ key: key.trim(), name: name.trim(), content });
     },
     onSuccess: (asset) => {
       setFormError(null);
@@ -204,14 +191,14 @@ export function TemplateAssetsPage(): JSX.Element {
   const remove = useMutation({
     mutationFn: async (input: { type: AssetType; row: AssetRow }) => {
       if (input.type === 'themes') {
-        return deleteTheme(input.row.id);
+        return templatesClient.deleteTheme(input.row.id);
       }
 
       if (input.type === 'layouts') {
-        return deleteLayout(input.row.id);
+        return templatesClient.deleteLayout(input.row.id);
       }
 
-      return deletePartial(input.row.id);
+      return templatesClient.deletePartial(input.row.id);
     },
     onSuccess: (_result, input) => {
       setFormError(null);
@@ -230,16 +217,16 @@ export function TemplateAssetsPage(): JSX.Element {
 
     try {
       if (activeType === 'themes') {
-        const detail = await getTheme(row.id);
+        const detail = await templatesClient.getTheme(row.id);
         setThemeForm(themeFormFromTokens(detail.tokens));
         setThemeJson(JSON.stringify(detail.tokens ?? {}, null, 2));
         setAdvanced(false);
       } else if (activeType === 'layouts') {
-        const detail = await getLayout(row.id);
+        const detail = await templatesClient.getLayout(row.id);
         setLayoutContent(detail.content ?? '');
         setAdvanced(true);
       } else {
-        const detail = await getPartial(row.id);
+        const detail = await templatesClient.getPartial(row.id);
         setPartialContent(detail.content ?? '');
         setAdvanced(true);
       }

@@ -384,7 +384,9 @@ Desain dan batasan ada di `docs/design/templates/template-system-design.md`.
 - `/templates/assets`: membuat versi baru layout/theme/partial; tidak ada edit in-place.
 - `/templates/:id/history`: versi, audit, test send, dan rollback (membuat draft baru).
 - Console memakai wrapper `HttpTransport` di `console/src/lib/adminTemplates.ts`; paket
-  `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 tidak diubah.
+  `@notifhub/js` 0.3.0 dan `@notifhub/react` 0.2.0 tidak diubah. **Sejak 2026-11-21:** wrapper
+  template dan platform dipindahkan ke SDK (`NotifHubTemplatesClient`/`NotifHubPlatformClient`);
+  lihat `docs/design/console-sdk-consolidation.md`.
 - Router console memakai `createBrowserRouter` agar editor bisa memakai `useBlocker` untuk
   perubahan belum disimpan.
 

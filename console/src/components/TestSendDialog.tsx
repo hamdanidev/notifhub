@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
-import type { Channel, TestSendResult } from '../lib/templateTypes';
+import type { Channel, TestSendResult } from '@notifhub/js';
 
 export interface TestSendDialogProps {
   show: boolean;

@@ -435,3 +435,12 @@ login admin → `200`; `POST /notify` → `202`; console `http://localhost:8080`
     `delivery_events` kosong, jadi status itu **tidak diklaim**. Ditemukan dan diperbaiki bug
     normalisasi id WEBJS (nilai id berbentuk objek `{ id, _serialized }`); dua unit test baru
     (total 66 unit). Detail + tabel bukti: `docs/design/whatsapp-waha-provider.md` §15.4.
+26. **Konsolidasi SDK template & platform (2026-11-21).** `NotifHubTemplatesClient` (template v2,
+    versi, audit, preview/test send, aset, upload gambar) dan `NotifHubPlatformClient` (login,
+    tenant, admin tenant, audit) masuk `@notifhub/js` source `0.3.1`; tipe template v2 dan platform
+    diekspor dari paket. Console menghapus `adminTemplates.ts`, `platformClient.ts`, dan
+    `templateTypes.ts` serta memakai tiga instance dari `console/src/lib/adminClient.ts`.
+    Verifikasi: 36 SDK test (+11), 18 test console, `npm run ci` 95 s (66 unit/46 e2e/14 migrasi),
+    `docs:check` 523 tautan/43 file, build tenant+platform. Tanpa perubahan backend, kontrak HTTP,
+    migrasi, atau dependency; publish npm masih pending. Detail:
+    `docs/design/console-sdk-consolidation.md` §11.

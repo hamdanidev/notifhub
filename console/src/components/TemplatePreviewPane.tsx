@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Alert, Badge, Button, ButtonGroup, Card, Spinner } from 'react-bootstrap';
-import type { PreviewResult } from '../lib/templateTypes';
+import type { PreviewResult } from '@notifhub/js';
 
 export interface TemplatePreviewPaneProps {
   preview: PreviewResult | null;

@@ -580,7 +580,9 @@ Perubahan teknis:
   `tenantId`).
 - `console/src/lib/platformClient.ts`: `HttpTransport` dari `@notifhub/js` dengan base
   `/api/v1/platform` dan token platform — pola yang sama dengan
-  `console/src/lib/adminResend.ts` (SDK terbit tidak diubah).
+  `console/src/lib/adminResend.ts` (SDK terbit tidak diubah). **Sejak 2026-11-21:** pindah ke
+  `NotifHubPlatformClient` di SDK dan file console dihapus; lihat
+  `docs/design/console-sdk-consolidation.md`.
 - `ProtectedRoute` menjadi role-aware: rute tenant butuh `tenant_admin`, rute platform butuh
   `platform_admin`; role yang salah diarahkan ke beranda role-nya, bukan sekadar `401`.
 - `AppLayout` tetap untuk tenant; `PlatformLayout` memakai design system console yang sama

@@ -1,4 +1,4 @@
-import type { TemplateStatus } from '../lib/templateTypes';
+import type { TemplateStatus } from '@notifhub/js';
 
 export function TemplateStatusBadge({ status }: { status: TemplateStatus }): JSX.Element {
   return (

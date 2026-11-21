@@ -5,8 +5,8 @@ import { Alert, Button, Form, Spinner } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { loginSchema, type LoginValues } from '../forms/schemas';
+import { platformClient } from '../lib/adminClient';
 import { describeError } from '../lib/format';
-import { loginPlatform } from '../lib/platformClient';
 import { loadPlatformSession, savePlatformSession } from '../lib/platformSession';
 
 function platformLoginError(error: unknown): string {
@@ -41,7 +41,7 @@ export function PlatformLoginPage(): JSX.Element {
     setError(null);
 
     try {
-      const result = await loginPlatform(values.email, values.password);
+      const result = await platformClient.login(values.email, values.password);
       savePlatformSession(result.accessToken, result.expiresIn, result.admin);
       navigate('/platform/tenants', { replace: true });
     } catch (caught: unknown) {

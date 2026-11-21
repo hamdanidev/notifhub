@@ -6,18 +6,9 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
+import { platformClient } from '../../lib/adminClient';
 import { describeError, formatDateTime } from '../../lib/format';
-import {
-  createTenantAdmin,
-  deleteTenant,
-  getTenant,
-  listTenantAdmins,
-  renameTenant,
-  resumeTenant,
-  suspendTenant,
-  updateTenantAdmin,
-  type TenantAdmin,
-} from '../../lib/platformClient';
+import type { TenantAdmin } from '@notifhub/js';
 
 export function PlatformTenantDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -35,13 +26,13 @@ export function PlatformTenantDetailPage(): JSX.Element {
 
   const tenant = useQuery({
     queryKey: ['platform-tenant', tenantId],
-    queryFn: () => getTenant(tenantId),
+    queryFn: () => platformClient.getTenant(tenantId),
     enabled: tenantId.length > 0,
   });
 
   const admins = useQuery({
     queryKey: ['platform-tenant-admins', tenantId],
-    queryFn: () => listTenantAdmins(tenantId),
+    queryFn: () => platformClient.listTenantAdmins(tenantId),
     enabled: tenantId.length > 0,
   });
 
@@ -61,13 +52,13 @@ export function PlatformTenantDetailPage(): JSX.Element {
   };
 
   const rename = useMutation({
-    mutationFn: () => renameTenant(tenantId, name.trim()),
+    mutationFn: () => platformClient.renameTenant(tenantId, name.trim()),
     onSuccess: invalidateTenant,
   });
 
   const setStatus = useMutation({
     mutationFn: (action: 'suspend' | 'resume') =>
-      action === 'suspend' ? suspendTenant(tenantId) : resumeTenant(tenantId),
+      action === 'suspend' ? platformClient.suspendTenant(tenantId) : platformClient.resumeTenant(tenantId),
     onSuccess: () => {
       setSuspendOpen(false);
       invalidateTenant();
@@ -76,7 +67,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
 
   const createAdmin = useMutation({
     mutationFn: () =>
-      createTenantAdmin(tenantId, {
+      platformClient.createTenantAdmin(tenantId, {
         email: adminEmail.trim(),
         password: adminPassword,
       }),
@@ -94,7 +85,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
         throw new Error('Tidak ada admin yang dipilih.');
       }
 
-      return updateTenantAdmin(tenantId, passwordTarget.id, { password: passwordValue });
+      return platformClient.updateTenantAdmin(tenantId, passwordTarget.id, { password: passwordValue });
     },
     onSuccess: () => {
       setPasswordTarget(null);
@@ -105,7 +96,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
 
   const toggleAdmin = useMutation({
     mutationFn: (admin: TenantAdmin) =>
-      updateTenantAdmin(tenantId, admin.id, { active: !admin.active }),
+      platformClient.updateTenantAdmin(tenantId, admin.id, { active: !admin.active }),
     onSuccess: () => {
       invalidateAdmins();
       invalidateTenant();
@@ -113,7 +104,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteTenant(tenantId),
+    mutationFn: () => platformClient.deleteTenant(tenantId),
     onSuccess: () => {
       setDeleteOpen(false);
       void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });

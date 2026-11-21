@@ -85,7 +85,9 @@ Tambahkan ke `NotifHubAdminClient` + tipe di `packages/js-sdk/src`:
 | `composeNotification(input)` | `console/src/lib/adminCompose.ts` |
 
 - `adminTemplates.ts` dan `platformClient.ts` tetap lokal pada P3 ini karena surface-nya besar dan
-  belum stabil; dicatat sebagai lanjutan.
+  belum stabil; dicatat sebagai lanjutan. **Lanjutan 2026-11-21:** keduanya sudah dipindahkan ke
+  `NotifHubTemplatesClient` dan `NotifHubPlatformClient` di SDK; lihat
+  `docs/design/console-sdk-consolidation.md`.
 - Console mengganti import ke `adminClient` dan menghapus lima wrapper.
 - `@notifhub/js` dinaikkan ke **0.3.1** di source dan package console tetap memakai workspace
   (`file:../packages/js-sdk`).
@@ -228,7 +230,9 @@ Catatan:
 
 1. **Belum publish npm.** Registry masih `0.3.0`; konsumen npm belum mendapat lima method ini sampai
    proses rilis patch dijalankan.
-2. `adminTemplates.ts` dan `platformClient.ts` tetap lokal; surface-nya besar dan belum stabil.
+2. `adminTemplates.ts` dan `platformClient.ts` awalnya tetap lokal; keduanya dipindahkan ke SDK pada
+   2026-11-21 (`docs/design/console-sdk-consolidation.md`) sehingga paket source `0.3.1` memuat
+   surface template v2 dan platform.
 3. Tipe export menambah `ExportNotificationsQuery` (termasuk `offset` dari `ListQuery`) meskipun
    endpoint export tidak memakai offset; nilai itu tidak dikirim oleh console.
 4. Tidak ada perubahan kontrak HTTP; hanya pemindahan pemanggilan ke SDK.

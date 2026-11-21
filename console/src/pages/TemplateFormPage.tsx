@@ -27,18 +27,7 @@ import { QueryState } from '../components/QueryState';
 import { TemplatePreviewPane } from '../components/TemplatePreviewPane';
 import { TemplateStatusBadge } from '../components/TemplateStatusBadge';
 import { TestSendDialog } from '../components/TestSendDialog';
-import {
-  cloneTemplate,
-  createTemplate,
-  getTemplate,
-  listLayouts,
-  listPartials,
-  listThemes,
-  previewInline,
-  publishTemplate,
-  testSendTemplate,
-  updateTemplate,
-} from '../lib/adminTemplates';
+import { templatesClient } from '../lib/adminClient';
 import { describeError } from '../lib/format';
 import {
   defaultBlockDocument,
@@ -54,7 +43,7 @@ import type {
   TemplateSummary,
   TemplateValidationIssue,
   TestSendResult,
-} from '../lib/templateTypes';
+} from '@notifhub/js';
 
 interface TemplateFormState {
   key: string;
@@ -202,15 +191,15 @@ export function TemplateFormPage(): JSX.Element {
 
   const existing = useQuery({
     queryKey: ['template', id],
-    queryFn: () => getTemplate(id ?? ''),
+    queryFn: () => templatesClient.getTemplate(id ?? ''),
     enabled: isEdit,
   });
 
-  const layouts = useQuery({ queryKey: ['template-assets', 'layouts'], queryFn: () => listLayouts() });
-  const themes = useQuery({ queryKey: ['template-assets', 'themes'], queryFn: () => listThemes() });
+  const layouts = useQuery({ queryKey: ['template-assets', 'layouts'], queryFn: () => templatesClient.listLayouts() });
+  const themes = useQuery({ queryKey: ['template-assets', 'themes'], queryFn: () => templatesClient.listThemes() });
   const partials = useQuery({
     queryKey: ['template-assets', 'partials'],
-    queryFn: () => listPartials(),
+    queryFn: () => templatesClient.listPartials(),
   });
 
   useEffect(() => {
@@ -413,7 +402,7 @@ export function TemplateFormPage(): JSX.Element {
     setPreviewError(null);
 
     try {
-      const result = await previewInline(buildPreviewInput());
+      const result = await templatesClient.previewInline(buildPreviewInput());
 
       if (requestRef.current === requestId) {
         setPreview(result);
@@ -467,13 +456,13 @@ export function TemplateFormPage(): JSX.Element {
       };
 
       if (isEdit && current !== null) {
-        return updateTemplate(current.id, {
+        return templatesClient.updateTemplate(current.id, {
           ...payload,
           expectedRevision: current.revision,
         });
       }
 
-      return createTemplate({
+      return templatesClient.createTemplate({
         ...payload,
         key: form.key,
         channel: form.channel,
@@ -519,7 +508,7 @@ export function TemplateFormPage(): JSX.Element {
         throw new Error('Simpan draft sebelum publish.');
       }
 
-      return publishTemplate(current.id, current.revision, note);
+      return templatesClient.publishTemplate(current.id, current.revision, note);
     },
     onSuccess: (result) => {
       setActionError(null);
@@ -553,7 +542,7 @@ export function TemplateFormPage(): JSX.Element {
         throw new Error('Simpan draft sebelum test kirim.');
       }
 
-      return testSendTemplate(current.id, {
+      return templatesClient.testSendTemplate(current.id, {
         recipient,
         ...(parsed.sampleData === null ? {} : { sampleData: parsed.sampleData }),
       });
@@ -571,7 +560,7 @@ export function TemplateFormPage(): JSX.Element {
         throw new Error('Template belum tersimpan.');
       }
 
-      return cloneTemplate(current.id, {});
+      return templatesClient.cloneTemplate(current.id, {});
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['templates'] });
