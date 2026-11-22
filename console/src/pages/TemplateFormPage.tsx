@@ -170,6 +170,7 @@ function builderWarningIfDropped(
 export function TemplateFormPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const { session } = useAuth();
+  const isApprover = session?.admin.role === 'tenant_approver';
   const isEdit = id !== undefined;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -201,11 +202,20 @@ export function TemplateFormPage(): JSX.Element {
     enabled: isEdit,
   });
 
-  const layouts = useQuery({ queryKey: ['template-assets', 'layouts'], queryFn: () => templatesClient.listLayouts() });
-  const themes = useQuery({ queryKey: ['template-assets', 'themes'], queryFn: () => templatesClient.listThemes() });
+  const layouts = useQuery({
+    queryKey: ['template-assets', 'layouts'],
+    queryFn: () => templatesClient.listLayouts(),
+    enabled: !isApprover,
+  });
+  const themes = useQuery({
+    queryKey: ['template-assets', 'themes'],
+    queryFn: () => templatesClient.listThemes(),
+    enabled: !isApprover,
+  });
   const partials = useQuery({
     queryKey: ['template-assets', 'partials'],
     queryFn: () => templatesClient.listPartials(),
+    enabled: !isApprover,
   });
 
   useEffect(() => {
@@ -292,7 +302,6 @@ export function TemplateFormPage(): JSX.Element {
     }
   }, [blocker]);
 
-  const isApprover = session?.admin.role === 'tenant_approver';
   const readOnly = current?.status === 'published' || isApprover;
 
   const changeEditorMode = (mode: 'visual' | 'html'): void => {
@@ -715,9 +724,11 @@ export function TemplateFormPage(): JSX.Element {
                   <Nav.Item>
                     <Nav.Link eventKey="variables">Variabel</Nav.Link>
                   </Nav.Item>
-                  <Nav.Item>
-                    <Nav.Link eventKey="assets">Aset</Nav.Link>
-                  </Nav.Item>
+                  {isApprover ? null : (
+                    <Nav.Item>
+                      <Nav.Link eventKey="assets">Aset</Nav.Link>
+                    </Nav.Item>
+                  )}
                   <Nav.Item>
                     <Nav.Link eventKey="settings">Pengaturan</Nav.Link>
                   </Nav.Item>

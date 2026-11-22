@@ -935,7 +935,7 @@ env).
 | Platform | Role approver saat membuat admin tenant (default `tenant_admin`), kolom peran, `PATCH /platform/tenants/:id` menerima `templateApprovalMode` + audit `tenant.approval_mode.changed` |
 | Bootstrap | `APPROVER_EMAIL`/`APPROVER_PASSWORD_HASH` (tenant default) dan `TEMPLATE_APPROVAL_MODE`; env mode diabaikan saat platform admin aktif; warning `template.approval.approver_missing` |
 | SDK source | Tipe approval/diff + `submitReview`, `listTemplateApprovals`, `queueApprovals`, `approveApproval`, `rejectApproval`, `diffTemplate`, `publishTemplate(..., selfApprovalReason)` |
-| Console | Sesi/route menerima approver; nav terpisah; halaman `/reviews` dan `/templates/:id/compare`; panel approval di editor; dialog publish meminta alasan pada mode longgar; badge self-approved |
+| Console | Sesi/route menerima approver; landing `/reviews` dan redirect dari halaman admin; nav terpisah; halaman `/reviews` dan `/templates/:id/compare`; panel approval di editor; dialog publish meminta alasan pada mode longgar; badge self-approved |
 | Test | Unit policy + diff; e2e E48–E57; helper submit/approve; test lama memakai helper; test env membuat approver dari env |
 
 ### 17.2 Deviasi dan keputusan tambahan
@@ -956,9 +956,9 @@ env).
 5. **Deteksi stale** juga mencari approval `approved` terakhir pada baris template yang sama bila
    revisi saat ini belum punya approval, sehingga edit setelah review menghasilkan
    `approval_stale`, bukan `approval_required`.
-6. **UI console baru belum punya unit test khusus**; verifikasinya lewat `console:typecheck`,
-   `console:build`, dan e2e backend. Interaksi browser tetap manual (batasan repo, tanpa
-   Playwright).
+6. **UI console**: routing approver (redirect dari dashboard/halaman admin ke `/reviews`) diuji
+   dengan Vitest; halaman review/compare belum punya unit test khusus. Interaksi browser tetap
+   manual (batasan repo, tanpa Playwright).
 7. **Versi paket tidak dinaikkan** di task ini: `@notifhub/js` tetap `0.4.0` (source bertambah),
    console `0.2.0`, root `0.11.0`. Rilis/publikasi npm menunggu persetujuan terpisah.
 8. **Console tidak menampilkan mode approval di halaman Akun**; mode hanya ditampilkan di platform

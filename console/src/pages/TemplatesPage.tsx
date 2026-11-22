@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { ChannelBadge } from '../components/ChannelBadge';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../components/DataTable';
@@ -21,6 +22,8 @@ const STATUS_OPTIONS: Array<TemplateStatus | ''> = ['', 'draft', 'published'];
 export function TemplatesPage(): JSX.Element {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const isApprover = session?.admin.role === 'tenant_approver';
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [channel, setChannel] = useState<Channel | ''>('');
@@ -93,42 +96,64 @@ export function TemplatesPage(): JSX.Element {
         cell: (row) => (
           <div className="d-flex gap-2 justify-content-end flex-wrap">
             <Link to={`/templates/${row.id}/edit`} className="btn btn-sm btn-outline-primary">
-              {row.status === 'draft' ? 'Edit' : 'Lihat'}
+              {row.status === 'draft' && !isApprover ? 'Edit' : 'Lihat'}
             </Link>
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              onClick={() => clone.mutate(row.id)}
-              disabled={clone.isPending}
-            >
-              Clone
-            </Button>
-            {row.status === 'draft' ? (
-              <Link to={`/templates/${row.id}/edit`} className="btn btn-sm btn-dark">
-                Publishâ€¦
-              </Link>
-            ) : row.active ? (
-              <Button size="sm" variant="outline-danger" onClick={() => setSelected(row)}>
-                Nonaktifkan
-              </Button>
+            {isApprover ? (
+              <>
+                <Link
+                  to={`/templates/${row.id}/compare`}
+                  className="btn btn-sm btn-outline-secondary"
+                >
+                  Bandingkan
+                </Link>
+                <Link
+                  to={`/templates/${row.id}/history`}
+                  className="btn btn-sm btn-outline-secondary"
+                >
+                  Riwayat
+                </Link>
+              </>
             ) : (
-              <Button
-                size="sm"
-                variant="outline-success"
-                onClick={() => activate.mutate(row.id)}
-                disabled={activate.isPending}
-              >
-                Aktifkan
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  onClick={() => clone.mutate(row.id)}
+                  disabled={clone.isPending}
+                >
+                  Clone
+                </Button>
+                {row.status === 'draft' ? (
+                  <Link to={`/templates/${row.id}/edit`} className="btn btn-sm btn-dark">
+                    Publish…
+                  </Link>
+                ) : row.active ? (
+                  <Button size="sm" variant="outline-danger" onClick={() => setSelected(row)}>
+                    Nonaktifkan
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline-success"
+                    onClick={() => activate.mutate(row.id)}
+                    disabled={activate.isPending}
+                  >
+                    Aktifkan
+                  </Button>
+                )}
+                <Link
+                  to={`/templates/${row.id}/history`}
+                  className="btn btn-sm btn-outline-secondary"
+                >
+                  Riwayat
+                </Link>
+              </>
             )}
-            <Link to={`/templates/${row.id}/history`} className="btn btn-sm btn-outline-secondary">
-              Riwayat
-            </Link>
           </div>
         ),
       },
     ],
-    [activate.isPending, clone],
+    [activate.isPending, clone, isApprover],
   );
 
   return (
@@ -145,12 +170,16 @@ export function TemplatesPage(): JSX.Element {
                 void query.refetch();
               }}
             />
-            <Link to="/templates/assets" className="btn btn-outline-secondary btn-sm">
-              Aset template
-            </Link>
-            <Link to="/templates/new" className="btn btn-primary btn-sm">
-              Template baru
-            </Link>
+            {isApprover ? null : (
+              <>
+                <Link to="/templates/assets" className="btn btn-outline-secondary btn-sm">
+                  Aset template
+                </Link>
+                <Link to="/templates/new" className="btn btn-primary btn-sm">
+                  Template baru
+                </Link>
+              </>
+            )}
           </>
         }
       />
