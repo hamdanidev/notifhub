@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ensureTenant } from '../../tenants/ensure-tenant';
-import { PLATFORM_ADMIN_ROLE, TENANT_ADMIN_ROLE } from './admin.types';
+import { PLATFORM_ADMIN_ROLE, TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE } from './admin.types';
 
 /**
  * Bootstraps the accounts that come from the environment:
@@ -40,6 +40,148 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
 
     await this.bootstrapTenantAdmin(tenantId);
     await this.bootstrapPlatformAdmin();
+    await this.bootstrapApprover(tenantId);
+    await this.bootstrapApprovalMode(tenantId);
+  }
+
+  private async bootstrapApprover(tenantId: string): Promise<void> {
+    const rawEmail = this.config.get<string>('APPROVER_EMAIL');
+    const passwordHash = this.config.get<string>('APPROVER_PASSWORD_HASH');
+
+    if (rawEmail === undefined || passwordHash === undefined) {
+      await this.warnIfNoApprover(tenantId);
+      return;
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+    const adminEmail = this.config.getOrThrow<string>('ADMIN_EMAIL').trim().toLowerCase();
+
+    if (email === adminEmail) {
+      throw new Error('APPROVER_EMAIL must differ from ADMIN_EMAIL; use a second account');
+    }
+
+    const existing = await this.prisma.adminUser.findUnique({ where: { email } });
+
+    if (existing === null) {
+      await this.prisma.adminUser.create({
+        data: {
+          email,
+          passwordHash,
+          bootstrapPasswordHash: passwordHash,
+          role: TENANT_APPROVER_ROLE,
+          tenantId,
+          active: true,
+        },
+      });
+
+      this.logger.info(
+        { event: 'approver.bootstrap.created', tenant_id: tenantId },
+        'bootstrap approver user created',
+      );
+
+      return;
+    }
+
+    if (existing.role !== TENANT_APPROVER_ROLE || existing.tenantId !== tenantId) {
+      throw new Error(
+        `APPROVER_EMAIL (${email}) is already used by another account; pick another email`,
+      );
+    }
+
+    const sync = this.passwordSync(existing, passwordHash);
+    const accountChanged = !existing.active;
+
+    if (sync.shouldSyncPassword || sync.shouldTrackEnvHash || accountChanged) {
+      await this.prisma.adminUser.update({
+        where: { id: existing.id },
+        data: {
+          ...(sync.shouldSyncPassword
+            ? { passwordHash, tokenVersion: { increment: 1 } }
+            : {}),
+          ...(sync.shouldTrackEnvHash ? { bootstrapPasswordHash: passwordHash } : {}),
+          active: true,
+        },
+      });
+
+      this.logger.info(
+        { event: 'approver.bootstrap.updated', admin_id: existing.id, tenant_id: tenantId },
+        'bootstrap approver user updated from environment',
+      );
+
+      return;
+    }
+
+    this.logger.info(
+      { event: 'approver.bootstrap.ready', admin_id: existing.id, tenant_id: tenantId },
+      'bootstrap approver user is up to date',
+    );
+  }
+
+  private async bootstrapApprovalMode(tenantId: string): Promise<void> {
+    const envMode = this.config.get<'two_person' | 'self_approval_allowed'>(
+      'TEMPLATE_APPROVAL_MODE',
+    );
+
+    const platformAdmins = await this.prisma.adminUser.count({
+      where: { role: PLATFORM_ADMIN_ROLE, tenantId: null, active: true },
+    });
+
+    if (platformAdmins > 0) {
+      if (envMode !== undefined) {
+        this.logger.warn(
+          { event: 'tenant.approval_mode.env_ignored', mode: envMode },
+          'TEMPLATE_APPROVAL_MODE is ignored while the platform lane is active; use the platform console',
+        );
+      }
+
+      return;
+    }
+
+    const mode: 'two_person' | 'self_approval_allowed' = envMode ?? 'two_person';
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { templateApprovalMode: true },
+    });
+
+    if (tenant === null || tenant.templateApprovalMode === mode) {
+      return;
+    }
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { templateApprovalMode: mode },
+    });
+
+    this.logger.info(
+      { event: 'tenant.approval_mode.bootstrap', tenant_id: tenantId, mode },
+      'template approval mode applied from environment',
+    );
+  }
+
+  private async warnIfNoApprover(tenantId: string): Promise<void> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { templateApprovalMode: true },
+    });
+
+    if (tenant?.templateApprovalMode === 'self_approval_allowed') {
+      this.logger.info(
+        { event: 'template.approval.self_approval_mode', tenant_id: tenantId },
+        'template approval mode allows self-approval; no approver account required',
+      );
+      return;
+    }
+
+    const approvers = await this.prisma.adminUser.count({
+      where: { tenantId, role: TENANT_APPROVER_ROLE, active: true },
+    });
+
+    if (approvers === 0) {
+      this.logger.warn(
+        { event: 'template.approval.approver_missing', tenant_id: tenantId },
+        'publishing templates requires an approver account; set APPROVER_EMAIL/APPROVER_PASSWORD_HASH or add one from the platform lane',
+      );
+    }
   }
 
   private async bootstrapTenantAdmin(tenantId: string): Promise<void> {

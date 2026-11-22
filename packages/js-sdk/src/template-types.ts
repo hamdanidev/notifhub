@@ -243,3 +243,104 @@ export interface TemplateListQuery {
 }
 
 export type TemplateListResult = Paged<TemplateSummary>;
+
+export type TemplateApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface TemplateApproval {
+  id: string;
+  templateId: string;
+  templateVersion: number;
+  revision: number;
+  status: TemplateApprovalStatus;
+  requestedBy: { adminId: string; email: string };
+  requestedNote: string | null;
+  reviewedBy: { adminId: string; email: string } | null;
+  reviewNote: string | null;
+  selfApproved: boolean;
+  selfApprovalReason: string | null;
+  requestedAt: string;
+  reviewedAt: string | null;
+  stale: boolean;
+}
+
+export interface TemplateApprovalQueueItem extends TemplateApproval {
+  templateKey: string;
+  channel: string;
+  locale: string;
+  templateSubject: string | null;
+  templateStatus: string;
+  templateActive: boolean;
+}
+
+export interface TemplateApprovalList {
+  items: TemplateApproval[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface TemplateApprovalQueue {
+  items: TemplateApprovalQueueItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface TemplateApprovalQuery {
+  status?: TemplateApprovalStatus;
+  templateId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TemplateDiffHunk {
+  type: 'equal' | 'added' | 'removed';
+  value: string;
+}
+
+export interface TemplateDiffVersion {
+  id: string;
+  version: number;
+  revision: number;
+  status: string;
+  updatedAt: string;
+  builderAvailable: boolean;
+}
+
+export interface TemplateDiffField {
+  field: 'subject' | 'preheader' | 'body';
+  changed: boolean;
+  mode: 'word' | 'line';
+  hunks: TemplateDiffHunk[];
+  addedLines?: number;
+  removedLines?: number;
+  truncated: boolean;
+}
+
+export interface TemplateDiffBlockChange {
+  index: number;
+  type: string;
+  fields: string[];
+}
+
+export interface TemplateDiffResult {
+  templateId: string;
+  key: string;
+  channel: string;
+  locale: string;
+  from: TemplateDiffVersion;
+  to: TemplateDiffVersion;
+  fields: TemplateDiffField[];
+  blocks: {
+    available: boolean;
+    added: number;
+    removed: number;
+    changed: TemplateDiffBlockChange[];
+    truncated: boolean;
+  };
+  rendered: {
+    from: { html: string | null; text: string | null; bytes: number; error: string | null };
+    to: { html: string | null; text: string | null; bytes: number; error: string | null };
+  };
+  truncated: boolean;
+}

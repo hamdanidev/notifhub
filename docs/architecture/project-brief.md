@@ -81,6 +81,7 @@ Aturan kerja:
 | Console refresh/auto-refresh + resend failed (notification baru, audit link) | selesai & terverifikasi (tanpa browser automation) |
 | Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode + block builder email (heading/teks/gambar/tombol/divider/spacer/dua kolom) | selesai & terverifikasi (E12–E20, UI manual tanpa browser automation) |
 | Template P2: impor HTML ke Visual (subset kecil: heading, paragraf, gambar, tombol, divider) | selesai & terverifikasi (2026-11-22; 55 console test; E2E manual API + DB; lihat `docs/design/templates/html-import-design.md`) |
+| Template P2: approval maker-checker (role `tenant_approver`, gate publish, antrean review) + diff versi | selesai & terverifikasi (2026-11-22; 85 unit, 56 e2e, 16 migrasi; lihat `docs/design/templates/template-approval-diff-design.md`) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46); smoke: kirim OK, `delivered`/`read` belum tertutup karena WAHA 2026.10.1 tidak memancarkan ack live (§15.4) |
@@ -112,7 +113,7 @@ Versi saat ini: root `0.11.0`; npm `@notifhub/js` `0.4.0`, `@notifhub/react` `0.
   `routing/`, `preferences/`, `subscriber-preferences/`, `templates/`, `subscribers/`,
   `notifications/`, `cleanup/`, `queues/`, `metrics/`, `health/`, `config/`, `common/`.
   `src/bootstrap.ts` mengekspor `createApp()` yang dipakai `src/main.ts` dan test e2e.
-- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (14 migrasi).
+- `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/` (16 migrasi).
 - `test/` — suite Jest e2e (`app.e2e-spec.ts`, `env.ts`, `setup/`, `jest-e2e.json`).
 - `Dockerfile` (backend, target `runner`/`migrator`), `console/Dockerfile` (target
   `runner-tenant`/`runner-platform`), `console/nginx/*.template`, `console/nginx/check-platform-url.sh`,
@@ -217,7 +218,12 @@ npx prisma migrate status
   `docs/design/console-operations-p2.md` §13–§15, dan
   `docs/design/console-sdk-consolidation.md`.
 - Template system v2: loop/conditional visual, MJML/juice, Meta approved
-  WhatsApp template, diff visual versi, dan approval maker-checker belum ada. **Impor HTML ke
+  WhatsApp template, dan diff pixel/gambar belum ada. **Approval maker-checker** tersedia untuk
+  semua channel: role `tenant_approver` (dibuat lewat lane platform atau env single tenant), gate
+  publish berbasis revisi (`approval_required`/`approval_stale`), antrean review, diff field/block/
+  render, dan mode `self_approval_allowed` per tenant yang wajib alasan + audit; `PUT` published
+  tidak lagi auto-publish. Lihat `docs/design/templates/template-approval-diff-design.md`.
+  **Impor HTML ke
   Visual** tersedia sebagai subset kecil (heading/paragraf/gambar/tombol/divider) yang dipetakan di
   console memakai `DOMParser` tanpa dependency baru; CSS/layout/dua kolom/list tidak diimpor,
   Handlebars blok/partial ditolak, dan template published/read-only tidak dapat diimpor. Detail:
@@ -286,8 +292,9 @@ npx prisma migrate status
 8. Markdown in-app selesai (2026-11-21): subset aman dirender server-side ke `bodyHtml`,
    `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0 terbit; lihat
    `docs/design/templates/in-app-markdown-design.md`.
-9. Template P2 tersisa (belum dikerjakan, perlu persetujuan): **approval maker-checker/diff versi**.
-   Draf desain tersedia di `docs/design/templates/template-approval-diff-design.md` dan menunggu
-   persetujuan. Impor HTML ke Visual sudah selesai sebagai subset kecil
-   (2026-11-22; `docs/design/templates/html-import-design.md`). Rujukan batasan di
+9. Template P2 selesai: **approval maker-checker + diff versi** (2026-11-22) dan **impor HTML ke
+   Visual** subset kecil (2026-11-22); lihat
+   `docs/design/templates/template-approval-diff-design.md` dan
+   `docs/design/templates/html-import-design.md`. Sisa P2: Meta approved WhatsApp dan parser
+   sanitizer penuh/Playwright (menunggu keputusan dependency). Rujukan batasan di
    `docs/design/templates/template-limitations-roadmap.md` §14.4.

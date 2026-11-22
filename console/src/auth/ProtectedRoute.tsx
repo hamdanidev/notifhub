@@ -6,7 +6,10 @@ import { useAuth } from './AuthContext';
 export function ProtectedRoute({ children }: { children: ReactNode }): JSX.Element {
   const { session } = useAuth();
 
-  if (session === null || session.admin.role !== 'tenant_admin') {
+  if (
+    session === null ||
+    (session.admin.role !== 'tenant_admin' && session.admin.role !== 'tenant_approver')
+  ) {
     return <Navigate to="/login" replace />;
   }
 

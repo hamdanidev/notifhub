@@ -12,6 +12,8 @@ import {
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
+import { AdminRoles } from '../../auth/admin/admin-roles.decorator';
+import { TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE } from '../../auth/admin/admin.types';
 import type { AdminPrincipal } from '../../auth/admin/admin.types';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import {
@@ -45,6 +47,7 @@ export class AdminAuthController {
 
   @Get('me')
   @UseGuards(AdminJwtGuard)
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiBearerAuth('admin-jwt')
   @ApiOperation({ summary: 'Current admin profile' })
   @ApiOkResponse({ type: AdminProfileDto })
@@ -56,6 +59,7 @@ export class AdminAuthController {
   @Post('change-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiBearerAuth('admin-jwt')
   @ApiOperation({

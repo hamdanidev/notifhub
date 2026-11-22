@@ -5,14 +5,20 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminTokenService } from './admin-token.service';
+import { ADMIN_ROLES_KEY } from './admin-roles.decorator';
 import {
   TENANT_ADMIN_ROLE,
+  isTenantAdminRole,
   type AdminTokenClaims,
   type RequestWithAdmin,
+  type TenantAdminRole,
 } from './admin.types';
+
+const DEFAULT_ADMIN_ROLES: TenantAdminRole[] = [TENANT_ADMIN_ROLE];
 
 /**
  * Guards tenant admin endpoints.
@@ -27,6 +33,7 @@ export class AdminJwtGuard implements CanActivate {
     private readonly tokens: AdminTokenService,
     private readonly prisma: PrismaService,
     private readonly logger: PinoLogger,
+    private readonly reflector: Reflector,
   ) {
     this.logger.setContext(AdminJwtGuard.name);
   }
@@ -67,7 +74,7 @@ export class AdminJwtGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or missing admin token');
     }
 
-    if (principal.role !== TENANT_ADMIN_ROLE || principal.tenantId === undefined) {
+    if (!isTenantAdminRole(principal.role) || principal.tenantId === undefined) {
       this.logger.warn(
         {
           event: 'auth.admin_token.rejected',
@@ -120,7 +127,7 @@ export class AdminJwtGuard implements CanActivate {
     }
 
     if (
-      admin.role !== TENANT_ADMIN_ROLE ||
+      !isTenantAdminRole(admin.role) ||
       admin.tenantId === null ||
       admin.tenantId !== principal.tenantId
     ) {
@@ -136,6 +143,27 @@ export class AdminJwtGuard implements CanActivate {
         'admin token no longer matches the account',
       );
       throw new ForbiddenException('Admin role is not permitted');
+    }
+
+    const allowedRoles =
+      this.reflector.getAllAndOverride<TenantAdminRole[]>(ADMIN_ROLES_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? DEFAULT_ADMIN_ROLES;
+
+    if (!allowedRoles.includes(admin.role as TenantAdminRole)) {
+      this.logger.warn(
+        {
+          event: 'auth.admin_token.rejected',
+          reason: 'role_not_permitted',
+          admin_id: admin.id,
+          role: admin.role,
+          method: request.method,
+          path: request.originalUrl ?? request.url,
+        },
+        'admin role is not permitted for this route',
+      );
+      throw new ForbiddenException('role_not_permitted');
     }
 
     if (admin.tenant?.status !== 'active') {

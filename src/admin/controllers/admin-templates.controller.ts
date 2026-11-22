@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -23,7 +24,12 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../auth/admin/admin-jwt.guard';
-import type { AdminPrincipal } from '../../auth/admin/admin.types';
+import { AdminRoles } from '../../auth/admin/admin-roles.decorator';
+import {
+  TENANT_ADMIN_ROLE,
+  TENANT_APPROVER_ROLE,
+  type AdminPrincipal,
+} from '../../auth/admin/admin.types';
 import type { RequestWithId } from '../../common/middleware/request-id.middleware';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import {
@@ -47,6 +53,9 @@ import {
   type TemplateView,
 } from '../services/admin-templates.service';
 import { AdminTemplatePreviewService } from '../services/admin-template-preview.service';
+import { AdminTemplateApprovalsService, type TemplateApprovalListResult, type TemplateApprovalView } from '../services/admin-template-approvals.service';
+import { AdminTemplateDiffService, type TemplateDiffResult } from '../services/admin-template-diff.service';
+import { ApprovalQueueQueryDto, SubmitReviewDto } from '../dto/template-approval.dto';
 import { AdminTemplateTestSendService, type TestSendResult } from '../services/admin-template-test-send.service';
 import { AdminAuditService, adminAuditContextFrom } from '../services/admin-audit.service';
 import type { TemplatePreviewResult } from '../../templates/template.types';
@@ -61,6 +70,8 @@ export class AdminTemplatesController {
     private readonly preview: AdminTemplatePreviewService,
     private readonly testSend: AdminTemplateTestSendService,
     private readonly adminAudit: AdminAuditService,
+    private readonly approvals: AdminTemplateApprovalsService,
+    private readonly diff: AdminTemplateDiffService,
   ) {}
 
   private async recordTemplateAudit(
@@ -88,6 +99,7 @@ export class AdminTemplatesController {
   }
 
   @Get()
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiOperation({ summary: 'List templates for the tenant' })
   @ApiOkResponse({ description: 'Paginated template list' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin token' })
@@ -115,6 +127,7 @@ export class AdminTemplatesController {
   @Post('preview')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @ApiOperation({ summary: 'Preview unsaved template content' })
   @ApiOkResponse({ description: 'Rendered preview with validation issues' })
@@ -126,6 +139,7 @@ export class AdminTemplatesController {
   }
 
   @Get(':id')
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiOperation({ summary: 'Get a template' })
   @ApiOkResponse({ description: 'Template detail' })
   @ApiNotFoundResponse({ description: 'Template not found for this tenant' })
@@ -170,7 +184,8 @@ export class AdminTemplatesController {
 
   @Post(':id/publish')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Publish a draft after full validation' })
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
+  @ApiOperation({ summary: 'Publish a draft after full validation and approval' })
   @ApiOkResponse({ description: 'Published template' })
   async publish(
     @CurrentAdmin() admin: AdminPrincipal,
@@ -229,7 +244,20 @@ export class AdminTemplatesController {
     return rolledBack;
   }
 
+  @Get(':id/approvals')
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
+  @ApiOperation({ summary: 'List approval history for a template' })
+  @ApiOkResponse({ description: 'Approval list' })
+  approvalsForTemplate(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Param('id') templateId: string,
+    @Query() query: ApprovalQueueQueryDto,
+  ): Promise<TemplateApprovalListResult> {
+    return this.approvals.listForTemplate(admin.tenantId, templateId, query);
+  }
+
   @Get(':id/versions')
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiOperation({ summary: 'List versions for the same key/channel/locale' })
   @ApiOkResponse({ description: 'Version list' })
   versions(
@@ -240,6 +268,7 @@ export class AdminTemplatesController {
   }
 
   @Get(':id/audit')
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiOperation({ summary: 'List template audit events' })
   @ApiOkResponse({ description: 'Audit list' })
   audit(
@@ -251,6 +280,7 @@ export class AdminTemplatesController {
   }
 
   @Get(':id/test-sends')
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiOperation({ summary: 'List test sends for a template' })
   @ApiOkResponse({ description: 'Test send list' })
   testSends(
@@ -269,6 +299,7 @@ export class AdminTemplatesController {
   @Post(':id/preview')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @ApiOperation({ summary: 'Preview a saved template version' })
   @ApiOkResponse({ description: 'Rendered preview with validation issues' })
@@ -282,6 +313,7 @@ export class AdminTemplatesController {
 
   @Post(':id/test-send')
   @HttpCode(HttpStatus.OK)
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
   @ApiOperation({ summary: 'Send a test email/WhatsApp message' })
   @ApiOkResponse({ description: 'Test send result' })
   sendTest(
@@ -291,4 +323,50 @@ export class AdminTemplatesController {
   ): Promise<TestSendResult> {
     return this.testSend.send(admin.tenantId, admin, templateId, dto);
   }
+
+  @Post(':id/submit-review')
+  @ApiOperation({ summary: 'Submit the current draft revision for approver review' })
+  @ApiCreatedResponse({ description: 'Pending approval' })
+  submitReview(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Param('id') templateId: string,
+    @Body() dto: SubmitReviewDto,
+  ): Promise<TemplateApprovalView> {
+    return this.approvals.submit(admin.tenantId, admin, templateId, dto);
+  }
+
+  @Get(':id/diff')
+  @AdminRoles(TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE)
+  @ApiOperation({ summary: 'Diff two versions of the same template group' })
+  @ApiOkResponse({ description: 'Field, block, and rendered diff' })
+  diffVersions(
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Param('id') templateId: string,
+    @Query('fromVersion') fromVersion?: string,
+    @Query('toVersion') toVersion?: string,
+  ): Promise<TemplateDiffResult> {
+    return this.diff.diff(
+      admin.tenantId,
+      templateId,
+      parseVersion(fromVersion),
+      parseVersion(toVersion),
+    );
+  }
+}
+
+function parseVersion(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new BadRequestException({
+      message: 'fromVersion/toVersion harus bilangan bulat >= 1',
+      details: { code: 'diff_version_invalid' },
+    });
+  }
+
+  return parsed;
 }

@@ -11,6 +11,8 @@ import { CleanupService } from '../src/cleanup/cleanup.service';
 import {
   TEST_ADMIN_EMAIL,
   TEST_ADMIN_PASSWORD,
+  TEST_APPROVER_EMAIL,
+  TEST_APPROVER_PASSWORD,
   TEST_PLATFORM_ADMIN_EMAIL,
   TEST_PLATFORM_ADMIN_PASSWORD,
   TEST_SERVICE_API_KEY,
@@ -49,6 +51,95 @@ function postNotify(body: Record<string, unknown>) {
     .send(body);
 }
 
+let approverToken = '';
+
+async function tokenForAccount(email: string): Promise<string> {
+  const account = await prisma.adminUser.findUnique({ where: { email } });
+
+  if (account === null) {
+    throw new Error(`account ${email} not found`);
+  }
+
+  return jwt.sign(
+    {
+      sub: account.id,
+      email: account.email,
+      role: account.role,
+      ...(account.tenantId === null ? {} : { tenant: account.tenantId }),
+      tokenVersion: account.tokenVersion,
+    },
+    process.env.ADMIN_JWT_SECRET as string,
+    { algorithm: 'HS256', expiresIn: '1h' },
+  );
+}
+
+async function loginApprover(): Promise<string> {
+  if (approverToken !== '') {
+    return approverToken;
+  }
+
+  approverToken = await tokenForAccount(TEST_APPROVER_EMAIL);
+
+  return approverToken;
+}
+
+async function submitReview(templateId: string, expectedRevision: number): Promise<string> {
+  const submit = await request(server)
+    .post(`/api/v1/admin/templates/${templateId}/submit-review`)
+    .set('Authorization', bearer(adminToken))
+    .send({ expectedRevision, note: 'e2e review' });
+
+  expect(submit.status).toBe(201);
+
+  return submit.body.id as string;
+}
+
+async function approveReview(approvalId: string, note = 'e2e approve'): Promise<void> {
+  const token = await loginApprover();
+  const approve = await request(server)
+    .post(`/api/v1/admin/template-approvals/${approvalId}/approve`)
+    .set('Authorization', bearer(token))
+    .send({ note });
+
+  expect(approve.status).toBe(200);
+}
+
+async function publishWithApproval(
+  templateId: string,
+  expectedRevision: number,
+  note = 'e2e publish',
+): Promise<request.Response> {
+  const approvalId = await submitReview(templateId, expectedRevision);
+  await approveReview(approvalId);
+
+  return request(server)
+    .post(`/api/v1/admin/templates/${templateId}/publish`)
+    .set('Authorization', bearer(adminToken))
+    .send({ expectedRevision, note });
+}
+
+async function createApprovalDraft(
+  overrides: Record<string, unknown> = {},
+): Promise<request.Response> {
+  return request(server)
+    .post('/api/v1/admin/templates')
+    .set('Authorization', bearer(adminToken))
+    .send({
+      key: `approval.${randomUUID()}`,
+      channel: 'email',
+      locale: 'id',
+      format: 'html',
+      status: 'draft',
+      subject: 'Approval {{nama}}',
+      body: '<p>Halo {{nama}}</p>',
+      variables: {
+        version: 1,
+        variables: [{ key: 'nama', type: 'string', required: true, example: 'Budi' }],
+      },
+      sampleData: { nama: 'Budi' },
+      ...overrides,
+    });
+}
 function notifyBody(idempotencyKey: string, channels: string[]): Record<string, unknown> {
   return {
     idempotency_key: idempotencyKey,
@@ -860,10 +951,11 @@ describe('Template system e2e', () => {
     expect(preview.body.resolved.layout.version).toBe(1);
     expect(preview.body.resolved.partials).toHaveLength(2);
 
-    const publish = await request(server)
-      .post(`/api/v1/admin/templates/${draftId}/publish`)
-      .set('Authorization', bearer(adminToken))
-      .send({ expectedRevision: created.body.revision as number, note: 'E2E publish' });
+    const publish = await publishWithApproval(
+      draftId,
+      created.body.revision as number,
+      'E2E publish',
+    );
     expect(publish.status).toBe(200);
     expect(publish.body).toMatchObject({ status: 'published', active: true });
     publishedId = publish.body.id as string;
@@ -944,10 +1036,11 @@ describe('Template system e2e', () => {
       ),
     ).toBe(true);
 
-    const publish = await request(server)
-      .post(`/api/v1/admin/templates/${noSubject.body.id as string}/publish`)
-      .set('Authorization', bearer(adminToken))
-      .send({ expectedRevision: 0 });
+    const publish = await publishWithApproval(
+      noSubject.body.id as string,
+      0,
+      'E2E invalid email',
+    );
     expect(publish.status).toBe(422);
     expect(publish.body.details.code).toBe('template_validation_failed');
 
@@ -966,10 +1059,11 @@ describe('Template system e2e', () => {
       });
     expect(whatsapp.status).toBe(201);
 
-    const whatsappPublish = await request(server)
-      .post(`/api/v1/admin/templates/${whatsapp.body.id as string}/publish`)
-      .set('Authorization', bearer(adminToken))
-      .send({ expectedRevision: 0 });
+    const whatsappPublish = await publishWithApproval(
+      whatsapp.body.id as string,
+      0,
+      'E2E invalid whatsapp',
+    );
     expect(whatsappPublish.status).toBe(422);
   });
 
@@ -1175,7 +1269,7 @@ describe('Template system e2e', () => {
     expect(oversizedIngest.status).toBe(413);
   });
 
-  it('E19 legacy create/update published tetap live lewat versi baru tanpa memutasi baris lama', async () => {
+  it('E19 legacy update published ditolak dan tidak membuat versi baru', async () => {
     const create = await request(server)
       .post('/api/v1/admin/templates')
       .set('Authorization', bearer(adminToken))
@@ -1200,28 +1294,30 @@ describe('Template system e2e', () => {
       .set('Authorization', bearer(adminToken))
       .send({ body: '<p>versi 2 {{nama}}</p>', subject: 'Legacy v2' });
 
-    expect(update.status).toBe(200);
-    expect(update.body).toMatchObject({ status: 'published', active: true, version: 2 });
-    expect(update.body.id).not.toBe(oldId);
+    expect(update.status).toBe(409);
+    expect(update.body.details.code).toBe('approval_required_draft');
+
+    const versions = await prisma.notificationTemplate.count({
+      where: { tenantId: 'default', key: 'legacy.update.e2e', channel: Channel.email, locale: 'id' },
+    });
+    expect(versions).toBe(1);
 
     const oldRow = await prisma.notificationTemplate.findUnique({
       where: { id: oldId },
-      select: { body: true, active: true },
+      select: { body: true, active: true, version: true },
     });
-    expect(oldRow).toMatchObject({ body: '<p>versi 1 {{nama}}</p>', active: false });
-
-    const audit = await prisma.templateAuditEvent.findFirst({
-      where: { templateId: update.body.id as string, action: 'published' },
-      orderBy: { createdAt: 'desc' },
+    expect(oldRow).toMatchObject({
+      body: '<p>versi 1 {{nama}}</p>',
+      active: true,
+      version: 1,
     });
-    expect(audit?.metadata).toMatchObject({ legacyPut: true });
 
     const summary = await request(server)
       .get('/api/v1/admin/templates?view=summary&search=legacy.update.e2e')
       .set('Authorization', bearer(adminToken));
     expect(summary.status).toBe(200);
     expect(summary.body.items[0].body).toBeNull();
-    expect(summary.body.items[0].bodyPreview).toContain('versi 2');
+    expect(summary.body.items[0].bodyPreview).toContain('versi 1');
   });
 
   it('E20 builderData tersimpan, diperbarui, dipublish, dan diclone tanpa memengaruhi worker', async () => {
@@ -1278,10 +1374,10 @@ describe('Template system e2e', () => {
     expect(updated.status).toBe(200);
     expect(updated.body.builderData.blocks[1].text).toContain('versi 2');
 
-    const publish = await request(server)
-      .post(`/api/v1/admin/templates/${created.body.id as string}/publish`)
-      .set('Authorization', bearer(adminToken))
-      .send({ expectedRevision: updated.body.revision as number });
+    const publish = await publishWithApproval(
+      created.body.id as string,
+      updated.body.revision as number,
+    );
     expect(publish.status).toBe(200);
     expect(publish.body.status).toBe('published');
 
@@ -1647,10 +1743,7 @@ describe('Template system e2e', () => {
       select: { id: true },
     });
 
-    const publish = await request(server)
-      .post(`/api/v1/admin/templates/${legacy.id}/publish`)
-      .set('Authorization', bearer(adminToken))
-      .send({ expectedRevision: 0 });
+    const publish = await publishWithApproval(legacy.id, 0, 'E2E legacy publish');
 
     expect(publish.status).toBe(200);
     expect(publish.body.status).toBe('published');
@@ -1846,10 +1939,26 @@ describe('Template system e2e', () => {
       templateVersion: 1,
     });
 
-    const updated = await request(server)
-      .put(`/api/v1/admin/templates/${created.body.id as string}`)
+    const cloned = await request(server)
+      .post(`/api/v1/admin/templates/${created.body.id as string}/clone`)
       .set('Authorization', bearer(adminToken))
-      .send({ subject: 'Versi 2', body: '<p>Versi 2</p>' });
+      .send({});
+    expect(cloned.status).toBe(201);
+
+    const draftV2 = await request(server)
+      .put(`/api/v1/admin/templates/${cloned.body.id as string}`)
+      .set('Authorization', bearer(adminToken))
+      .send({
+        expectedRevision: cloned.body.revision as number,
+        subject: 'Versi 2',
+        body: '<p>Versi 2</p>',
+      });
+    expect(draftV2.status).toBe(200);
+
+    const updated = await publishWithApproval(
+      draftV2.body.id as string,
+      draftV2.body.revision as number,
+    );
     expect(updated.status).toBe(200);
     expect(updated.body.version).toBe(2);
     expect(updated.body.id).not.toBe(created.body.id);
@@ -2692,10 +2801,7 @@ describe('Markdown in-app e2e', () => {
     expect(preview.body.html).toContain('<strong>Budi</strong>');
     expect(preview.body.text).toContain('Halo Budi');
 
-    const publish = await request(server)
-      .post(`/api/v1/admin/templates/${templateId}/publish`)
-      .set('Authorization', bearer(adminToken))
-      .send({ expectedRevision: created.body.revision as number });
+    const publish = await publishWithApproval(templateId, created.body.revision as number);
     expect(publish.status).toBe(200);
 
     const notify = await postNotify({
@@ -2771,4 +2877,393 @@ describe('Markdown in-app e2e', () => {
     expect(emailMarkdown.status).toBe(400);
     expect(String(emailMarkdown.body.message)).toContain('only supports format');
   });
+describe('Template approval e2e', () => {
+  it('E48 submit, approve, publish dan approver juga boleh publish', async () => {
+    const created = await createApprovalDraft();
+    expect(created.status).toBe(201);
+    const templateId = created.body.id as string;
+    const revision = created.body.revision as number;
+
+    const blocked = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: revision });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.details.code).toBe('approval_required');
+
+    const approvalId = await submitReview(templateId, revision);
+    const approver = await loginApprover();
+    const queue = await request(server)
+      .get('/api/v1/admin/template-approvals?status=pending')
+      .set('Authorization', bearer(approver));
+    expect(queue.status).toBe(200);
+    expect(
+      (queue.body.items as Array<{ id: string; templateKey: string; stale: boolean }>).some(
+        (item) => item.id === approvalId,
+      ),
+    ).toBe(true);
+
+    const approve = await request(server)
+      .post(`/api/v1/admin/template-approvals/${approvalId}/approve`)
+      .set('Authorization', bearer(approver))
+      .send({ note: 'E2E approve' });
+    expect(approve.status).toBe(200);
+    expect(approve.body).toMatchObject({ status: 'approved', stale: false });
+
+    const publish = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: revision });
+    expect(publish.status).toBe(200);
+    expect(publish.body.status).toBe('published');
+
+    const row = await prisma.templateApproval.findUnique({
+      where: { templateId_revision: { templateId, revision } },
+    });
+    expect(row).toMatchObject({ status: 'approved', selfApproved: false });
+    expect(row?.reviewedByAdminId).not.toBeNull();
+
+    const actions = (
+      await prisma.templateAuditEvent.findMany({
+        where: { templateId },
+        select: { action: true },
+      })
+    ).map((event) => event.action);
+    expect(actions).toEqual(
+      expect.arrayContaining(['submitted_for_review', 'approved', 'published']),
+    );
+
+    const second = await createApprovalDraft();
+    const secondId = second.body.id as string;
+    const secondApproval = await submitReview(secondId, second.body.revision as number);
+    await approveReview(secondApproval);
+    const approverPublish = await request(server)
+      .post(`/api/v1/admin/templates/${secondId}/publish`)
+      .set('Authorization', bearer(approver))
+      .send({ expectedRevision: second.body.revision as number });
+    expect(approverPublish.status).toBe(200);
+  });
+
+  it('E49 publish tanpa approval, setelah edit menjadi stale, lalu review ulang', async () => {
+    const created = await createApprovalDraft();
+    const templateId = created.body.id as string;
+    const revision = created.body.revision as number;
+
+    const noApproval = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: revision });
+    expect(noApproval.status).toBe(409);
+    expect(noApproval.body.details.code).toBe('approval_required');
+
+    const approvalId = await submitReview(templateId, revision);
+    await approveReview(approvalId);
+
+    const update = await request(server)
+      .put(`/api/v1/admin/templates/${templateId}`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: revision, body: '<p>Halo {{nama}} (revisi)</p>' });
+    expect(update.status).toBe(200);
+    const nextRevision = update.body.revision as number;
+    expect(nextRevision).toBe(revision + 1);
+
+    const stale = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: nextRevision });
+    expect(stale.status).toBe(409);
+    expect(stale.body.details.code).toBe('approval_stale');
+
+    const publish = await publishWithApproval(templateId, nextRevision);
+    expect(publish.status).toBe(200);
+  });
+
+  it('E50 pemisahan peran: approver tidak submit, admin tidak approve', async () => {
+    const created = await createApprovalDraft();
+    const templateId = created.body.id as string;
+    const approver = await loginApprover();
+
+    const approverSubmit = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/submit-review`)
+      .set('Authorization', bearer(approver))
+      .send({ expectedRevision: 0 });
+    expect(approverSubmit.status).toBe(403);
+    expect(approverSubmit.body.message).toBe('role_not_permitted');
+
+    const approvalId = await submitReview(templateId, 0);
+
+    const adminApprove = await request(server)
+      .post(`/api/v1/admin/template-approvals/${approvalId}/approve`)
+      .set('Authorization', bearer(adminToken))
+      .send({ note: 'admin tidak boleh' });
+    expect(adminApprove.status).toBe(403);
+
+    await approveReview(approvalId);
+  });
+
+  it('E51 approver hanya bisa membaca dan mereview, bukan mengubah resource', async () => {
+    const approver = await loginApprover();
+
+    const list = await request(server)
+      .get('/api/v1/admin/templates')
+      .set('Authorization', bearer(approver));
+    expect(list.status).toBe(200);
+
+    const approverCreate = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(approver))
+      .send({
+        key: `approver.denied.${randomUUID()}`,
+        channel: 'email',
+        locale: 'id',
+        format: 'html',
+        status: 'draft',
+        subject: 'Denied',
+        body: '<p>x</p>',
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+      });
+    expect(approverCreate.status).toBe(403);
+    expect(approverCreate.body.message).toBe('role_not_permitted');
+
+    for (const path of ['/api/v1/admin/api-keys', '/api/v1/admin/subscribers']) {
+      const denied = await request(server)
+        .get(path)
+        .set('Authorization', bearer(approver));
+      expect(denied.status).toBe(403);
+    }
+
+    const preview = await request(server)
+      .post('/api/v1/admin/templates/preview')
+      .set('Authorization', bearer(approver))
+      .send({
+        channel: 'email',
+        format: 'html',
+        subject: 'Preview',
+        body: '<p>Halo {{nama}}</p>',
+        sampleData: { nama: 'Budi' },
+      });
+    expect(preview.status).toBe(200);
+  });
+
+  it('E52 tenant tanpa approver: publish 409, lalu berhasil setelah approver ditambahkan', async () => {
+    const tenantId = `approval-${randomUUID().slice(0, 8)}`;
+    const createdTenant = await request(server)
+      .post('/api/v1/platform/tenants')
+      .set('Authorization', bearer(platformToken))
+      .send({ id: tenantId, name: 'Approval Tenant' });
+    expect(createdTenant.status).toBe(201);
+
+    const adminEmail = `${tenantId}@test.local`;
+    const adminCreated = await request(server)
+      .post(`/api/v1/platform/tenants/${tenantId}/admins`)
+      .set('Authorization', bearer(platformToken))
+      .send({ email: adminEmail, password: 'TenantAdmin123!' });
+    expect(adminCreated.status).toBe(201);
+
+    const tenantAdmin = await tokenForAccount(adminEmail);
+
+    const draft = await request(server)
+      .post('/api/v1/admin/templates')
+      .set('Authorization', bearer(tenantAdmin))
+      .send({
+        key: 'approval.tenant',
+        channel: 'email',
+        locale: 'id',
+        format: 'html',
+        status: 'draft',
+        subject: 'Tenant',
+        body: '<p>Halo</p>',
+        variables: { version: 1, variables: [] },
+        sampleData: {},
+      });
+    expect(draft.status).toBe(201);
+
+    const blocked = await request(server)
+      .post(`/api/v1/admin/templates/${draft.body.id as string}/publish`)
+      .set('Authorization', bearer(tenantAdmin))
+      .send({ expectedRevision: 0 });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.details.code).toBe('approver_unavailable');
+
+    const approverEmail = `approver-${tenantId}@test.local`;
+    const approverCreated = await request(server)
+      .post(`/api/v1/platform/tenants/${tenantId}/admins`)
+      .set('Authorization', bearer(platformToken))
+      .send({
+        email: approverEmail,
+        password: 'TenantApprover123!',
+        role: 'tenant_approver',
+      });
+    expect(approverCreated.status).toBe(201);
+    expect(approverCreated.body.role).toBe('tenant_approver');
+
+    const tenantApprover = await tokenForAccount(approverEmail);
+
+    const submit = await request(server)
+      .post(`/api/v1/admin/templates/${draft.body.id as string}/submit-review`)
+      .set('Authorization', bearer(tenantAdmin))
+      .send({ expectedRevision: 0 });
+    expect(submit.status).toBe(201);
+
+    const approve = await request(server)
+      .post(`/api/v1/admin/template-approvals/${submit.body.id as string}/approve`)
+      .set('Authorization', bearer(tenantApprover))
+      .send({ note: 'ok' });
+    expect(approve.status).toBe(200);
+
+    const published = await request(server)
+      .post(`/api/v1/admin/templates/${draft.body.id as string}/publish`)
+      .set('Authorization', bearer(tenantAdmin))
+      .send({ expectedRevision: 0 });
+    expect(published.status).toBe(200);
+  });
+
+  it('E54 diff versi: field, block, render, isolasi tenant', async () => {
+    const created = await createApprovalDraft({
+      builderData: {
+        version: 1,
+        blocks: [
+          { id: 'b1', type: 'heading', text: 'Halo {{nama}}', level: 1 },
+          { id: 'b2', type: 'text', text: 'Versi satu' },
+        ],
+      },
+      body: '<h1>Halo {{nama}}</h1><p>Versi satu</p>',
+    });
+    const templateId = created.body.id as string;
+    await publishWithApproval(templateId, created.body.revision as number);
+
+    const rollback = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/rollback`)
+      .set('Authorization', bearer(adminToken))
+      .send({ sourceVersion: 1 });
+    expect(rollback.status).toBe(201);
+    const draftId = rollback.body.id as string;
+
+    const update = await request(server)
+      .put(`/api/v1/admin/templates/${draftId}`)
+      .set('Authorization', bearer(adminToken))
+      .send({
+        expectedRevision: rollback.body.revision as number,
+        subject: 'Approval v2',
+        body: '<h1>Halo {{nama}}</h1><p>Versi dua</p>',
+        builderData: {
+          version: 1,
+          blocks: [
+            { id: 'b1', type: 'heading', text: 'Halo {{nama}}', level: 1 },
+            { id: 'b2', type: 'text', text: 'Versi dua' },
+            { id: 'b3', type: 'divider' },
+          ],
+        },
+      });
+    expect(update.status).toBe(200);
+
+    const diff = await request(server)
+      .get(`/api/v1/admin/templates/${draftId}/diff?fromVersion=1&toVersion=2`)
+      .set('Authorization', bearer(adminToken));
+    expect(diff.status).toBe(200);
+    expect(diff.body.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'body', changed: true, mode: 'line' }),
+      ]),
+    );
+    expect(diff.body.blocks).toMatchObject({ available: true, added: 1 });
+    expect(diff.body.blocks.changed.length).toBeGreaterThan(0);
+    expect(diff.body.rendered.to.html).toContain('Versi dua');
+
+    const missing = await request(server)
+      .get(`/api/v1/admin/templates/${draftId}/diff?fromVersion=99&toVersion=2`)
+      .set('Authorization', bearer(adminToken));
+    expect(missing.status).toBe(404);
+
+    const foreign = await request(server)
+      .get(`/api/v1/admin/templates/${draftId}/diff?fromVersion=1&toVersion=2`)
+      .set('Authorization', bearer(acmeAdminToken));
+    expect(foreign.status).toBe(404);
+  });
+
+  it('E55 gate approval berlaku untuk in-app', async () => {
+    const created = await createApprovalDraft({
+      channel: 'inapp',
+      format: 'text',
+      subject: null,
+      body: 'Halo {{nama}}',
+      variables: { version: 1, variables: [] },
+      sampleData: { nama: 'Budi' },
+    });
+    expect(created.status).toBe(201);
+    const templateId = created.body.id as string;
+    const revision = created.body.revision as number;
+
+    const blocked = await request(server)
+      .post(`/api/v1/admin/templates/${templateId}/publish`)
+      .set('Authorization', bearer(adminToken))
+      .send({ expectedRevision: revision });
+    expect(blocked.status).toBe(409);
+
+    const publish = await publishWithApproval(templateId, revision);
+    expect(publish.status).toBe(200);
+    expect(publish.body.status).toBe('published');
+  });
+
+  it('E56 approve ganda ditolak', async () => {
+    const created = await createApprovalDraft();
+    const approvalId = await submitReview(created.body.id as string, 0);
+    await approveReview(approvalId);
+
+    const approver = await loginApprover();
+    const second = await request(server)
+      .post(`/api/v1/admin/template-approvals/${approvalId}/approve`)
+      .set('Authorization', bearer(approver))
+      .send({ note: 'lagi' });
+    expect(second.status).toBe(409);
+    expect(second.body.details.code).toBe('approval_not_pending');
+  });
+
+  it('E57 mode self_approval_allowed: alasan wajib dan ditandai audit', async () => {
+    const setMode = (mode: string) =>
+      request(server)
+        .patch('/api/v1/platform/tenants/default')
+        .set('Authorization', bearer(platformToken))
+        .send({ templateApprovalMode: mode });
+
+    const enable = await setMode('self_approval_allowed');
+    expect(enable.status).toBe(200);
+    expect(enable.body.templateApprovalMode).toBe('self_approval_allowed');
+
+    try {
+      const created = await createApprovalDraft();
+      const templateId = created.body.id as string;
+
+      const tooShort = await request(server)
+        .post(`/api/v1/admin/templates/${templateId}/publish`)
+        .set('Authorization', bearer(adminToken))
+        .send({ expectedRevision: 0, selfApprovalReason: 'pendek' });
+      expect(tooShort.status).toBe(400);
+      expect(tooShort.body.details.code).toBe('self_approval_reason_required');
+
+      const reason = 'Perbaikan typo mendesak saat approver tidak tersedia';
+      const published = await request(server)
+        .post(`/api/v1/admin/templates/${templateId}/publish`)
+        .set('Authorization', bearer(adminToken))
+        .send({ expectedRevision: 0, selfApprovalReason: reason });
+      expect(published.status).toBe(200);
+
+      const row = await prisma.templateApproval.findUnique({
+        where: { templateId_revision: { templateId, revision: 0 } },
+      });
+      expect(row).toMatchObject({ status: 'approved', selfApproved: true });
+      expect(row?.selfApprovalReason).toBe(reason);
+
+      const audit = await prisma.templateAuditEvent.findFirst({
+        where: { templateId, action: 'approved' },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(audit?.metadata).toMatchObject({ selfApproval: true });
+    } finally {
+      const restore = await setMode('two_person');
+      expect(restore.status).toBe(200);
+    }
+  });
+});
 });

@@ -78,6 +78,9 @@ export const envSchema = z
       .default('1h'),
     PLATFORM_ADMIN_EMAIL: optionalEmail,
     PLATFORM_ADMIN_PASSWORD_HASH: optionalBcryptHash,
+    APPROVER_EMAIL: optionalEmail,
+    APPROVER_PASSWORD_HASH: optionalBcryptHash,
+    TEMPLATE_APPROVAL_MODE: z.enum(['two_person', 'self_approval_allowed']).optional(),
     WEBHOOK_SIGNING_SECRET: z.string().min(32),
     CATCH_ALL_RECIPIENT: optionalString,
     SMTP_HOST: optionalString,
@@ -112,6 +115,17 @@ export const envSchema = z
         code: 'custom',
         path: ['PLATFORM_ADMIN_PASSWORD_HASH'],
         message: 'PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_PASSWORD_HASH must be set together',
+      });
+    }
+
+    const hasApproverEmail = env.APPROVER_EMAIL !== undefined;
+    const hasApproverHash = env.APPROVER_PASSWORD_HASH !== undefined;
+
+    if (hasApproverEmail !== hasApproverHash) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['APPROVER_PASSWORD_HASH'],
+        message: 'APPROVER_EMAIL and APPROVER_PASSWORD_HASH must be set together',
       });
     }
 

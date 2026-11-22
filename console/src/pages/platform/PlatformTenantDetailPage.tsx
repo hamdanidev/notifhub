@@ -19,6 +19,10 @@ export function PlatformTenantDetailPage(): JSX.Element {
   const [name, setName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [adminRole, setAdminRole] = useState<'tenant_admin' | 'tenant_approver'>('tenant_admin');
+  const [approvalMode, setApprovalMode] = useState<'two_person' | 'self_approval_allowed'>(
+    'two_person',
+  );
   const [passwordTarget, setPasswordTarget] = useState<TenantAdmin | null>(null);
   const [passwordValue, setPasswordValue] = useState('');
   const [suspendOpen, setSuspendOpen] = useState(false);
@@ -39,6 +43,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
   useEffect(() => {
     if (tenant.data !== undefined) {
       setName(tenant.data.name);
+      setApprovalMode(tenant.data.templateApprovalMode);
     }
   }, [tenant.data]);
 
@@ -56,6 +61,12 @@ export function PlatformTenantDetailPage(): JSX.Element {
     onSuccess: invalidateTenant,
   });
 
+  const setMode = useMutation({
+    mutationFn: (mode: 'two_person' | 'self_approval_allowed') =>
+      platformClient.updateTenant(tenantId, { templateApprovalMode: mode }),
+    onSuccess: invalidateTenant,
+  });
+
   const setStatus = useMutation({
     mutationFn: (action: 'suspend' | 'resume') =>
       action === 'suspend' ? platformClient.suspendTenant(tenantId) : platformClient.resumeTenant(tenantId),
@@ -70,6 +81,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
       platformClient.createTenantAdmin(tenantId, {
         email: adminEmail.trim(),
         password: adminPassword,
+        role: adminRole,
       }),
     onSuccess: () => {
       setAdminEmail('');
@@ -115,6 +127,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
   const adminColumns = useMemo<DataTableColumn<TenantAdmin>[]>(
     () => [
       { id: 'email', header: 'Email', cell: (row) => row.email },
+      { id: 'role', header: 'Peran', cell: (row) => row.role },
       {
         id: 'active',
         header: 'Status',
@@ -267,6 +280,48 @@ export function PlatformTenantDetailPage(): JSX.Element {
             </Card.Body>
           </Card>
 
+          <Card className="mt-3">
+            <Card.Body>
+              <Card.Title className="h6">Mode approval template</Card.Title>
+              {setMode.error !== null ? (
+                <Alert variant="danger">{describeError(setMode.error)}</Alert>
+              ) : null}
+              <Form.Select
+                value={approvalMode}
+                onChange={(event) =>
+                  setApprovalMode(event.target.value as 'two_person' | 'self_approval_allowed')
+                }
+              >
+                <option value="two_person">two_person (wajib approver, disarankan)</option>
+                <option value="self_approval_allowed">self_approval_allowed (self-approval)</option>
+              </Form.Select>
+              <Button
+                size="sm"
+                className="mt-2"
+                disabled={setMode.isPending || approvalMode === tenantData?.templateApprovalMode}
+                onClick={() => {
+                  if (
+                    approvalMode === 'self_approval_allowed' &&
+                    !window.confirm(
+                      'Mode ini mengizinkan admin menyetujui perubahannya sendiri. Setiap self-approval tetap wajib alasan dan tercatat di audit. Lanjutkan?',
+                    )
+                  ) {
+                    return;
+                  }
+
+                  setMode.mutate(approvalMode);
+                }}
+              >
+                Simpan mode
+              </Button>
+              {approvalMode === 'self_approval_allowed' ? (
+                <div className="small text-warning-emphasis mt-2">
+                  Pemisahan tugas dilonggarkan untuk tenant ini.
+                </div>
+              ) : null}
+            </Card.Body>
+          </Card>
+
           <Card className="mt-3 border-danger">
             <Card.Body>
               <Card.Title className="h6 text-danger">Hapus tenant</Card.Title>
@@ -310,7 +365,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
                 }}
               >
                 <Row className="g-2 align-items-end">
-                  <Col xs={12} md={5}>
+                  <Col xs={12} md={4}>
                     <Form.Label className="small text-muted mb-1">Email</Form.Label>
                     <Form.Control
                       type="email"
@@ -319,7 +374,7 @@ export function PlatformTenantDetailPage(): JSX.Element {
                       onChange={(event) => setAdminEmail(event.target.value)}
                     />
                   </Col>
-                  <Col xs={12} md={4}>
+                  <Col xs={12} md={3}>
                     <Form.Label className="small text-muted mb-1">Password awal</Form.Label>
                     <Form.Control
                       type="password"
@@ -327,6 +382,18 @@ export function PlatformTenantDetailPage(): JSX.Element {
                       value={adminPassword}
                       onChange={(event) => setAdminPassword(event.target.value)}
                     />
+                  </Col>
+                  <Col xs={12} md={2}>
+                    <Form.Label className="small text-muted mb-1">Peran</Form.Label>
+                    <Form.Select
+                      value={adminRole}
+                      onChange={(event) =>
+                        setAdminRole(event.target.value as 'tenant_admin' | 'tenant_approver')
+                      }
+                    >
+                      <option value="tenant_admin">tenant_admin</option>
+                      <option value="tenant_approver">tenant_approver</option>
+                    </Form.Select>
                   </Col>
                   <Col xs={12} md={3}>
                     <Button

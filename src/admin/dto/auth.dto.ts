@@ -29,6 +29,9 @@ export class ChangePasswordDto {
 }
 
 export class AdminProfileDto {
+  @ApiProperty({ enum: ['two_person', 'self_approval_allowed'] })
+  templateApprovalMode!: string;
+
   @ApiProperty({ format: 'uuid' })
   id!: string;
 

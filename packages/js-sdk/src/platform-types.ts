@@ -1,11 +1,13 @@
 import type { Paged } from './admin-types';
 
 export type TenantStatus = 'active' | 'suspended';
+export type TemplateApprovalMode = 'two_person' | 'self_approval_allowed';
 
 export interface TenantSummary {
   id: string;
   name: string;
   status: TenantStatus;
+  templateApprovalMode: TemplateApprovalMode;
   suspendedAt: string | null;
   createdAt: string;
   updatedAt: string;

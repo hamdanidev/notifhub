@@ -470,6 +470,25 @@ Desain lengkap dan keputusan D1–D12 ada di `docs/design/templates/template-sys
   warning dua kolom, drag-and-drop/undo-redo console, serta ekspor HTML; lihat
   `docs/design/templates/template-limitations-roadmap.md`. Detail notifikasi kini memuat `templateId`,
   `templateVersion`, dan `templateResolvedAt` per recipient (P2 D10).
+
+## 13. Approval maker-checker dan diff (2026-11-22)
+
+Desain dan bukti verifikasi: `docs/design/templates/template-approval-diff-design.md`.
+
+- Role tenant baru `tenant_approver` (dibuat lewat lane platform dengan `role`, atau env
+  `APPROVER_EMAIL`/`APPROVER_PASSWORD_HASH` untuk tenant default/single tenant). Guard default tetap
+  `tenant_admin`; rute baca/review diberi `@AdminRoles`.
+- `POST /admin/templates/:id/submit-review` (maker) membuat approval pending untuk revisi saat ini.
+- `POST /admin/template-approvals/:id/approve|reject` (approver; reject wajib catatan).
+- `GET /admin/template-approvals` (antrean) dan `GET /admin/templates/:id/approvals` (riwayat).
+- `GET /admin/templates/:id/diff?fromVersion=&toVersion=` mengembalikan field diff, block diff, dan
+  render dua versi.
+- `POST /admin/templates/:id/publish` kini menolak (409) bila revisi belum disetujui
+  (`approval_required`, `approval_pending`, `approval_rejected`, `approval_stale`,
+  `approval_self_forbidden`, `approver_unavailable`). `PUT` pada published ditolak
+  `409 approval_required_draft` (tidak ada lagi auto-publish). Mode
+  `self_approval_allowed` per tenant mengizinkan publish satu langkah dengan `selfApprovalReason`
+  minimal 20 karakter, dicatat `selfApproved=true` di `TemplateApproval` dan audit.
 - Payload admin memakai parser 1 MB (`TEMPLATE_MAX_PAYLOAD_BYTES`); ingest tetap
   `INGEST_MAX_PAYLOAD_BYTES` 64 KB.
 - Test send hanya email/WhatsApp, memakai template tersimpan, melewati preferensi, dibatasi

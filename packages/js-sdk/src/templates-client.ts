@@ -8,7 +8,12 @@ import type {
   PartialAsset,
   PreviewInlineInput,
   PreviewResult,
+  TemplateApproval,
+  TemplateApprovalList,
+  TemplateApprovalQuery,
+  TemplateApprovalQueue,
   TemplateAuditEvent,
+  TemplateDiffResult,
   TemplateImageAsset,
   TemplateListQuery,
   TemplateListResult,
@@ -125,14 +130,84 @@ export class NotifHubTemplatesClient {
     id: string,
     expectedRevision: number,
     note?: string,
+    selfApprovalReason?: string,
   ): Promise<TemplateMutation> {
     return this.transport.request<TemplateMutation>(
       'POST',
       `/templates/${encodeURIComponent(id)}/publish`,
       {
+        body: {
+          expectedRevision,
+          ...(note === undefined ? {} : { note }),
+          ...(selfApprovalReason === undefined ? {} : { selfApprovalReason }),
+        },
+        retry: false,
+      },
+    );
+  }
+
+  submitReview(
+    id: string,
+    expectedRevision: number,
+    note?: string,
+  ): Promise<TemplateApproval> {
+    return this.transport.request<TemplateApproval>(
+      'POST',
+      `/templates/${encodeURIComponent(id)}/submit-review`,
+      {
         body: { expectedRevision, ...(note === undefined ? {} : { note }) },
         retry: false,
       },
+    );
+  }
+
+  listTemplateApprovals(id: string, query: TemplateApprovalQuery = {}): Promise<TemplateApprovalList> {
+    return this.transport.request<TemplateApprovalList>(
+      'GET',
+      `/templates/${encodeURIComponent(id)}/approvals${queryString({
+        status: query.status,
+        limit: query.limit,
+        offset: query.offset,
+      })}`,
+    );
+  }
+
+  queueApprovals(query: TemplateApprovalQuery = {}): Promise<TemplateApprovalQueue> {
+    return this.transport.request<TemplateApprovalQueue>(
+      'GET',
+      `/template-approvals${queryString({
+        status: query.status,
+        templateId: query.templateId,
+        limit: query.limit,
+        offset: query.offset,
+      })}`,
+    );
+  }
+
+  approveApproval(id: string, note?: string): Promise<TemplateApproval> {
+    return this.transport.request<TemplateApproval>(
+      'POST',
+      `/template-approvals/${encodeURIComponent(id)}/approve`,
+      { body: note === undefined ? {} : { note }, retry: false },
+    );
+  }
+
+  rejectApproval(id: string, note: string): Promise<TemplateApproval> {
+    return this.transport.request<TemplateApproval>(
+      'POST',
+      `/template-approvals/${encodeURIComponent(id)}/reject`,
+      { body: { note }, retry: false },
+    );
+  }
+
+  diffTemplate(
+    id: string,
+    fromVersion?: number,
+    toVersion?: number,
+  ): Promise<TemplateDiffResult> {
+    return this.transport.request<TemplateDiffResult>(
+      'GET',
+      `/templates/${encodeURIComponent(id)}/diff${queryString({ fromVersion, toVersion })}`,
     );
   }
 

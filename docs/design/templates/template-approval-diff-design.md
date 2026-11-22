@@ -1,6 +1,6 @@
 # Approval maker-checker dan diff versi template
 
-Status: **draf — menunggu persetujuan; belum diimplementasikan** (2026-11-22).
+Status: **terimplementasi dan terverifikasi** (2026-11-22). Lihat §17 untuk catatan implementasi, deviasi, dan bukti verifikasi.
 Basis: `docs/design/templates/template-limitations-roadmap.md` D9/§14.4,
 `docs/architecture/project-brief.md` §6–§7 butir 9, `docs/design/templates/template-system-design.md`
 §6.4 (audit) dan §9 (Admin API), `docs/design/admin-api.md`, `docs/design/multi-tenant-platform-admin.md`,
@@ -736,7 +736,7 @@ tiga lane auth (hanya penambahan peran di lane tenant), dan perilaku published i
 4. **Bootstrap mode** (`admin-bootstrap.mode.unit-spec.ts`): env mode diterapkan saat platform admin
    tidak ada, diabaikan saat platform aktif, approver env idempoten, bentrok email gagal cepat.
 
-### 12.2 E2E baru (E48–E58)
+### 12.2 E2E baru (E48–E57)
 
 | ID | Skenario | Ekspektasi |
 |---|---|---|
@@ -914,11 +914,75 @@ kebijakan per tenant dengan default strict. Sisanya mohon dikonfirmasi:
 16. **Single tenant**: env `APPROVER_*` + `TEMPLATE_APPROVAL_MODE`, dan env mode **diabaikan** saat
     platform admin aktif (D18) — setuju?
 
-Setelah disetujui, urutan implementasi: schema + migrasi → policy + guard/role → approval service +
-gate publish → diff service/endpoint → platform role + mode → bootstrap/env → console UI → SDK
-source → test e2e + perbaikan test lama → dokumentasi single tenant → verifikasi end-to-end.
+Semua pertanyaan di atas disetujui dengan default yang direkomendasikan; hasil implementasi dan
+deviasinya dicatat di §17.
 
 ## 17. Catatan implementasi
 
-Belum diimplementasikan. Setelah disetujui, bagian ini diisi perubahan aktual, deviasi, bukti
-verifikasi (status code, isi DB, test), dan batasan yang tersisa.
+Status: **terimplementasi dan terverifikasi** pada 2026-11-22 (default yang disetujui: dua admin,
+semua channel, maker/approver boleh publish, kebijakan self-approval per tenant, single tenant via
+env).
+
+### 17.1 Yang diterapkan
+
+| Area | Perubahan |
+|---|---|
+| Schema | `TemplateApprovalMode` + `Tenant.templateApprovalMode`, `TemplateApprovalStatus` + `TemplateApproval`, 4 nilai `TemplateAuditAction`, relasi `NotificationTemplate.approvals`; dua migrasi (tabel/enum/kolom + perluasan check constraint role) |
+| Auth | `tenant_approver` di `admin.types.ts`; `AdminJwtGuard` menerima dua role dan membaca `@AdminRoles` (default `tenant_admin`); login/me/change-password menerima approver; `templateApprovalMode` dikirim di profil |
+| Approval | `AdminTemplateApprovalsService` + controller: submit/approve/reject/list/queue; publish gate `approval_required`, `approval_pending`, `approval_rejected`, `approval_stale`, `approval_self_forbidden`, `approver_unavailable`, `self_approval_*`; audit `submitted_for_review`/`approved`/`rejected`/`approval_reopened` |
+| Publish | Gate dijalankan sebelum validasi konten; self-approval satu langkah membuat approval `selfApproved=true` di transaksi publish; `PUT` published ditolak `409 approval_required_draft`; activate/deactivate tetap tanpa approval |
+| Diff | `template.diff.ts` (LCS baris/word, block diff, batas) + `AdminTemplateDiffService` + `GET /admin/templates/:id/diff` dengan render dua versi dari pipeline preview |
+| Platform | Role approver saat membuat admin tenant (default `tenant_admin`), kolom peran, `PATCH /platform/tenants/:id` menerima `templateApprovalMode` + audit `tenant.approval_mode.changed` |
+| Bootstrap | `APPROVER_EMAIL`/`APPROVER_PASSWORD_HASH` (tenant default) dan `TEMPLATE_APPROVAL_MODE`; env mode diabaikan saat platform admin aktif; warning `template.approval.approver_missing` |
+| SDK source | Tipe approval/diff + `submitReview`, `listTemplateApprovals`, `queueApprovals`, `approveApproval`, `rejectApproval`, `diffTemplate`, `publishTemplate(..., selfApprovalReason)` |
+| Console | Sesi/route menerima approver; nav terpisah; halaman `/reviews` dan `/templates/:id/compare`; panel approval di editor; dialog publish meminta alasan pada mode longgar; badge self-approved |
+| Test | Unit policy + diff; e2e E48–E57; helper submit/approve; test lama memakai helper; test env membuat approver dari env |
+
+### 17.2 Deviasi dan keputusan tambahan
+
+1. **Dua migrasi, bukan satu.** Check constraint lama `AdminUser_role_tenant_check` hanya
+   mengizinkan `tenant_admin`/`platform_admin`, sehingga role approver ditolak database. Migrasi
+   kedua (`20261122130000_template_approver_role_check`) memperluas constraint tanpa mengubah data.
+   Total migrasi menjadi **16**.
+2. **E2E E53 tidak dibuat terpisah**: legacy `PUT` pada published sudah diuji oleh E19 yang diubah
+   menjadi skenario `409 approval_required_draft`. E58 (single tenant dari env) tidak dibuat sebagai
+   e2e karena env dibaca saat proses start; jalur bootstrap approver terverifikasi karena seluruh
+   e2e memakai approver yang dibuat dari `APPROVER_EMAIL`/`APPROVER_PASSWORD_HASH`.
+3. **Token approver di e2e ditandatangani langsung** dengan `ADMIN_JWT_SECRET` (bukan login HTTP)
+   agar tidak menabrak rate limit login 5/menit saat suite berjalan.
+4. **Self-approval satu langkah** tidak melalui submit/approve terpisah; approval `selfApproved`
+   dibuat dalam transaksi publish. Approval `pending`/`rejected` yang sudah ada tidak bisa
+   ditimpa, sesuai §5.4.
+5. **Deteksi stale** juga mencari approval `approved` terakhir pada baris template yang sama bila
+   revisi saat ini belum punya approval, sehingga edit setelah review menghasilkan
+   `approval_stale`, bukan `approval_required`.
+6. **UI console baru belum punya unit test khusus**; verifikasinya lewat `console:typecheck`,
+   `console:build`, dan e2e backend. Interaksi browser tetap manual (batasan repo, tanpa
+   Playwright).
+7. **Versi paket tidak dinaikkan** di task ini: `@notifhub/js` tetap `0.4.0` (source bertambah),
+   console `0.2.0`, root `0.11.0`. Rilis/publikasi npm menunggu persetujuan terpisah.
+8. **Console tidak menampilkan mode approval di halaman Akun**; mode hanya ditampilkan di platform
+  console dan dipakai untuk prompt publish di tenant. Ini cukup untuk v1.
+
+### 17.3 Bukti verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run ci` | lulus **217 s**: typecheck, build, **85 unit**, **56 e2e**, **16 migrasi** |
+| `npm --prefix console run test` | **55 test** lulus (10 file) |
+| `npm run console:typecheck` / `console:build` | lulus; tenant ±1.017 KB (setelah minify), platform 505,74 KB |
+| `npm run sdk:typecheck` / `sdk:test` | lulus; 36 test |
+| `npm run react:test` | 5 test lulus |
+| `npm run docs:check` | lulus (lihat laporan akhir) |
+| E2E approval | E48 submit/approve/publish + publish oleh approver; E49 tanpa approval + stale; E50 pemisahan peran; E51 izin approver; E52 tenant tanpa approver → platform menambah approver; E54 diff + isolasi tenant; E55 in-app; E56 approve ganda; E57 mode longgar + audit |
+| E19 legacy | `PUT` published `409 approval_required_draft`, tidak ada versi baru, baris lama utuh |
+
+### 17.4 Batasan yang tersisa
+
+- RBAC masih dua peran tetap; belum ada permission granular atau approval berlapis.
+- Tidak ada notifikasi email/in-app ke approver; hanya badge/antrean di console.
+- Approval tidak berlaku untuk aset layout/theme/partial dan tidak untuk deaktivasi/aktivasi.
+- Tidak ada break-glass publish di lane tenant; pelonggaran hanya lewat platform (multi-tenant)
+  atau env (single tenant).
+- Console halaman review/compare belum diuji dengan browser automation; verifikasi UI manual.
+- SDK source berubah tetapi belum dirilis; konsumen npm belum mendapat method approval/diff.

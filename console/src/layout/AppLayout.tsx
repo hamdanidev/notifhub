@@ -11,7 +11,7 @@ interface NavItem {
   end?: boolean;
 }
 
-const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
+const ADMIN_NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Workspace',
     items: [
@@ -19,6 +19,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
       { to: '/notifications', label: 'Notifications', icon: 'bell' },
       { to: '/templates', label: 'Templates', icon: 'template' },
       { to: '/templates/assets', label: 'Aset template', icon: 'layers' },
+      { to: '/reviews', label: 'Review', icon: 'shield' },
     ],
   },
   {
@@ -41,8 +42,19 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
 const SIDEBAR_STORAGE_KEY = 'notifhub.console.sidebarCollapsed';
 const MOBILE_QUERY = '(max-width: 959.98px)';
 
+const APPROVER_NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
+  {
+    title: 'Review',
+    items: [
+      { to: '/reviews', label: 'Antrean review', icon: 'shield' },
+      { to: '/templates', label: 'Templates', icon: 'template' },
+    ],
+  },
+];
+
 function pageTitle(pathname: string): string {
   if (pathname === '/') return 'Dashboard';
+  if (pathname.startsWith('/reviews')) return 'Review template';
   if (pathname.startsWith('/notifications')) return 'Notifications';
   if (pathname.startsWith('/templates')) return 'Templates';
   if (pathname.startsWith('/subscribers')) return 'Subscribers';
@@ -67,6 +79,8 @@ function initialMobile(): boolean {
 
 export function AppLayout(): JSX.Element {
   const { session, logout } = useAuth();
+  const navSections =
+    session?.admin.role === 'tenant_approver' ? APPROVER_NAV_SECTIONS : ADMIN_NAV_SECTIONS;
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -152,7 +166,7 @@ export function AppLayout(): JSX.Element {
         </div>
 
         <nav>
-          {NAV_SECTIONS.map((section) => (
+          {navSections.map((section) => (
             <div key={section.title}>
               <div className="nav-section-title">{section.title}</div>
               {section.items.map((item) => (

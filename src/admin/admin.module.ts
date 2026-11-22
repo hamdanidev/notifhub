@@ -11,6 +11,7 @@ import { AdminAuditController } from './controllers/admin-audit.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
 import { AdminNotificationsController } from './controllers/admin-notifications.controller';
 import { AdminSubscribersController } from './controllers/admin-subscribers.controller';
+import { AdminTemplateApprovalsController } from './controllers/admin-template-approvals.controller';
 import { AdminTemplateAssetsController } from './controllers/admin-template-assets.controller';
 import { AdminTemplatesController } from './controllers/admin-templates.controller';
 import { AdminTopicsController } from './controllers/admin-topics.controller';
@@ -21,7 +22,9 @@ import { AdminNotificationResendService } from './services/admin-notification-re
 import { AdminNotificationComposeService } from './services/admin-notification-compose.service';
 import { AdminNotificationsService } from './services/admin-notifications.service';
 import { AdminSubscribersService } from './services/admin-subscribers.service';
+import { AdminTemplateApprovalsService } from './services/admin-template-approvals.service';
 import { AdminTemplateAssetsService } from './services/admin-template-assets.service';
+import { AdminTemplateDiffService } from './services/admin-template-diff.service';
 import { AdminTemplatePreviewService } from './services/admin-template-preview.service';
 import { AdminTemplateTestSendService } from './services/admin-template-test-send.service';
 import { AdminTemplateValidationService } from './services/admin-template-validation.service';
@@ -47,6 +50,7 @@ import { AdminTopicsService } from './services/admin-topics.service';
     AdminAuditController,
     AdminApiKeysController,
     AdminTemplatesController,
+    AdminTemplateApprovalsController,
     AdminTemplateAssetsController,
     AdminSubscribersController,
     AdminTopicsController,
@@ -57,6 +61,8 @@ import { AdminTopicsService } from './services/admin-topics.service';
     AdminAuditService,
     AdminApiKeysService,
     AdminTemplatesService,
+    AdminTemplateApprovalsService,
+    AdminTemplateDiffService,
     AdminTemplateAssetsService,
     AdminTemplateValidationService,
     AdminTemplatePreviewService,

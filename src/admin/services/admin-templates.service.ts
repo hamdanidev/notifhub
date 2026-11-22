@@ -21,6 +21,7 @@ import {
   AdminTemplateValidationService,
 } from './admin-template-validation.service';
 import { AdminTemplateAssetsService } from './admin-template-assets.service';
+import { AdminTemplateApprovalsService } from './admin-template-approvals.service';
 import {
   builderLegacyWarning,
   parseBuilderDocument,
@@ -125,6 +126,7 @@ export class AdminTemplatesService {
     private readonly prisma: PrismaService,
     private readonly assets: AdminTemplateAssetsService,
     private readonly validation: AdminTemplateValidationService,
+    private readonly approvals: AdminTemplateApprovalsService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(AdminTemplatesService.name);
@@ -349,7 +351,11 @@ export class AdminTemplatesService {
     const contentChanged = hasContentChanges(dto, existing);
 
     if (existing.status === TemplateStatus.published && contentChanged) {
-      return this.updatePublishedViaNewVersion(tenantId, admin, existing, dto);
+      throw new ConflictException({
+        message:
+          'Template published tidak dapat diubah langsung; buat draft, ajukan review, lalu publish.',
+        details: { code: 'approval_required_draft' },
+      });
     }
 
     if (existing.status === TemplateStatus.draft) {
@@ -500,6 +506,18 @@ export class AdminTemplatesService {
       );
     }
 
+    const approval = await this.approvals.assertPublishable(
+      tenantId,
+      {
+        id: existing.id,
+        revision: existing.revision,
+        version: existing.version,
+        status: existing.status,
+      },
+      admin,
+      dto.selfApprovalReason,
+    );
+
     const builder = parseBuilderDocument(existing.channel, existing.builderData);
     const builderWarnings = builder.issues.some((issue) => issue.severity === 'error')
       ? [builderLegacyWarning()]
@@ -512,6 +530,28 @@ export class AdminTemplatesService {
     this.throwIfErrors(validation);
 
     const published = await this.prisma.$transaction(async (tx) => {
+      const approvalId = approval.selfApproval
+        ? await this.approvals.recordSelfApproval(
+            tx,
+            tenantId,
+            {
+              id: existing.id,
+              revision: existing.revision,
+              version: existing.version,
+              status: existing.status,
+            },
+            admin,
+            approval.reason ?? '',
+          )
+        : approval.approvalId;
+
+      if (approvalId === null) {
+        throw new ConflictException({
+          message: 'Approval tidak ditemukan untuk revisi ini.',
+          details: { code: 'approval_required' },
+        });
+      }
+
       await this.deactivateOthers(
         tx,
         tenantId,
@@ -540,7 +580,7 @@ export class AdminTemplatesService {
         action: 'published',
         admin,
         note: dto.note,
-        metadata: { validationErrors: 0 },
+        metadata: { validationErrors: 0, approvalId, selfApproved: approval.selfApproval },
       });
 
       return row;
@@ -938,154 +978,6 @@ export class AdminTemplatesService {
     });
 
     return { ...toTemplateView(updated, true), validation };
-  }
-
-  private async updatePublishedViaNewVersion(
-    tenantId: string,
-    admin: AdminPrincipal,
-    existing: TemplateWithAssets,
-    dto: UpdateTemplateDto,
-  ): Promise<TemplateMutationView> {
-    const layoutId = dto.layoutId === undefined ? existing.layoutId : dto.layoutId;
-    const themeId = dto.themeId === undefined ? existing.themeId : dto.themeId;
-    const layout = await this.assets.resolveLayout(tenantId, layoutId);
-    const theme = await this.assets.resolveTheme(tenantId, themeId);
-    const partialIds =
-      dto.partialIds === undefined
-        ? existing.partials.map((link) => link.partialId)
-        : dto.partialIds;
-    const partials = await this.assets.resolvePartials(tenantId, partialIds);
-    const format = dto.format ?? existing.format;
-    const builder = parseBuilderDocument(
-      existing.channel,
-      dto.builderData === undefined ? existing.builderData : dto.builderData,
-    );
-    const builderWarnings: TemplateValidationIssue[] = [];
-
-    if (builder.issues.some((issue) => issue.severity === 'error')) {
-      if (dto.builderData !== undefined) {
-        this.throwIfErrors(builder.issues);
-      }
-
-      builderWarnings.push(builderLegacyWarning());
-    }
-
-    const effectiveBuilder = builderWarnings.length > 0 ? null : builder.document;
-    const renderable = buildRenderable({
-      id: existing.id,
-      key: existing.key,
-      channel: existing.channel,
-      locale: existing.locale,
-      subject: dto.subject === undefined ? existing.subject : dto.subject,
-      preheader: dto.preheader === undefined ? existing.preheader : dto.preheader,
-      body: dto.body ?? existing.body,
-      format,
-      direction: dto.direction ?? existing.direction,
-      revision: 0,
-      strictVariables: dto.strictVariables ?? existing.strictVariables,
-      variables: dto.variables === undefined ? existing.variables : dto.variables,
-      sampleData: dto.sampleData === undefined ? existing.sampleData : dto.sampleData,
-      builderData: effectiveBuilder,
-      layout,
-      theme,
-      partials,
-      updatedAt: new Date(),
-    });
-    const validation = dedupeIssues([
-      ...this.validation.validate(renderable, { legacySubject: true }),
-      ...builderWarnings,
-    ]);
-    this.throwIfErrors(validation);
-
-    const version = await this.nextVersionFor(
-      tenantId,
-      existing.key,
-      existing.channel,
-      existing.locale,
-    );
-
-    const created = await this.prisma.$transaction(async (tx) => {
-      await this.deactivateOthers(
-        tx,
-        tenantId,
-        existing.key,
-        existing.channel,
-        existing.locale,
-        undefined,
-      );
-
-      const row = await tx.notificationTemplate.create({
-        data: {
-          tenantId,
-          key: existing.key,
-          channel: existing.channel,
-          locale: existing.locale,
-          subject: dto.subject === undefined ? existing.subject : dto.subject,
-          preheader: dto.preheader === undefined ? existing.preheader : dto.preheader,
-          body: dto.body ?? existing.body,
-          format,
-          direction: dto.direction ?? existing.direction,
-          version,
-          revision: 0,
-          status: TemplateStatus.published,
-          active: true,
-          strictVariables: dto.strictVariables ?? existing.strictVariables,
-          variables: jsonInput(
-            dto.variables === undefined ? existing.variables : dto.variables,
-          ),
-          sampleData: jsonInput(
-            dto.sampleData === undefined ? existing.sampleData : dto.sampleData,
-          ),
-          builderData: jsonInput(effectiveBuilder),
-          layoutId: layout?.id ?? null,
-          themeId: theme?.id ?? null,
-          fallbackProvider:
-            dto.fallbackProvider === undefined
-              ? existing.fallbackProvider
-              : dto.fallbackProvider,
-          fallbackChannel:
-            dto.fallbackChannel === undefined ? existing.fallbackChannel : dto.fallbackChannel,
-          publishedAt: new Date(),
-          publishedByAdminId: admin.adminId,
-          partials: {
-            create: partials.map((link) => ({ partialId: link.partial.id })),
-          },
-        },
-        include: META_INCLUDE,
-      });
-
-      await this.recordAudit(tx, {
-        tenantId,
-        templateId: row.id,
-        templateVersion: row.version,
-        action: 'published',
-        admin,
-        note: dto.note,
-        metadata: {
-          legacyPut: true,
-          sourceTemplateId: existing.id,
-          sourceVersion: existing.version,
-          changed: changedFields(dto),
-        },
-      });
-
-      return row;
-    });
-
-    this.logger.info(
-      {
-        event: 'admin.template.published',
-        tenant_id: tenantId,
-        template_id: created.id,
-        source_template_id: existing.id,
-        key: created.key,
-        version: created.version,
-        legacy_put: true,
-      },
-      'template published as a new version through the legacy update endpoint',
-    );
-
-    return { ...toTemplateView(created, true), validation };
   }
 
   private async updatePublishedMetadata(

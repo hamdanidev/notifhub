@@ -7,7 +7,7 @@ import {
 import bcrypt from 'bcrypt';
 import { PinoLogger } from 'nestjs-pino';
 import { AdminTokenService } from '../../auth/admin/admin-token.service';
-import { TENANT_ADMIN_ROLE } from '../../auth/admin/admin.types';
+import { isTenantAdminRole } from '../../auth/admin/admin.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AdminProfileDto,
@@ -34,7 +34,7 @@ export class AdminAuthService {
     const email = dto.email.trim().toLowerCase();
     const admin = await this.prisma.adminUser.findUnique({
       where: { email },
-      include: { tenant: { select: { status: true } } },
+      include: { tenant: { select: { status: true, templateApprovalMode: true } } },
     });
     const passwordMatches = await bcrypt.compare(
       dto.password,
@@ -58,7 +58,7 @@ export class AdminAuthService {
     }
 
     // Platform admins (tenantId = null) use the platform auth surface, not the tenant lane.
-    if (admin.tenantId === null) {
+    if (admin.tenantId === null || !isTenantAdminRole(admin.role)) {
       this.logger.warn(
         { event: 'admin.login.failed', email, reason: 'tenant_missing' },
         'admin login rejected: account has no tenant',
@@ -101,6 +101,7 @@ export class AdminAuthService {
         email: admin.email,
         role: admin.role,
         tenantId: admin.tenantId,
+        templateApprovalMode: admin.tenant?.templateApprovalMode ?? 'two_person',
       }),
     };
   }
@@ -116,7 +117,7 @@ export class AdminAuthService {
       throw new UnauthorizedException('Admin account is not available');
     }
 
-    if (admin.role !== TENANT_ADMIN_ROLE || admin.tenantId === null) {
+    if (!isTenantAdminRole(admin.role) || admin.tenantId === null) {
       throw new ForbiddenException('Admin role is not permitted');
     }
 
@@ -163,13 +164,16 @@ export class AdminAuthService {
   }
 
   async me(adminId: string): Promise<AdminProfileDto> {
-    const admin = await this.prisma.adminUser.findUnique({ where: { id: adminId } });
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { id: adminId },
+      include: { tenant: { select: { templateApprovalMode: true } } },
+    });
 
     if (admin === null || !admin.active) {
       throw new UnauthorizedException('Admin account is not available');
     }
 
-    if (admin.tenantId === null) {
+    if (admin.tenantId === null || !isTenantAdminRole(admin.role)) {
       throw new ForbiddenException('Admin role is not permitted');
     }
 
@@ -178,6 +182,7 @@ export class AdminAuthService {
       email: admin.email,
       role: admin.role,
       tenantId: admin.tenantId,
+      templateApprovalMode: admin.tenant?.templateApprovalMode ?? 'two_person',
     });
   }
 }
@@ -187,11 +192,13 @@ function toProfile(admin: {
   email: string;
   role: string;
   tenantId: string;
+  templateApprovalMode: string;
 }): AdminProfileDto {
   return {
     id: admin.id,
     email: admin.email,
     role: admin.role,
     tenantId: admin.tenantId,
+    templateApprovalMode: admin.templateApprovalMode,
   };
 }

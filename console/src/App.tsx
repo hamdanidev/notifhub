@@ -5,6 +5,7 @@ import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './layout/AppLayout';
 import { AccountPage } from './pages/AccountPage';
+import { ApprovalQueuePage } from './pages/ApprovalQueuePage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { AuditPage } from './pages/AuditPage';
 import { ComposeNotificationPage } from './pages/ComposeNotificationPage';
@@ -16,6 +17,7 @@ import { SubscriberDetailPage } from './pages/SubscriberDetailPage';
 import { SubscribersPage } from './pages/SubscribersPage';
 import { TemplateAssetsPage } from './pages/TemplateAssetsPage';
 import { TemplateFormPage } from './pages/TemplateFormPage';
+import { TemplateComparePage } from './pages/TemplateComparePage';
 import { TemplateHistoryPage } from './pages/TemplateHistoryPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { TopicDetailPage } from './pages/TopicDetailPage';
@@ -68,6 +70,8 @@ export const router = createBrowserRouter([
       { path: '/templates/assets', element: <TemplateAssetsPage /> },
       { path: '/templates/:id/edit', element: <TemplateFormPage /> },
       { path: '/templates/:id/history', element: <TemplateHistoryPage /> },
+      { path: '/templates/:id/compare', element: <TemplateComparePage /> },
+      { path: '/reviews', element: <ApprovalQueuePage /> },
       { path: '/subscribers', element: <SubscribersPage /> },
       { path: '/subscribers/:externalId', element: <SubscriberDetailPage /> },
       { path: '/topics', element: <TopicsPage /> },

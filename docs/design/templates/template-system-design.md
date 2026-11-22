@@ -1520,9 +1520,9 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 - Block builder MVP sudah tersedia (lihat `docs/design/templates/email-block-builder-design.md`); impor
   HTML ke Visual tersedia sebagai subset kecil sejak 2026-11-22
   (`docs/design/templates/html-import-design.md`), markdown in-app selesai 2026-11-21
-  (`docs/design/templates/in-app-markdown-design.md`), sedangkan loop/conditional visual,
-  MJML/juice, Meta approved WhatsApp template, diff visual versi, CodeMirror, atau approval
-  maker-checker belum ada.
+  (`docs/design/templates/in-app-markdown-design.md`). Approval maker-checker + diff versi selesai
+  2026-11-22 (`docs/design/templates/template-approval-diff-design.md`); loop/conditional visual,
+  MJML/juice, Meta approved WhatsApp template, diff pixel/gambar, atau CodeMirror belum ada.
 - Test send hanya email/WhatsApp; in-app/SMS memakai preview.
 - Aset append-only dan belum ada penghapusan otomatis. Roadmap P1 menambahkan `usageCount` dan
   `DELETE` hanya untuk aset yang tidak direferensikan; aset yang dipakai tetap immutable.

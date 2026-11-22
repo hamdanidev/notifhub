@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, TemplateApprovalMode } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -126,27 +126,56 @@ export class PlatformTenantsService {
 
   async update(
     id: string,
-    input: { name: string },
+    input: { name?: string; templateApprovalMode?: TemplateApprovalMode },
     actor: PlatformAuditActor,
     context: PlatformAuditContext,
   ): Promise<TenantDto> {
     const existing = await this.requireTenant(id);
+    const data: { name?: string; templateApprovalMode?: TemplateApprovalMode } = {};
 
-    if (existing.name === input.name) {
+    if (input.name !== undefined && input.name !== existing.name) {
+      data.name = input.name;
+    }
+
+    if (
+      input.templateApprovalMode !== undefined &&
+      input.templateApprovalMode !== existing.templateApprovalMode
+    ) {
+      data.templateApprovalMode = input.templateApprovalMode;
+    }
+
+    if (Object.keys(data).length === 0) {
       return this.get(id);
     }
 
-    await this.prisma.tenant.update({ where: { id }, data: { name: input.name } });
+    await this.prisma.tenant.update({ where: { id }, data });
 
-    await this.audit.record({
-      actor,
-      action: 'tenant.renamed',
-      tenantId: id,
-      targetType: 'tenant',
-      targetId: id,
-      metadata: { from: existing.name, to: input.name },
-      context,
-    });
+    if (data.name !== undefined) {
+      await this.audit.record({
+        actor,
+        action: 'tenant.renamed',
+        tenantId: id,
+        targetType: 'tenant',
+        targetId: id,
+        metadata: { from: existing.name, to: data.name },
+        context,
+      });
+    }
+
+    if (data.templateApprovalMode !== undefined) {
+      await this.audit.record({
+        actor,
+        action: 'tenant.approval_mode.changed',
+        tenantId: id,
+        targetType: 'tenant',
+        targetId: id,
+        metadata: {
+          from: existing.templateApprovalMode,
+          to: data.templateApprovalMode,
+        },
+        context,
+      });
+    }
 
     return this.get(id);
   }
@@ -255,10 +284,15 @@ export class PlatformTenantsService {
     this.logger.info({ event: 'platform.tenant.deleted', tenant_id: id }, 'tenant deleted');
   }
 
-  private async requireTenant(id: string): Promise<{ id: string; name: string; status: string }> {
+  private async requireTenant(id: string): Promise<{
+    id: string;
+    name: string;
+    status: string;
+    templateApprovalMode: TemplateApprovalMode;
+  }> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id },
-      select: { id: true, name: true, status: true },
+      select: { id: true, name: true, status: true, templateApprovalMode: true },
     });
 
     if (tenant === null) {
@@ -298,6 +332,7 @@ function toTenantDto(tenant: {
   createdAt: Date;
   updatedAt: Date;
   _count: { adminUsers: number; apiKeys: number };
+  templateApprovalMode: TemplateApprovalMode;
 }): TenantDto {
   return {
     id: tenant.id,
@@ -306,6 +341,7 @@ function toTenantDto(tenant: {
     suspendedAt: tenant.suspendedAt?.toISOString() ?? null,
     createdAt: tenant.createdAt.toISOString(),
     updatedAt: tenant.updatedAt.toISOString(),
+    templateApprovalMode: tenant.templateApprovalMode,
     adminCount: tenant._count.adminUsers,
     apiKeyCount: tenant._count.apiKeys,
   };

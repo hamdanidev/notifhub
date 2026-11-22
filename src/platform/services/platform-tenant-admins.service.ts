@@ -19,6 +19,7 @@ import {
 } from './platform-audit.service';
 
 const TENANT_ADMIN_ROLE = 'tenant_admin';
+const TENANT_APPROVER_ROLE = 'tenant_approver';
 
 @Injectable()
 export class PlatformTenantAdminsService {
@@ -34,7 +35,7 @@ export class PlatformTenantAdminsService {
     await this.requireTenant(tenantId);
 
     const admins = await this.prisma.adminUser.findMany({
-      where: { tenantId, role: TENANT_ADMIN_ROLE },
+      where: { tenantId, role: { in: [TENANT_ADMIN_ROLE, TENANT_APPROVER_ROLE] } },
       orderBy: { email: 'asc' },
     });
 
@@ -60,12 +61,13 @@ export class PlatformTenantAdminsService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const role = dto.role ?? TENANT_ADMIN_ROLE;
     const admin = await this.prisma.adminUser
       .create({
         data: {
           email,
           passwordHash,
-          role: TENANT_ADMIN_ROLE,
+          role,
           tenantId,
           active: true,
         },
@@ -84,7 +86,7 @@ export class PlatformTenantAdminsService {
       tenantId,
       targetType: 'admin',
       targetId: admin.id,
-      metadata: { email },
+      metadata: { email, role },
       context,
     });
 
@@ -109,7 +111,10 @@ export class PlatformTenantAdminsService {
       where: { id: adminId, tenantId },
     });
 
-    if (admin === null || admin.role !== TENANT_ADMIN_ROLE) {
+    if (
+      admin === null ||
+      (admin.role !== TENANT_ADMIN_ROLE && admin.role !== TENANT_APPROVER_ROLE)
+    ) {
       throw new NotFoundException('Admin not found');
     }
 
@@ -121,7 +126,7 @@ export class PlatformTenantAdminsService {
     }
 
     if (dto.active !== undefined && dto.active !== admin.active) {
-      if (!dto.active) {
+      if (!dto.active && admin.role === TENANT_ADMIN_ROLE) {
         await this.assertNotLastActiveAdmin(tenantId);
       }
 

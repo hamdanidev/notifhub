@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TenantStatus } from '@prisma/client';
+import { TemplateApprovalMode, TenantStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -39,11 +39,17 @@ export class CreateTenantDto {
 }
 
 export class UpdateTenantDto {
-  @ApiProperty({ example: 'Acme Corporation', maxLength: TENANT_NAME_MAX_LENGTH })
+  @ApiPropertyOptional({ example: 'Acme Corporation', maxLength: TENANT_NAME_MAX_LENGTH })
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(TENANT_NAME_MAX_LENGTH)
-  name!: string;
+  name?: string;
+
+  @ApiPropertyOptional({ enum: TemplateApprovalMode })
+  @IsOptional()
+  @IsEnum(TemplateApprovalMode)
+  templateApprovalMode?: TemplateApprovalMode;
 }
 
 export class ListTenantsQueryDto {
@@ -83,6 +89,9 @@ export class TenantDto {
 
   @ApiProperty({ enum: TenantStatus })
   status!: TenantStatus;
+
+  @ApiProperty({ enum: TemplateApprovalMode })
+  templateApprovalMode!: TemplateApprovalMode;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   suspendedAt!: string | null;
@@ -139,6 +148,11 @@ export class CreateTenantAdminDto {
   @IsEmail()
   @MaxLength(320)
   email!: string;
+
+  @ApiPropertyOptional({ enum: ['tenant_admin', 'tenant_approver'], default: 'tenant_admin' })
+  @IsOptional()
+  @IsEnum({ tenant_admin: 'tenant_admin', tenant_approver: 'tenant_approver' })
+  role?: 'tenant_admin' | 'tenant_approver';
 
   @ApiProperty({ minLength: TENANT_ADMIN_PASSWORD_MIN_LENGTH, writeOnly: true })
   @IsString()

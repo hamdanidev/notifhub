@@ -2,6 +2,7 @@ export type Channel = 'inapp' | 'email' | 'whatsapp' | 'sms';
 export type OverallStatus = 'pending' | 'partial' | 'sent' | 'failed';
 
 export interface AdminProfile {
+  templateApprovalMode?: 'two_person' | 'self_approval_allowed';
   id: string;
   email: string;
   role: string;

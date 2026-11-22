@@ -113,6 +113,9 @@ Meta Cloud API tetap default. Detail: `docs/design/whatsapp-waha-provider.md`.
 | `TEMPLATE_IMAGE_DIR` | `var/template-images` | Direktori gambar template (di-ignore git) |
 | `TEMPLATE_IMAGE_MAX_BYTES` | `5242880` | Batas ukuran gambar (5 MB) |
 | `TEMPLATE_IMAGE_BASE_URL` | — | URL publik untuk gambar absolut; isi bila di belakang reverse proxy |
+| `APPROVER_EMAIL` | — | Email akun `tenant_approver` tenant default; wajib bersama hash-nya |
+| `APPROVER_PASSWORD_HASH` | — | Hash bcrypt password approver (dibuat dengan `npm run admin:hash-password`); wajib bersama email |
+| `TEMPLATE_APPROVAL_MODE` | `two_person` | `two_person` (self-approval dilarang) atau `self_approval_allowed`; hanya diterapkan saat lane platform tidak aktif (single tenant/dev). Diabaikan bila ada platform admin |
 
 ## Khusus docker compose dan frontend
 

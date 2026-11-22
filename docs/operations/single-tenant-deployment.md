@@ -96,6 +96,8 @@ Salin `.env.prod.example` ke `.env.prod`, lalu isi nilai berikut. Contoh memakai
 | `SERVICE_API_KEY` | ya | Minimal 16 karakter; dipakai bootstrap API key tenant `default` |
 | `ADMIN_EMAIL` | ya | Email admin tenant pertama |
 | `ADMIN_PASSWORD_HASH` | ya | Hasil `npm run admin:hash-password "..."` (bcrypt, kutip tunggal) |
+| `APPROVER_EMAIL`, `APPROVER_PASSWORD_HASH` | ya (mode `two_person`) | Akun approver untuk maker-checker publish template. Isi keduanya; wajib bila `TEMPLATE_APPROVAL_MODE=two_person` |
+| `TEMPLATE_APPROVAL_MODE` | tidak | `two_person` (default, wajib approver) atau `self_approval_allowed` (satu orang, alasan wajib + audit) |
 | `ADMIN_JWT_SECRET` | ya | Minimal 32 karakter |
 | `ADMIN_JWT_EXPIRES_IN` | tidak | Default `1h` |
 | `SUBSCRIBER_JWT_SECRET` | ya | Minimal 32 karakter |
@@ -354,9 +356,11 @@ staging sebelum produksi.
 
 ## 12. Batasan
 
-1. **Satu akun admin dari environment.** Lane tenant belum punya endpoint manajemen akun admin;
-   akun tambahan hanya bisa dibuat lewat lane platform (yang tidak diaktifkan di sini). Untuk
-   single tenant, satu akun admin biasanya cukup.
+1. **Akun admin dan approver dari environment.** Lane tenant tidak punya endpoint manajemen akun
+   admin; akun approver dibuat lewat `APPROVER_EMAIL`/`APPROVER_PASSWORD_HASH`. Untuk publish
+   template, mode default `two_person` mewajibkan dua akun; tenant satu orang harus memilih
+   `TEMPLATE_APPROVAL_MODE=self_approval_allowed` secara sadar (alasan wajib, tercatat audit, dan
+   template diberi badge self-approved).
 2. **Tanpa billing/kuota per hit.** Tidak ada plan, counter, invoice, atau enforcement kuota.
 3. **Image `runner-tenant` tidak dipakai** karena mewajibkan `PLATFORM_CONSOLE_URL` dan melakukan
    redirect platform. Panduan ini memakai console statis.

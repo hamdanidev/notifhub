@@ -297,6 +297,16 @@ export class PublishTemplateDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({
+    maxLength: 500,
+    description:
+      'Alasan self-approval; wajib (min. 20 karakter) pada tenant dengan mode self_approval_allowed tanpa approval reviewer.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  selfApprovalReason?: string;
 }
 
 export class CloneTemplateDto {

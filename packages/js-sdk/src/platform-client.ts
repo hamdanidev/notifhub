@@ -79,6 +79,10 @@ export class NotifHubPlatformClient {
     );
   }
 
+  renameTenant(id: string, name: string): Promise<TenantSummary> {
+    return this.updateTenant(id, { name });
+  }
+
   createTenant(input: { id: string; name: string }): Promise<TenantSummary> {
     return this.transport.request<TenantSummary>('POST', '/tenants', {
       retry: false,
@@ -86,11 +90,14 @@ export class NotifHubPlatformClient {
     });
   }
 
-  renameTenant(id: string, name: string): Promise<TenantSummary> {
+  updateTenant(
+    id: string,
+    input: { name?: string; templateApprovalMode?: 'two_person' | 'self_approval_allowed' },
+  ): Promise<TenantSummary> {
     return this.transport.request<TenantSummary>(
       'PATCH',
       `/tenants/${encodeURIComponent(id)}`,
-      { retry: false, body: { name } },
+      { retry: false, body: input },
     );
   }
 
@@ -125,7 +132,11 @@ export class NotifHubPlatformClient {
 
   createTenantAdmin(
     tenantId: string,
-    input: { email: string; password: string },
+    input: {
+      email: string;
+      password: string;
+      role?: 'tenant_admin' | 'tenant_approver';
+    },
   ): Promise<TenantAdmin> {
     return this.transport.request<TenantAdmin>(
       'POST',

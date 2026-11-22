@@ -11,6 +11,7 @@ export const PLATFORM_AUDIT_MAX_LIMIT = 200;
 export const PLATFORM_AUDIT_ACTIONS = [
   'tenant.created',
   'tenant.renamed',
+  'tenant.approval_mode.changed',
   'tenant.suspended',
   'tenant.resumed',
   'tenant.deleted',

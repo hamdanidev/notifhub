@@ -20,10 +20,12 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { EmailBlockBuilder } from '../components/EmailBlockBuilder';
 import { ImportHtmlDialog } from '../components/ImportHtmlDialog';
 import { PageHeader } from '../components/PageHeader';
 import { PublishDialog } from '../components/PublishDialog';
+import { TemplateApprovalPanel } from '../components/TemplateApprovalPanel';
 import { QueryState } from '../components/QueryState';
 import { TemplatePreviewPane } from '../components/TemplatePreviewPane';
 import { TemplateStatusBadge } from '../components/TemplateStatusBadge';
@@ -167,6 +169,7 @@ function builderWarningIfDropped(
 
 export function TemplateFormPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const { session } = useAuth();
   const isEdit = id !== undefined;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -289,7 +292,8 @@ export function TemplateFormPage(): JSX.Element {
     }
   }, [blocker]);
 
-  const readOnly = current?.status === 'published';
+  const isApprover = session?.admin.role === 'tenant_approver';
+  const readOnly = current?.status === 'published' || isApprover;
 
   const changeEditorMode = (mode: 'visual' | 'html'): void => {
     if (mode === editorMode) {
@@ -520,12 +524,17 @@ export function TemplateFormPage(): JSX.Element {
   });
 
   const publish = useMutation({
-    mutationFn: async (note: string) => {
+    mutationFn: async (input: { note?: string; selfApprovalReason?: string }) => {
       if (current === null) {
         throw new Error('Simpan draft sebelum publish.');
       }
 
-      return templatesClient.publishTemplate(current.id, current.revision, note);
+      return templatesClient.publishTemplate(
+        current.id,
+        current.revision,
+        input.note,
+        input.selfApprovalReason,
+      );
     },
     onSuccess: (result) => {
       setActionError(null);
@@ -659,6 +668,13 @@ export function TemplateFormPage(): JSX.Element {
         </div>
       ) : null}
 
+      {isEdit && current !== null && current.status === 'draft' && !isApprover ? (
+        <TemplateApprovalPanel templateId={current.id} revision={current.revision} />
+      ) : null}
+      {isApprover && current !== null && current.status === 'draft' ? (
+        <TemplateApprovalPanel templateId={current.id} revision={current.revision} />
+      ) : null}
+
       {saveNotice !== null ? (
         <Alert variant="success" className="py-2" dismissible onClose={() => setSaveNotice(null)}>
           {saveNotice}
@@ -775,7 +791,22 @@ export function TemplateFormPage(): JSX.Element {
         busy={publish.isPending}
         error={publish.error}
         onCancel={() => setPublishOpen(false)}
-        onConfirm={(note) => publish.mutate(note)}
+        onConfirm={(note) => {
+          if (session?.admin.templateApprovalMode === 'self_approval_allowed') {
+            const reason = window.prompt(
+              'Alasan self-approval (minimal 20 karakter). Publish ini melewati review akun kedua:',
+            );
+
+            if (reason === null) {
+              return;
+            }
+
+            publish.mutate({ note, selfApprovalReason: reason });
+            return;
+          }
+
+          publish.mutate({ note });
+        }}
       />
       <TestSendDialog
         show={testOpen}

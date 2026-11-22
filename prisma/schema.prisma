@@ -59,6 +59,10 @@ enum TemplateAuditAction {
   cloned
   rolled_back
   test_sent
+  submitted_for_review
+  approved
+  rejected
+  approval_reopened
 }
 
 enum TenantStatus {
@@ -66,10 +70,22 @@ enum TenantStatus {
   suspended
 }
 
+enum TemplateApprovalMode {
+  two_person
+  self_approval_allowed
+}
+
+enum TemplateApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
 model Tenant {
   id          String       @id
   name        String
   status      TenantStatus @default(active)
+  templateApprovalMode TemplateApprovalMode @default(two_person)
   suspendedAt DateTime?    @db.Timestamptz
   createdAt   DateTime     @default(now()) @db.Timestamptz
   updatedAt   DateTime     @updatedAt @db.Timestamptz
@@ -82,6 +98,7 @@ model Tenant {
   templateAuditEvents   TemplateAuditEvent[]
   templateTestSends     TemplateTestSend[]
   templateImages        TemplateImage[]
+  templateApprovals     TemplateApproval[]
   preferences           NotificationPreference[]
   billingEvents         BillingEvent[]
   subscribers           Subscriber[]
@@ -184,9 +201,10 @@ model NotificationTemplate {
   createdAt          DateTime          @default(now()) @db.Timestamptz
   updatedAt          DateTime          @updatedAt @db.Timestamptz
 
-  partials    TemplatePartialLink[]
-  auditEvents TemplateAuditEvent[]
-  testSends   TemplateTestSend[]
+  partials     TemplatePartialLink[]
+  auditEvents  TemplateAuditEvent[]
+  testSends    TemplateTestSend[]
+  approvals    TemplateApproval[]
 
   @@unique([tenantId, key, channel, locale, version])
   @@index([tenantId, key, channel, locale, active, status])
@@ -301,6 +319,34 @@ model TemplateTestSend {
   @@index([templateId, createdAt])
   @@index([requestedByAdminId, createdAt])
   @@index([createdAt])
+}
+
+model TemplateApproval {
+  id                 String                 @id @default(uuid())
+  tenantId           String                 @default("default")
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  templateId         String
+  templateVersion    Int
+  revision           Int
+  status             TemplateApprovalStatus @default(pending)
+  requestedByAdminId String
+  requestedByEmail   String
+  requestedNote      String?
+  reviewedByAdminId  String?
+  reviewedByEmail    String?
+  reviewNote         String?
+  selfApproved       Boolean                @default(false)
+  selfApprovalReason String?
+  requestedAt        DateTime               @default(now()) @db.Timestamptz
+  reviewedAt         DateTime?              @db.Timestamptz
+  createdAt          DateTime               @default(now()) @db.Timestamptz
+  updatedAt          DateTime               @updatedAt @db.Timestamptz
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, revision])
+  @@index([tenantId, status, requestedAt])
+  @@index([tenantId, templateId, createdAt])
 }
 
 model TemplateImage {
