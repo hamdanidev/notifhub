@@ -1517,9 +1517,12 @@ Status: terimplementasi dan terverifikasi pada 2026-11-16 (root `0.11.0`, consol
 
 - Sanitizer HTML/CSS berbasis pola, bukan parser penuh; sandbox iframe dan validasi publish adalah
   lapisan utama. `{{{ }}}` dinamis tetap disanitasi saat render.
-- Block builder MVP sudah tersedia (lihat `docs/design/templates/email-block-builder-design.md`); loop/conditional
-  visual, MJML/juice, markdown in-app, Meta approved WhatsApp template, impor HTML ke Visual,
-  diff visual versi, CodeMirror, atau approval maker-checker belum ada.
+- Block builder MVP sudah tersedia (lihat `docs/design/templates/email-block-builder-design.md`); impor
+  HTML ke Visual tersedia sebagai subset kecil sejak 2026-11-22
+  (`docs/design/templates/html-import-design.md`), markdown in-app selesai 2026-11-21
+  (`docs/design/templates/in-app-markdown-design.md`), sedangkan loop/conditional visual,
+  MJML/juice, Meta approved WhatsApp template, diff visual versi, CodeMirror, atau approval
+  maker-checker belum ada.
 - Test send hanya email/WhatsApp; in-app/SMS memakai preview.
 - Aset append-only dan belum ada penghapusan otomatis. Roadmap P1 menambahkan `usageCount` dan
   `DELETE` hanya untuk aset yang tidak direferensikan; aset yang dipakai tetap immutable.

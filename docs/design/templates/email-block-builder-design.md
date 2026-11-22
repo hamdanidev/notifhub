@@ -68,7 +68,9 @@ Body HTML dihasilkan dari block dan disimpan seperti biasa. `builderData` tidak 
   divalidasi sebagai warning bila layout tidak mendukung `.nh-col`.
 - Upload gambar tersedia di block image (PNG/JPEG/WebP/GIF, maks 5 MB); URL manual tetap
   didukung.
-- Belum ada impor HTML ke Visual; ekspor HTML tersedia.
+- Impor HTML ke Visual tersedia untuk subset kecil (heading, paragraf, gambar, tombol, divider)
+  sejak 2026-11-22; CSS/layout/dua kolom/list tidak diimpor dan Handlebars blok ditolak. Lihat
+  `docs/design/templates/html-import-design.md`. Ekspor HTML tersedia.
 - Builder tidak menggantikan mode HTML advanced.
 
 ## 7. Implementasi dan verifikasi

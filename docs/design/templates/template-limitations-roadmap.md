@@ -1,7 +1,8 @@
 # Roadmap batasan template dan authoring
 
-Status: **P0, P1, dan slice P2 (D10 + upload gambar) terimplementasi dan terverifikasi** pada
-2026-11-16. Item P2 lain belum dimulai. Lihat §11, §12, §13, dan §14.
+Status: **P0, P1, dan slice P2 terimplementasi dan terverifikasi** (D10 + upload gambar pada
+2026-11-16; impor HTML subset kecil pada 2026-11-22). Item P2 lain belum dimulai. Lihat §11, §12,
+§13, §14, dan `docs/design/templates/html-import-design.md`.
 
 Tanggal: 2026-11-16
 Basis: `docs/design/templates/template-system-design.md`, `docs/design/templates/email-authoring-ui-design.md`,
@@ -44,7 +45,7 @@ terpisah dengan persetujuan baru.
 |---|---|---|---|
 | 1 | `builderData` belum divalidasi backend | **P0** | Validasi schema v1 ketat, limit ukuran, normalisasi, tolak tulis invalid; baris legacy hanya warning saat publish |
 | 2 | Belum drag-and-drop/undo-redo | **P1** | Native HTML5 DnD + tombol naik/turun sebagai jalur keyboard; undo/redo stack lokal tanpa dependency |
-| 3 | HTML ↔ Visual belum impor/ekspor | **P1/P2** | Ekspor HTML di P1; impor HTML arbitrer **ditolak** sampai ada parser yang disetujui (P2) |
+| 3 | HTML ↔ Visual belum impor/ekspor | **P1/P2** | Ekspor HTML di P1; impor HTML arbitrer **ditolak** sampai ada parser yang disetujui. **2026-11-22:** impor subset kecil (heading/paragraf/gambar/tombol/divider) selesai via console `DOMParser`; impor HTML arbitrer tetap di luar cakupan |
 | 4 | Dua kolom bergantung `.nh-col` | **P1** | Pertahankan tabel + media query; tambah warning validasi bila layout tidak punya `.nh-col` |
 | 5 | Belum upload gambar | **P2 (selesai)** | Upload multipart tervalidasi (PNG/JPEG/WebP/GIF, maks 5 MiB/4000 px), storage lokal tenant-scoped, URL publik UUID; SVG ditolak |
 | 6 | Retensi audit/test send/aset | **P0/P1** | Cleanup test send 180 hari, audit 730 hari (bisa dimatikan); aset P1: hapus manual hanya jika usage=0 |
@@ -83,7 +84,7 @@ terpisah dengan persetujuan baru.
 |---|---|
 | `builderData` | Kolom `NotificationTemplate.builderData Json?` ada. DTO memakai `@IsObject()` opaque di create/update. Service menyimpan `jsonInput(dto.builderData)` pada create/update/clone/rollback/legacy version. Tidak ada validasi version/blocks/ukuran/URL. |
 | Block builder | `console/src/components/EmailBlockBuilder.tsx` hanya tombol naik/turun/duplikat/hapus. Tidak ada DnD, undo/redo. |
-| HTML/Visual | `TemplateFormPage.tsx`: beralih ke Visual memberi konfirmasi dan **tidak** mengimpor HTML; beralih ke HTML menghapus `builderData` saat disimpan. Tidak ada ekspor. |
+| HTML/Visual | `TemplateFormPage.tsx`: beralih ke Visual memberi konfirmasi. **Sejak 2026-11-22** tersedia tombol **Impor HTML** (subset kecil: heading/paragraf/gambar/tombol/divider) yang memetakan HTML ke `builderData` di console; lihat `docs/design/templates/html-import-design.md`. Beralih ke HTML menghapus `builderData` saat disimpan. |
 | Dua kolom | `emailBlocks.ts` menghasilkan `<table>` dengan `<td class="nh-col" width="50%">`. Media query `.nh-col { display:block; width:100% }` hanya ada di layout preset `console/src/lib/emailDesign.ts`, bukan di body/block. Layout kustom tanpa `.nh-col` tidak menumpuk. |
 | Gambar | `image` block dan layout/partial memakai URL `http/https`; tidak ada upload. |
 | Retensi | `CleanupService` hanya punya `runRetention` (notifikasi) dan `runIdempotencyCleanup`. `TemplateAuditEvent` dan `TemplateTestSend` tumbuh tanpa batas. Aset append-only tanpa delete. |
@@ -136,7 +137,7 @@ terpisah dengan persetujuan baru.
 
 | Item | Alasan/penghalang |
 |---|---|
-| Impor HTML arbitrer ke Visual | Membutuhkan parser HTML dan pemetaan ambigu; risiko kehilangan data. Butuh keputusan dependency terpisah. |
+| Impor HTML arbitrer ke Visual | **Subset kecil selesai 2026-11-22** (tanpa dependency, `DOMParser` di console; lihat `docs/design/templates/html-import-design.md`). Impor HTML arbitrer (tabel/list/CSS penuh) tetap butuh parser dan keputusan dependency. |
 | Upload gambar/storage | Butuh storage, MIME sniffing, limit, signing, dan keputusan dependency; URL-only masih aman. |
 | Approval maker-checker/diff | Butuh RBAC/role dan tabel approval; belum ada role selain `tenant_admin`. |
 | Template version per notifikasi | Perlu kolom baru + perubahan worker/admin; bukan bug, hanya keterbatasan audit. |
@@ -818,7 +819,7 @@ Catatan implementasi test:
 
 | Item | Alasan | Prasyarat/keputusan |
 |---|---|---|
-| Impor HTML → Visual | Pemetaan ambigu, butuh parser | P2 + persetujuan dependency |
+| Impor HTML → Visual | Subset kecil selesai 2026-11-22 (console, tanpa dependency); impor arbitrer tetap butuh parser | Desain lanjutan bila impor arbitrer dibutuhkan |
 | Upload gambar | Storage/MIME/keamanan | P2 + desain storage |
 | Approval maker-checker/diff | RBAC belum ada | P2 + role/permission |
 | Versi template per notifikasi | Perubahan tiga worker + schema | P2 + persetujuan |
@@ -1050,8 +1051,10 @@ Status: **terimplementasi dan terverifikasi** pada 2026-11-16.
 
 ### 14.4 Berikutnya
 
-Approval maker-checker/diff dipindahkan ke task berikutnya (posisi 2) sesuai permintaan. Item
-P2 lain (impor HTML, Meta WhatsApp, parser sanitizer penuh/Playwright) tetap menunggu
-keputusan fase; markdown in-app sudah selesai 2026-11-21. **Backlog 2026-11-21:** impor HTML ke
-Visual dan approval maker-checker/diff dicatat di `docs/architecture/project-brief.md` §7 butir 9
-dan belum dikerjakan (fokus sementara pindah ke UI console).
+Impor HTML ke Visual (subset kecil) **selesai dan terverifikasi 2026-11-22**; lihat
+`docs/design/templates/html-import-design.md`. Impor hanya memetakan heading, paragraf, gambar,
+tombol, dan divider; CSS, layout, dua kolom, dan list tidak diimpor, dan Handlebars blok/partial
+ditolak.
+
+Approval maker-checker/diff tetap menjadi item berikutnya. Item P2 lain (Meta WhatsApp, parser
+sanitizer penuh/Playwright) tetap menunggu keputusan fase; markdown in-app sudah selesai 2026-11-21.

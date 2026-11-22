@@ -1,6 +1,7 @@
 # Impor HTML ke Visual (subset kecil)
 
-Status: **draf — menunggu persetujuan; belum diimplementasikan** (2026-11-22).
+Status: **terimplementasi dan terverifikasi** (2026-11-22). Lihat §14 untuk catatan implementasi,
+deviasi, batasan, dan bukti verifikasi.
 Basis: `docs/design/templates/template-system-design.md` (§7 pipeline render, §11 sanitasi, §18
 catatan), `docs/design/templates/email-block-builder-design.md`,
 `docs/design/templates/template-limitations-roadmap.md` D4/§2.1/§9.2/§14.4,
@@ -470,6 +471,9 @@ Tidak ada perubahan pada `src/`, `prisma/`, `test/`, `openapi/`, `packages/`, at
 
 ## 13. Pertanyaan persetujuan
 
+Pertanyaan di bawah diajukan sebelum implementasi; semuanya disetujui dengan default yang
+direkomendasikan dan hasilnya dicatat di §14.
+
 1. **Subset**: setuju impor hanya menghasilkan `heading`, `text`, `image`, `button`, `divider`,
    sementara `spacer` dan `columns` tidak diimpor (D1)?
 2. **CSS**: setuju seluruh CSS tidak diimpor, dan hanya `text-align`/`width`/`display` dibaca untuk
@@ -493,6 +497,83 @@ Setelah disetujui, urutan implementasi: `htmlImport.ts` + unit test → dialog +
 
 ## 14. Catatan implementasi
 
-Belum diimplementasikan. Dokumen ini adalah draf yang menunggu persetujuan; setelah disetujui,
-bagian ini diisi hasil implementasi (perubahan aktual, deviasi, bukti verifikasi, dan batasan yang
-tersisa).
+Status: **terimplementasi dan terverifikasi** pada 2026-11-22.
+
+### 14.1 Yang diterapkan
+
+| Area | Perubahan |
+|---|---|
+| Importer | `console/src/lib/htmlImport.ts`: `importHtmlToBlocks(html, options)` memakai `DOMParser`, traversal container transparan, pemetaan heading/text/image/button/divider, issue + ringkasan |
+| Dialog | `console/src/components/ImportHtmlDialog.tsx`: tempel/berkas, **Analisis**, ringkasan block/issue, **Terapkan** dengan konfirmasi |
+| Wiring | `console/src/pages/TemplateFormPage.tsx`: tombol **Impor HTML** di tab Konten (email, bukan read-only), `applyHtmlImport` mengisi block, mode Visual, notice, warning di panel validasi, riwayat undo di-reset lewat `historyKey` |
+| Batas | Input 262.144 byte, 5.000 elemen, 200 block, 64 KiB dokumen, 10.000 teks, 500 label/alt, 2.048 URL; lebar gambar clamp 80–600 |
+| Keamanan | Dokumen inert; hanya `textContent`/atribut terpilih; URL http/https/token; tag berbahaya, list, tabel multi-sel, dan Handlebars blok ditolak |
+| Endpoint/schema | Tidak ada perubahan; server tetap memvalidasi lewat `parseBuilderDocument` |
+
+Tidak ada dependency baru, migrasi, env, perubahan OpenAPI, SDK, atau Go module.
+
+### 14.2 Deviasi dan keputusan tambahan
+
+1. **Analisis sinkron** (tanpa spinner/timer) karena parsing lokal hanya beberapa milidetik untuk
+   batas 256 KB; tombol dinonaktifkan selama HTML kosong.
+2. **Deteksi tersembunyi** menambah `max-height:0` dan `mso-hide:all` (pola preheader email) di luar
+   `display`/`visibility`/`opacity` yang disebut §5.
+3. **Kode issue baru** `import_image_src_missing` untuk `<img>` tanpa `src`; block tetap dibuat
+   dengan URL kosong (schema mengizinkannya).
+4. **Tag block tak dikenal** memakai daftar eksplisit (`blockquote`, `pre`, `dl`, `picture`, dst.)
+   agar tidak bergantung pada heuristik turunan anak.
+5. **Batas node** dihitung dari jumlah elemen (`querySelectorAll('*')`), bukan seluruh node DOM.
+6. `<head>` dibuang tanpa warning tersendiri; aturan `<style>` di head tetap dihitung di
+   `summary.droppedCssRules`.
+7. **Undo/redo tidak mencakup impor**: `historyKey` dinaikkan sehingga riwayat builder di-reset
+   sesudah impor, sesuai §8.3.
+8. `spacer`/`columns` tidak diimpor; `<ul>`/`<ol>` dan tabel multi-sel ditolak eksplisit.
+9. Preview memakai pipeline server-side setelah diterapkan; dialog tidak merender HTML lokal
+   (menghindari ekspresi theme Handlebars mentah).
+10. **Test send tidak diverifikasi ulang** pada backend dev yang berjalan: endpoint mengembalikan
+    `502 Invalid address in to: ""` karena proses tersebut memakai `NOTIFHUB_MODE=staging` dengan
+    catch-all yang tidak valid. Jalur render sudah diverifikasi lewat preview dan test send tetap
+    dicakup E15 di `npm run ci` (mode development, status `simulated`).
+
+### 14.3 Bukti verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm --prefix console run test` | **55** test lulus (10 file); 26 test importer + 6 test dialog baru |
+| `npm run console:typecheck` | lulus |
+| `npm run console:build` | lulus; tenant 1.028,33 KB / 299,01 KB gzip (naik ±18 KB), platform 505,74 KB / 154,74 KB gzip (tidak berubah) |
+| `npm run ci` | lulus **98 s** (6 langkah): typecheck, build, 73 unit, 47 e2e, 14 migrasi (tanpa migrasi baru) |
+| `npm run sdk:typecheck` / `sdk:test` / `react:test` | lulus; 36 test SDK, 5 test React |
+| `npm run docs:check` | lulus — 572 tautan/anchor, 46 file |
+| GitHub Actions | run commit ini hijau (lihat laporan akhir) |
+
+Verifikasi end-to-end manual terhadap backend dev (`:3000`), memakai **HTML nyata** yang diproses
+modul importer asli:
+
+1. Fixture: `h1`, `h4`, paragraf dengan `<strong>`/`<br>`, paragraf dengan link inline, `<img>`
+   lebar 600, tombol center, `<hr>`, paragraf penutup, `div` preheader `display:none`, wrapper
+   `<table>` satu sel, dan `<style>` di head.
+2. Hasil importer: **8 block** (2 heading, 3 text, 1 image, 1 button, 1 divider) dengan warning
+   `import_css_dropped`, `import_hidden_element_skipped`, `import_heading_level_clamped`,
+   `import_inline_formatting_dropped`, `import_inline_link_dropped`.
+3. `POST /api/v1/admin/templates` → **201**, `status=draft`, `builderData.blocks` = 8.
+4. `POST /api/v1/admin/templates/:id/preview` → **200**; `html` memuat `<h3`,
+   `cdn.example.com/box.png`, dan `Lacak paket`; `text` memuat `Pesanan INV-001 sudah dikirim`;
+   `missingVariables` kosong.
+5. `POST /api/v1/admin/templates/:id/publish` → **200**, `status=published`, `active=true`,
+   `validation.warnings` = 0.
+6. DB (`NotificationTemplate`): 8 block dengan tipe
+   `heading,heading,text,text,image,button,divider,text`; `body` 1.958 karakter memuat gambar dan
+   tombol.
+7. `DELETE /api/v1/admin/templates/:id` → **200**, `active=false` (data uji dinonaktifkan).
+
+### 14.4 Batasan yang tersisa
+
+- CSS, layout, dua kolom, dan list tidak diimpor; tampilan final bergantung theme/layout yang
+  dipilih setelah impor.
+- Handlebars blok/partial/komentar ditolak; template dengan loop/conditional tetap memakai mode
+  HTML.
+- Elemen tersembunyi melalui kelas CSS (bukan inline) tidak terdeteksi.
+- Tidak ada endpoint impor server-side, sehingga konsumen API non-console belum bisa memakai
+  impor; bila dibutuhkan kelak, perlu desain terpisah dengan parser (mis. `parse5`).
+- Verifikasi interaksi browser tetap manual (tanpa Playwright); komponen diuji dengan jsdom.

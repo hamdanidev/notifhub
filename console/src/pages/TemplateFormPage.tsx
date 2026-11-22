@@ -21,6 +21,7 @@ import {
 } from 'react-bootstrap';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
 import { EmailBlockBuilder } from '../components/EmailBlockBuilder';
+import { ImportHtmlDialog } from '../components/ImportHtmlDialog';
 import { PageHeader } from '../components/PageHeader';
 import { PublishDialog } from '../components/PublishDialog';
 import { QueryState } from '../components/QueryState';
@@ -182,6 +183,8 @@ export function TemplateFormPage(): JSX.Element {
   const [activeTab, setActiveTab] = useState('content');
   const [publishOpen, setPublishOpen] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importVersion, setImportVersion] = useState(0);
   const [testResult, setTestResult] = useState<TestSendResult | null>(null);
   const [actionError, setActionError] = useState<unknown>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
@@ -325,6 +328,20 @@ export function TemplateFormPage(): JSX.Element {
     setForm((previous) => ({ ...previous, body: effectiveBody }));
     setEditorMode('html');
   };
+
+  const applyHtmlImport = useCallback(
+    (document: EmailBlockDocument, issues: TemplateValidationIssue[]): void => {
+      setBlockDocument(document);
+      setEditorMode('visual');
+      setValidation(issues);
+      setSaveNotice(
+        `HTML diimpor menjadi ${document.blocks.length} block. Simpan draft untuk menyimpan hasil.`,
+      );
+      setImportVersion((current) => current + 1);
+      setImportOpen(false);
+    },
+    [],
+  );
 
   const parsed = useMemo(() => {
     try {
@@ -701,8 +718,9 @@ export function TemplateFormPage(): JSX.Element {
                     onChangeEditorMode={changeEditorMode}
                     blockDocument={blockDocument}
                     setBlockDocument={setBlockDocument}
-                    historyKey={`${current?.id ?? 'new'}:${current?.revision ?? 0}`}
+                    historyKey={`${current?.id ?? 'new'}:${current?.revision ?? 0}:${importVersion}`}
                     variableKeys={variableKeys}
+                    onOpenImport={() => setImportOpen(true)}
                     onInsertSnippet={(value) =>
                       setForm((previous) => ({ ...previous, body: `${previous.body}\n${value}` }))
                     }
@@ -768,6 +786,13 @@ export function TemplateFormPage(): JSX.Element {
         onCancel={() => setTestOpen(false)}
         onSend={(recipient) => testSend.mutate(recipient)}
       />
+      <ImportHtmlDialog
+        show={importOpen}
+        hasExistingBlocks={blockDocument.blocks.length > 0}
+        existingBlockCount={blockDocument.blocks.length}
+        onCancel={() => setImportOpen(false)}
+        onApply={applyHtmlImport}
+      />
     </>
   );
 }
@@ -783,6 +808,7 @@ function ContentTab({
   setBlockDocument,
   historyKey,
   variableKeys,
+  onOpenImport,
   onInsertSnippet,
 }: {
   form: TemplateFormState;
@@ -795,6 +821,7 @@ function ContentTab({
   setBlockDocument: Dispatch<SetStateAction<EmailBlockDocument>>;
   historyKey: string;
   variableKeys: string[];
+  onOpenImport: () => void;
   onInsertSnippet: (value: string) => void;
 }): JSX.Element {
   const visualSupported = form.channel === 'email';
@@ -945,6 +972,15 @@ function ContentTab({
           ) : null}
           {form.channel === 'email' ? (
             <div className="d-flex gap-1 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                onClick={onOpenImport}
+                disabled={readOnly}
+                title="Impor HTML menjadi block Visual"
+              >
+                Impor HTML
+              </Button>
               <Button
                 size="sm"
                 variant="outline-secondary"

@@ -80,6 +80,7 @@ Aturan kerja:
 | `@notifhub/react` (headless) + `NotifHubAdminClient` + `notifhub-console` | selesai & terverifikasi |
 | Console refresh/auto-refresh + resend failed (notification baru, audit link) | selesai & terverifikasi (tanpa browser automation) |
 | Template system v2 (draft/publish/rollback/clone, preview, test send, variabel, aset email, audit) + editor aset tanpa kode + block builder email (heading/teks/gambar/tombol/divider/spacer/dua kolom) | selesai & terverifikasi (E12–E20, UI manual tanpa browser automation) |
+| Template P2: impor HTML ke Visual (subset kecil: heading, paragraf, gambar, tombol, divider) | selesai & terverifikasi (2026-11-22; 55 console test; E2E manual API + DB; lihat `docs/design/templates/html-import-design.md`) |
 | Sample in-app React 18 (sesi, SSE, read receipt, preference center) | selesai & terverifikasi lewat protokol/DB (dev-only, tanpa browser automation) |
 | WhatsApp Cloud API provider/worker + webhook Meta + stub lokal | selesai & terverifikasi |
 | Provider WhatsApp WAHA (opsional, self-hosted): sendText + webhook HMAC-SHA512 + pemetaan ack | terimplementasi & terverifikasi otomatis (E46); smoke: kirim OK, `delivered`/`read` belum tertutup karena WAHA 2026.10.1 tidak memancarkan ack live (§15.4) |
@@ -216,8 +217,11 @@ npx prisma migrate status
   `docs/design/console-operations-p2.md` §13–§15, dan
   `docs/design/console-sdk-consolidation.md`.
 - Template system v2: loop/conditional visual, MJML/juice, Meta approved
-  WhatsApp template, impor HTML ke Visual, diff visual versi, dan approval maker-checker belum
-  ada. Markdown in-app tersedia sebagai subset aman (dirender server-side ke `bodyHtml`; email,
+  WhatsApp template, diff visual versi, dan approval maker-checker belum ada. **Impor HTML ke
+  Visual** tersedia sebagai subset kecil (heading/paragraf/gambar/tombol/divider) yang dipetakan di
+  console memakai `DOMParser` tanpa dependency baru; CSS/layout/dua kolom/list tidak diimpor,
+  Handlebars blok/partial ditolak, dan template published/read-only tidak dapat diimpor. Detail:
+  `docs/design/templates/html-import-design.md`. Markdown in-app tersedia sebagai subset aman (dirender server-side ke `bodyHtml`; email,
   WhatsApp, dan SMS tetap menolak markdown) dan `@notifhub/react` menyediakan opt-in
   `renderBody="safe-html"`. Drag-and-drop/undo-redo block builder, ekspor HTML, usage
   count/proteksi hapus aset,
@@ -282,6 +286,7 @@ npx prisma migrate status
 8. Markdown in-app selesai (2026-11-21): subset aman dirender server-side ke `bodyHtml`,
    `@notifhub/js` 0.4.0 + `@notifhub/react` 0.3.0 terbit; lihat
    `docs/design/templates/in-app-markdown-design.md`.
-9. Template P2 tersisa (belum dikerjakan, perlu draf desain + persetujuan): **impor HTML ke
-   Visual** dan **approval maker-checker/diff versi**. Keduanya sengaja diparkir agar fokus UI
-   console; rujukan batasan di `docs/design/templates/template-limitations-roadmap.md` §14.4.
+9. Template P2 tersisa (belum dikerjakan, perlu draf desain + persetujuan): **approval
+   maker-checker/diff versi**. Impor HTML ke Visual sudah selesai sebagai subset kecil
+   (2026-11-22; `docs/design/templates/html-import-design.md`). Rujukan batasan di
+   `docs/design/templates/template-limitations-roadmap.md` §14.4.
