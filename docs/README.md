@@ -77,6 +77,7 @@ tanggal di dalamnya bukan urutan baca. Semua desain terindeks di [design/README.
 | [templates/email-authoring-ui-design.md](design/templates/email-authoring-ui-design.md) | Form theme dan galeri layout untuk admin non-teknis | terimplementasi |
 | [templates/email-block-builder-design.md](design/templates/email-block-builder-design.md) | Block builder body email dan model `builderData` | terimplementasi |
 | [templates/html-import-design.md](design/templates/html-import-design.md) | Impor HTML ke Visual (subset kecil): pemetaan tag ke block, kebijakan CSS, keamanan, kontrak console | terimplementasi dan terverifikasi |
+| [templates/template-approval-diff-design.md](design/templates/template-approval-diff-design.md) | Approval maker-checker dan diff versi: peran approver, gate publish, antrean review, diff field/block/render | draf; menunggu persetujuan |
 | [templates/template-limitations-roadmap.md](design/templates/template-limitations-roadmap.md) | 13 batasan template, prioritas P0/P1/P2, migrasi, keamanan, regresi | P0, P1, sebagian P2 selesai |
 | [templates/in-app-markdown-design.md](design/templates/in-app-markdown-design.md) | Markdown in-app subset aman: render server-side, kontrak `bodyHtml`, rilis SDK/React | selesai & terverifikasi (E47; js 0.4.0/react 0.3.0) |
 | [multi-tenant-platform-admin.md](design/multi-tenant-platform-admin.md) | Entitas tenant, provisioning, platform admin, suspend, audit, isolasi antar tenant | terimplementasi penuh (F1–F5) |

@@ -1056,5 +1056,7 @@ Impor HTML ke Visual (subset kecil) **selesai dan terverifikasi 2026-11-22**; li
 tombol, dan divider; CSS, layout, dua kolom, dan list tidak diimpor, dan Handlebars blok/partial
 ditolak.
 
-Approval maker-checker/diff tetap menjadi item berikutnya. Item P2 lain (Meta WhatsApp, parser
-sanitizer penuh/Playwright) tetap menunggu keputusan fase; markdown in-app sudah selesai 2026-11-21.
+Approval maker-checker/diff tetap menjadi item berikutnya; draf desainnya ada di
+`docs/design/templates/template-approval-diff-design.md` dan menunggu persetujuan. Item P2 lain
+(Meta WhatsApp, parser sanitizer penuh/Playwright) tetap menunggu keputusan fase; markdown in-app
+sudah selesai 2026-11-21.
